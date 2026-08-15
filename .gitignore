@@ -64,3 +64,5 @@ r2_credentials*
 ### --- Load testing output (keep results.md, ignore raw k6 dumps) ---
 apps/api/load-tests/*.json
 apps/api/load-tests/raw/
+
+.freebuff/

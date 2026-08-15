@@ -28,32 +28,33 @@ Full architecture, API design, schema, and rationale live in the project's TRD (
 
 ## Repo layout
 
-This is a monorepo: one repo, one CI pipeline, one set of PRs. The Rust backend and Flutter client are sibling folders, each with their own native, un-nested tooling root.
+This is a monorepo: one repo, one CI pipeline, one set of PRs. The Rust backend and Flutter client are sibling folders under `apps/`, each with their own native, un-nested tooling root.
 
 ```
 uni-stash/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # single workflow, separate backend + frontend jobs
-├── backend/
-│   ├── Cargo.toml
-│   ├── migrations/         # sqlx migrations, numbered, forward-only
-│   └── src/
-│       ├── core/           # config, db, error, auth, shared state
-│       └── features/       # auth, listings, images, chats, categories, reports
-├── frontend/
-│   ├── pubspec.yaml
-│   └── lib/
-│       ├── core/           # API client, riverpod providers, theming
-│       └── features/       # mirrors backend/src/features/ 1:1
+│       └── ci.yml          # single workflow, separate api + mobile jobs
+├── apps/
+│   ├── api/                # Rust + Actix-Web backend (Cargo binary crate)
+│   │   ├── Cargo.toml
+│   │   ├── migrations/     # sqlx migrations, numbered, forward-only
+│   │   └── src/
+│   │       ├── core/       # config, db, error, auth, shared state
+│   │       └── features/   # auth, listings, images, chats, categories, reports
+│   └── mobile/             # Flutter client
+│       ├── pubspec.yaml
+│       └── lib/
+│           ├── core/       # API client, riverpod providers, theming
+│           └── features/   # mirrors apps/api/src/features/ 1:1
 ├── shared/
-│   └── openapi.yaml         # API contract referenced by both sides
+│   └── openapi.yaml        # API contract referenced by both sides
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-**Why not a single Cargo/Flutter workspace?** Cargo workspaces and the Flutter/Dart toolchain don't compose into one manifest — there's no single file that governs both a Rust binary and a Flutter app. Keeping `backend/Cargo.toml` and `frontend/pubspec.yaml` independent, inside one repo, gets the collaboration benefits of a monorepo (one CI pipeline, one PR touching both sides when a request shape changes) without fighting the tooling.
+**Why not a single Cargo/Flutter workspace?** Cargo workspaces and the Flutter/Dart toolchain don't compose into one manifest — there's no single file that governs both a Rust binary and a Flutter app. Keeping `apps/api/Cargo.toml` and `apps/mobile/pubspec.yaml` independent, inside one repo, gets the collaboration benefits of a monorepo (one CI pipeline, one PR touching both sides when a request shape changes) without fighting the tooling.
 
 **The one boundary rule:** a feature module never reaches into another feature's data layer directly. If `chats` needs to know a listing exists, it calls a small public function exposed from `listings`, not a raw query against the `listings` table.
 
@@ -66,10 +67,10 @@ uni-stash/
 - Flutter SDK
 - A local Postgres instance, or a free-tier hosted one (Neon / Supabase Postgres)
 
-### Backend
+### Backend (`apps/api`)
 
 ```bash
-cd backend
+cd apps/api
 cp .env.example .env        # fill in DATABASE_URL, JWT keys, etc.
 sqlx migrate run
 cargo run
@@ -77,24 +78,26 @@ cargo run
 
 The server starts on the port configured in `.env`. `GET /health` should return `200 { "status": "ok" }`.
 
-### Frontend
+### Mobile (`apps/mobile`)
 
 ```bash
-cd frontend
+cd apps/mobile
 flutter pub get
 flutter run
 ```
 
-Point the app at your local backend by setting the base URL in the frontend's environment config (see `frontend/lib/core/`).
+Point the app at your local backend by setting the base URL in the mobile app's environment config (see `apps/mobile/lib/core/`).
 
 ---
 
 ## CI
 
-`.github/workflows/ci.yml` runs two path-filtered jobs so a frontend-only PR doesn't spin up a Postgres container for nothing, and vice versa:
+`.github/workflows/ci.yml` defines two jobs — `api` (Rust) and `mobile` (Flutter). They are stubs for now (checkout + placeholder); the real checks land with CM-13.2:
 
-- **backend** (`paths: backend/**`) — `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
-- **frontend** (`paths: frontend/**`) — `flutter analyze`, `flutter test`
+- **api** (`apps/api/`) — `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`
+- **mobile** (`apps/mobile/`) — `flutter analyze`, `flutter test`
+
+CM-13.2 also adds per-job path filtering so a mobile-only PR doesn't spin up the Rust job (and vice versa).
 
 ---
 

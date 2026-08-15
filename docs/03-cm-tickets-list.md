@@ -17,7 +17,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - `apps/api/` initialized as a Cargo binary crate (`cargo init --name uni-stash-be`)
 - `apps/mobile/` initialized as a Flutter app (`flutter create .`)
 - `shared/openapi.yaml` exists as an empty/stub file with a header comment explaining its purpose
-- `ci.yml` contains two job stubs (`backend`, `frontend`) that currently just check out code and print a placeholder — real steps land in CM-13.2
+- `ci.yml` contains two job stubs (`api`, `mobile`) that currently just check out code and print a placeholder — real steps land in CM-13.2
 - README documents the monorepo layout and how to run each side locally
   **Technical Implementation Notes:**
 - Do not create a Cargo workspace spanning `apps/api/` and `apps/mobile/` — per TRD §1.2, Cargo and Flutter/Dart tooling don't compose into one manifest; keep `apps/api/Cargo.toml` and `apps/mobile/pubspec.yaml` fully independent.

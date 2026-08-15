@@ -1,0 +1,28 @@
+# shared/openapi.yaml
+#
+# Purpose: single source of truth for the UniStash API contract, consumed by
+# both sides of the monorepo (TRD §1.4):
+#   - apps/api (Rust + Actix-Web) — reference for endpoint request/response
+#     shapes; may later be generated from handler annotations (utoipa) into
+#     this file.
+#   - apps/mobile (Flutter) — reference for typed DTOs and the API client,
+#     checked against this file in review.
+#
+# Status: STUB. The API surface is currently designed in docs/01-cm-trd.md
+# (§2) but not yet transcribed here. This file gets its first real content
+# when the /auth endpoints land (Epic 3); until then it deliberately declares
+# no paths.
+#
+# Conventions (from TRD §2.1):
+#   - Base path: /api/v1
+#   - Auth: `Authorization: Bearer <access_token>`, except public /auth/*
+#   - All bodies JSON; list endpoints use cursor pagination (?cursor&limit)
+
+openapi: 3.0.3
+info:
+  title: UniStash API
+  version: 0.1.0
+  description: >
+    Campus marketplace API for UniStash. Stub contract — populated as feature
+    tickets land (see docs/01-cm-trd.md for the current design).
+paths: {}

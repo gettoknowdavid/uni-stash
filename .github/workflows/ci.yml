@@ -1,0 +1,44 @@
+# CI — single workflow for the whole monorepo (TRD §6).
+#
+# Two job stubs, one per toolchain, per CM-1.1:
+#   - api    -> apps/api     (Rust + Actix-Web)
+#   - mobile -> apps/mobile  (Flutter)
+#
+# Jobs currently only check out the code and print a placeholder. Real steps
+# land in CM-13.2: `api` runs cargo fmt --check / clippy / test, `mobile` runs
+# flutter analyze / test. CM-13.2 also adds per-job path filtering so a change
+# touching only one side doesn't run the other job.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    name: API (Rust backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Placeholder
+        run: echo "api job stub — real checks (fmt, clippy, test) land in CM-13.2"
+
+  mobile:
+    name: Mobile (Flutter app)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Placeholder
+        run: echo "mobile job stub — real checks (analyze, test) land in CM-13.2"
