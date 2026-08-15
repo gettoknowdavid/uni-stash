@@ -14,9 +14,6 @@ Thumbs.db
 backend/target/
 backend/**/*.rs.bk
 backend/Cargo.lock
-# Uncomment the line below instead of the one above if this ends up being
-# a binary-only deploy target where you want reproducible builds:
-# !backend/Cargo.lock
 **/*.pdb
 
 # sqlx offline query cache (keep if using `cargo sqlx prepare` for CI without a live DB;
