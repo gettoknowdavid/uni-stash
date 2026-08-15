@@ -1,6 +1,6 @@
 # Campus Marketplace — Ticket List
 
-### Derived from `campus-marketplace-epics-list.md` and `campus-marketplace-trd.md` (Option B: Rust + Actix-Web)
+### Derived from `02-cm-epics-list.md` and `01-cm-trd.md` (Rust + Actix-Web)
 
 Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked roughly top-to-bottom; dependencies are called out where a ticket needs another ticket (not just another epic) to land first.
 
@@ -10,17 +10,17 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ### CM-1.1 — Monorepo layout & root CI workflow skeleton
 
-**Description:** Create the repo root structure (`backend/`, `frontend/`, `shared/`, `.github/workflows/`) so both toolchains have their native, un-nested roots from day one, and stub the CI workflow file that later tickets will fill in.
+**Description:** Create the repo root structure (`apps/api/`, `apps/mobile/`, `shared/`, `.github/workflows/`) so both toolchains have their native, un-nested roots from day one, and stub the CI workflow file that later tickets will fill in.
 **Acceptance Criteria:**
 
-- Repo root contains `backend/`, `frontend/`, `shared/`, `README.md`, `.github/workflows/ci.yml`
-- `backend/` initialized as a Cargo binary crate (`cargo init --name campus-marketplace-backend`)
-- `frontend/` initialized as a Flutter app (`flutter create .`)
+- Repo root contains `apps/api/`, `apps/mobile/`, `shared/`, `README.md`, `.github/workflows/ci.yml`
+- `apps/api/` initialized as a Cargo binary crate (`cargo init --name uni-stash-be`)
+- `apps/mobile/` initialized as a Flutter app (`flutter create .`)
 - `shared/openapi.yaml` exists as an empty/stub file with a header comment explaining its purpose
 - `ci.yml` contains two job stubs (`backend`, `frontend`) that currently just check out code and print a placeholder — real steps land in CM-13.2
 - README documents the monorepo layout and how to run each side locally
   **Technical Implementation Notes:**
-- Do not create a Cargo workspace spanning `backend/` and `frontend/` — per TRD §1.2, Cargo and Flutter/Dart tooling don't compose into one manifest; keep `backend/Cargo.toml` and `frontend/pubspec.yaml` fully independent.
+- Do not create a Cargo workspace spanning `apps/api/` and `apps/mobile/` — per TRD §1.2, Cargo and Flutter/Dart tooling don't compose into one manifest; keep `apps/api/Cargo.toml` and `apps/mobile/pubspec.yaml` fully independent.
 - `.gitignore` at root should cover both `target/` (Rust) and `.dart_tool/`/`build/` (Flutter).
 
 ---
@@ -38,7 +38,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
   **Technical Implementation Notes:**
 - Use `dotenvy` for local `.env` loading (no-op in prod where real env vars are injected by Shuttle.rs/Fly.io).
 - Either hand-roll parsing or use `envy` to deserialize into the `Config` struct; prefer explicit parsing if `envy`'s error messages aren't specific enough for the "fail fast with a clear reason" requirement.
-- Lives at `backend/src/core/config.rs`.
+- Lives at `apps/api/src/core/config.rs`.
 
 ---
 
@@ -54,7 +54,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
   **Technical Implementation Notes:**
 - Derive with `thiserror`.
 - Implement `From<sqlx::Error>` for `AppError` mapping `RowNotFound` → `NotFound`, unique-constraint violations → `Conflict`, everything else → `Internal`.
-- Lives at `backend/src/core/error.rs`.
+- Lives at `apps/api/src/core/error.rs`.
 
 ---
 
@@ -69,8 +69,8 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Connection failure at boot produces a clear fail-fast error, consistent with CM-1.2
   **Technical Implementation Notes:**
 - Use `sqlx::postgres::PgPoolOptions`.
-- `migrations/` directory lives at `backend/migrations/` per the TRD layout — this ticket only wires the runner; schema content is Epic 2.
-- Lives at `backend/src/core/db.rs`.
+- `migrations/` directory lives at `apps/api/migrations/` per the TRD layout — this ticket only wires the runner; schema content is Epic 2.
+- Lives at `apps/api/src/core/db.rs`.
 
 ---
 
@@ -85,7 +85,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
   **Technical Implementation Notes:**
 - Per TRD §1.2: no DI container, no repository trait abstraction — `PgPool` is cloned directly into state and passed by reference. Keep this simple.
 - `ws_registry` field type can be a placeholder (`Arc<Mutex<()>>` or similar) until Epic 7 defines the real `ChatServer` address type — avoid blocking this ticket on chat infra.
-- Lives at `backend/src/core/state.rs`.
+- Lives at `apps/api/src/core/state.rs`.
 
 ---
 
@@ -198,7 +198,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Unit tests: correct password verifies true, incorrect verifies false, malformed hash returns an error not a panic
   **Technical Implementation Notes:**
 - `argon2` crate, `PasswordHasher`/`PasswordVerifier` traits.
-- Lives at `backend/src/core/auth/password.rs`.
+- Lives at `apps/api/src/core/auth/password.rs`.
 
 ---
 
@@ -215,7 +215,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
   **Technical Implementation Notes:**
 - `jsonwebtoken` crate with `Algorithm::RS256`.
 - Keypair loaded from `Config` (CM-1.2) — generate a local dev keypair via `openssl genrsa` / `openssl rsa -pubout`, documented in `.env.example`.
-- Lives at `backend/src/core/auth/jwt.rs`.
+- Lives at `apps/api/src/core/auth/jwt.rs`.
 
 ---
 
@@ -231,7 +231,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Integration test: protected dummy route returns `401` with no token, `200` with a valid token
   **Technical Implementation Notes:**
 - This extractor is what every feature module's protected handlers will take as a parameter — keep its public shape stable since Epics 4, 6, 7, 8, 9 all depend on it directly.
-- Lives at `backend/src/core/auth/middleware.rs`.
+- Lives at `apps/api/src/core/auth/middleware.rs`.
 
 ---
 
@@ -547,7 +547,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
   **Technical Implementation Notes:**
 - Built on `actix` (the actor framework) via `actix-web-actors` for the WS integration layer.
 - Keep `ChatServer`'s public message API minimal and well-typed — Epic 8 will depend on it heavily for message forwarding.
-- Lives at `backend/src/features/chats/ws.rs`.
+- Lives at `apps/api/src/features/chats/ws.rs`.
 
 ---
 
@@ -739,7 +739,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.4 — `frontend/lib/features/auth/` — signup, login, verify-email screens
+### CM-10.4 — `apps/mobile/lib/features/auth/` — signup, login, verify-email screens
 
 **Description:** Build the auth UI flows wired to the `/auth` endpoints.
 **Acceptance Criteria:**
@@ -749,12 +749,12 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Verify-email deep link (or manual entry, depending on how the link is delivered to a mobile client) completes verification and routes to login
 - Riverpod `AuthController`/provider manages auth state (logged out / logging in / logged in) consumed by the rest of the app for route guarding
   **Technical Implementation Notes:**
-- `frontend/lib/features/auth/` mirrors `backend/src/features/auth/` per TRD §1.4's naming convention.
+- `apps/mobile/lib/features/auth/` mirrors `apps/api/src/features/auth/` per TRD §1.4's naming convention.
 - Use `forui` form components (CM-10.1) for consistency rather than raw Material widgets.
 
 ---
 
-### CM-10.5 — `frontend/lib/features/listings/` — browse, filter, search, detail
+### CM-10.5 — `apps/mobile/lib/features/listings/` — browse, filter, search, detail
 
 **Description:** Build the listing browse/search/detail screens wired to the `/listings` endpoints.
 **Acceptance Criteria:**
@@ -768,7 +768,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.6 — `frontend/lib/features/listings/` — create/edit with image upload
+### CM-10.6 — `apps/mobile/lib/features/listings/` — create/edit with image upload
 
 **Description:** Build the listing creation and editing UI, including the presign → upload → confirm image flow.
 **Acceptance Criteria:**
@@ -782,7 +782,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.7 — `frontend/lib/features/categories/`
+### CM-10.7 — `apps/mobile/lib/features/categories/`
 
 **Description:** Build the (likely simple, mostly-static) category selection UI feeding into listing create/edit and browse filters.
 **Acceptance Criteria:**
@@ -913,7 +913,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 - `k6` script simulates many concurrent reserve attempts against the same listing_id, confirming exactly one succeeds per listing under load (extending CM-4.6's smaller in-process concurrency test to a real network-level load scenario)
 - Script also covers a broader browse/search read-load scenario for baseline numbers
-- Results (latency percentiles, success/conflict counts) are captured and documented in the repo (e.g. `backend/load-tests/results.md`) as the citable evidence for the "handled the race condition" story
+- Results (latency percentiles, success/conflict counts) are captured and documented in the repo (e.g. `apps/api/load-tests/results.md`) as the citable evidence for the "handled the race condition" story
   **Technical Implementation Notes:**
 - Run against the deployed Shuttle.rs instance (or a staging deploy) rather than localhost, so numbers reflect real network/DB latency, not just in-process behavior.
 - `k6` is free/open-source per the TRD — no new infra cost here, just tooling to install locally/in CI.
@@ -925,8 +925,8 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 **Description:** Complete the CI workflow stubbed in CM-1.1, implementing the real steps for both jobs with correct path filtering.
 **Acceptance Criteria:**
 
-- `backend` job triggers on `paths: ['backend/**']`, runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` against an ephemeral Postgres service container (`sqlx::test`)
-- `frontend` job triggers on `paths: ['frontend/**']`, runs `flutter analyze`, `flutter test`
+- `backend` job triggers on `paths: ['apps/api/**']`, runs `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` against an ephemeral Postgres service container (`sqlx::test`)
+- `frontend` job triggers on `paths: ['apps/mobile/**']`, runs `flutter analyze`, `flutter test`
 - Both jobs run in parallel when a PR touches both paths; a PR touching only one path skips the other job entirely
 - CI passes on a clean `main` branch run
   **Technical Implementation Notes:**

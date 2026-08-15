@@ -10,47 +10,47 @@ Thumbs.db
 *.iml
 .direnv/
 
-### --- Rust (backend/) ---
-backend/target/
-backend/**/*.rs.bk
-backend/Cargo.lock
+### --- Rust (apps/api/) ---
+apps/api/target/
+apps/api/**/*.rs.bk
+apps/api/Cargo.lock
 **/*.pdb
 
 # sqlx offline query cache (keep if using `cargo sqlx prepare` for CI without a live DB;
 # remove this ignore line if you commit .sqlx/ intentionally)
-backend/.sqlx/
+apps/api/.sqlx/
 
 # Shuttle.rs
-backend/Secrets.toml
-backend/Secrets.dev.toml
+apps/api/Secrets.toml
+apps/api/Secrets.dev.toml
 .shuttle-storage/
 
-### --- Flutter / Dart (frontend/) ---
-frontend/.dart_tool/
-frontend/.flutter-plugins
-frontend/.flutter-plugins-dependencies
-frontend/.packages
-frontend/.pub-cache/
-frontend/.pub/
-frontend/build/
-frontend/ios/Pods/
-frontend/ios/.symlinks/
-frontend/ios/Flutter/Flutter.framework
-frontend/ios/Flutter/Flutter.podspec
-frontend/android/.gradle/
-frontend/android/local.properties
-frontend/android/**/GeneratedPluginRegistrant.java
-frontend/**/generated_plugin_registrant.dart
-frontend/*.iml
-frontend/coverage/
-frontend/*.g.dart
-frontend/*.freezed.dart
+### --- Flutter / Dart (apps/mobile/) ---
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.packages
+apps/mobile/.pub-cache/
+apps/mobile/.pub/
+apps/mobile/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/Flutter.framework
+apps/mobile/ios/Flutter/Flutter.podspec
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/**/GeneratedPluginRegistrant.java
+apps/mobile/**/generated_plugin_registrant.dart
+apps/mobile/*.iml
+apps/mobile/coverage/
+apps/mobile/*.g.dart
+apps/mobile/*.freezed.dart
 
 # Flutter secure config / keys (never commit signing keys or API keys)
-frontend/android/key.properties
-frontend/**/google-services.json
-frontend/**/GoogleService-Info.plist
-frontend/ios/Runner/GeneratedPluginRegistrant.*
+apps/mobile/android/key.properties
+apps/mobile/**/google-services.json
+apps/mobile/**/GoogleService-Info.plist
+apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
 
 ### --- Secrets & credentials (belt and suspenders on top of .env) ---
 *.pem
@@ -62,5 +62,5 @@ r2_credentials*
 *.keystore
 
 ### --- Load testing output (keep results.md, ignore raw k6 dumps) ---
-backend/load-tests/*.json
-backend/load-tests/raw/
+apps/api/load-tests/*.json
+apps/api/load-tests/raw/
