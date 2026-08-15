@@ -1,0 +1,69 @@
+### --- General ---
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.iml
+.direnv/
+
+### --- Rust (backend/) ---
+backend/target/
+backend/**/*.rs.bk
+backend/Cargo.lock
+# Uncomment the line below instead of the one above if this ends up being
+# a binary-only deploy target where you want reproducible builds:
+# !backend/Cargo.lock
+**/*.pdb
+
+# sqlx offline query cache (keep if using `cargo sqlx prepare` for CI without a live DB;
+# remove this ignore line if you commit .sqlx/ intentionally)
+backend/.sqlx/
+
+# Shuttle.rs
+backend/Secrets.toml
+backend/Secrets.dev.toml
+.shuttle-storage/
+
+### --- Flutter / Dart (frontend/) ---
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/build/
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/Flutter.podspec
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/**/GeneratedPluginRegistrant.java
+frontend/**/generated_plugin_registrant.dart
+frontend/*.iml
+frontend/coverage/
+frontend/*.g.dart
+frontend/*.freezed.dart
+
+# Flutter secure config / keys (never commit signing keys or API keys)
+frontend/android/key.properties
+frontend/**/google-services.json
+frontend/**/GoogleService-Info.plist
+frontend/ios/Runner/GeneratedPluginRegistrant.*
+
+### --- Secrets & credentials (belt and suspenders on top of .env) ---
+*.pem
+*.key
+jwt_private_key*
+jwt_public_key*
+r2_credentials*
+*.p12
+*.keystore
+
+### --- Load testing output (keep results.md, ignore raw k6 dumps) ---
+backend/load-tests/*.json
+backend/load-tests/raw/
