@@ -1,4 +1,5 @@
 use actix_web::{App, HttpServer, web};
+use uni_stash_be::configure_health;
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
 use uni_stash_be::core::logging;
@@ -14,7 +15,6 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    // Initialize logging before any other setup.
     logging::init(&config.env);
 
     let db = match Db::connect(&config.database_url).await {
@@ -30,15 +30,18 @@ async fn main() -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("failed to build app state: {e:#}"))?,
     );
 
+    let port = config.port;
+
     HttpServer::new(move || {
         App::new()
-            // Outermost middleware: every request — including 404s — gets a
-            // log line with method, path, status, latency, and request id.
             .wrap(logging::http_middleware())
             .app_data(state.clone())
+            .configure(configure_health)
     })
-    .bind(("127.0.0.1", 8080))
-    .unwrap()
+    // 0.0.0.0, not 127.0.0.1 — Render's proxy connects from outside the
+    // container's loopback interface. Port comes from Config (CM-1.2),
+    // which Render overrides via the PORT env var at runtime.
+    .bind(("0.0.0.0", port))?
     .run()
     .await?;
 

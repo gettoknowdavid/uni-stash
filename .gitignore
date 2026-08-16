@@ -13,7 +13,6 @@ Thumbs.db
 ### --- Rust (apps/api/) ---
 apps/api/target/
 apps/api/**/*.rs.bk
-apps/api/Cargo.lock
 **/*.pdb
 
 # sqlx offline query cache (keep if using `cargo sqlx prepare` for CI without a live DB;
