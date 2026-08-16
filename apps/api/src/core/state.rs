@@ -36,6 +36,10 @@ impl R2Client {
             "r2",
         );
         let conf = aws_sdk_s3::config::Builder::new()
+            // aws-sdk-s3 >= 1.14x requires an explicit behavior major version
+            // when constructing a client; latest() pins us to current semantics
+            // rather than an SDK default that could change under us.
+            .behavior_version(aws_sdk_s3::config::BehaviorVersion::latest())
             .region(aws_sdk_s3::config::Region::new("auto"))
             .endpoint_url(&config.r2_endpoint)
             .credentials_provider(credentials)
@@ -46,6 +50,10 @@ impl R2Client {
     }
 }
 
+/// The inner fields are only *read* once CM-3.4 adds `send_verification_email`;
+/// the client is fully constructed and wired into `AppState` as of CM-1.5, so
+/// the dead-code lint is suppressed until then (see CM-3.4).
+#[allow(dead_code)]
 #[derive(Debug)]
 struct ResendClientInner {
     http: reqwest::Client,
@@ -59,7 +67,11 @@ struct ResendClientInner {
 /// is thinly maintained, and CM-3.4 only needs one call shape. The API key is
 /// kept behind an `Arc` and never `Debug`-printed.
 #[derive(Clone, Debug)]
+// Tuple field is read by the cheap-clone test and, from CM-3.4, by the send
+// helpers — see the `ResendClientInner` note above for why dead_code is off.
+#[allow(dead_code)]
 pub struct ResendClient(Arc<ResendClientInner>);
+
 impl ResendClient {
     pub fn new(config: &Config) -> anyhow::Result<Self, AppError> {
         let http = reqwest::Client::builder()
@@ -90,8 +102,8 @@ impl AppState {
         Ok(Self {
             db: db.pool,
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
-            r2_client: R2Client::from_config(&config),
-            resend: ResendClient::new(&config)?,
+            r2_client: R2Client::from_config(config),
+            resend: ResendClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
         })
     }
@@ -135,8 +147,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn cloning_app_state_is_cheap_pointer_copies() {
+    // connect_lazy still needs a Tokio context in sqlx 0.9 (it sizes the pool
+    // against the runtime), so these run under the actix-rt test runtime like
+    // the rest of the core tests.
+    #[actix_rt::test]
+    async fn cloning_app_state_is_cheap_pointer_copies() {
         let state = AppState::new(&test_config(), test_db()).unwrap();
         let copy = state.clone();
 
@@ -155,16 +170,16 @@ mod tests {
         // db is PgPool — Arc-backed by sqlx, cheap by construction.
     }
 
-    #[test]
-    fn malformed_key_pem_fails_fast_at_boot() {
+    #[actix_rt::test]
+    async fn malformed_key_pem_fails_fast_at_boot() {
         let mut config = test_config();
         config.jwt_private_key = "not-a-pem".into();
         let err = AppState::new(&config, test_db()).unwrap_err();
         assert!(matches!(err, AppError::Internal(_)));
     }
 
-    #[test]
-    fn ws_registry_placeholder_is_lockable() {
+    #[actix_rt::test]
+    async fn ws_registry_placeholder_is_lockable() {
         // Trivially true now; this test's real job is to break loudly the day
         // CM-7.1 changes the alias type and the lock semantics change.
         let state = AppState::new(&test_config(), test_db()).unwrap();
