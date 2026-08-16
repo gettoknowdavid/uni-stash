@@ -41,7 +41,7 @@ impl Db {
     }
 
     /// Returns `true` if migrations should be run based on the given environment.
-    pub fn should_run_migrations(env: &str) -> bool {
+    pub fn should_migrate(env: &str) -> bool {
         matches!(env, "dev" | "test")
     }
 }
@@ -52,23 +52,23 @@ mod tests {
 
     #[test]
     fn auto_migrates_in_dev_and_test() {
-        assert!(Db::should_run_migrations("dev"));
-        assert!(Db::should_run_migrations("test"));
+        assert!(Db::should_migrate("dev"));
+        assert!(Db::should_migrate("test"));
     }
 
     #[test]
     fn does_not_auto_migrate_in_prod() {
-        assert!(!Db::should_run_migrations("prod"));
-        assert!(!Db::should_run_migrations("production"));
+        assert!(!Db::should_migrate("prod"));
+        assert!(!Db::should_migrate("production"));
     }
 
     #[test]
     fn unknown_env_falls_back_to_no_auto_migrate() {
         // "development" is a deliberate false — the project convention
         // (Config + .env.example) is "dev", not the longer spelling.
-        assert!(!Db::should_run_migrations("development"));
-        assert!(!Db::should_run_migrations("staging"));
-        assert!(!Db::should_run_migrations(""));
+        assert!(!Db::should_migrate("development"));
+        assert!(!Db::should_migrate("staging"));
+        assert!(!Db::should_migrate(""));
     }
 
     #[actix_rt::test]

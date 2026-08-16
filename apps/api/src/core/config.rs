@@ -8,6 +8,7 @@ pub struct Config {
     pub jwt_private_key: String,
     pub jwt_public_key: String,
     pub resend_api_key: String,
+    pub resend_base_url: String,
     pub allowed_email_domains: Vec<String>,
     pub port: u16,
     pub env: String,
@@ -45,6 +46,7 @@ impl Config {
             jwt_private_key: required(&get, "JWT_PRIVATE_KEY")?,
             jwt_public_key: required(&get, "JWT_PUBLIC_KEY")?,
             resend_api_key: required(&get, "RESEND_API_KEY")?,
+            resend_base_url: required(&get, "RESEND_BASE_URL")?,
             allowed_email_domains,
             port: match get("PORT") {
                 Ok(v) => v.parse::<u16>().context("PORT must be a valid number")?,
@@ -85,6 +87,7 @@ mod tests {
             ("JWT_PRIVATE_KEY", "test-private-key"),
             ("JWT_PUBLIC_KEY", "test-public-key"),
             ("RESEND_API_KEY", "re_test_123"),
+            ("RESEND_BASE_URL", "https://api.resend.com"),
             ("ALLOWED_EMAIL_DOMAINS", "uniport.edu.ng"),
             ("PORT", "8080"),
             ("ENV", "dev"),
