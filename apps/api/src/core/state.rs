@@ -127,7 +127,6 @@ mod tests {
             jwt_public_key: TEST_PUBLIC_PEM.into(),
             resend_api_key: "https://api.resend.com".into(),
             resend_base_url: "https://api.resend.com".into(),
-            allowed_email_domains: Vec::new(),
             port: 8080,
             env: "test".into(),
             r2_bucket: "".into(),

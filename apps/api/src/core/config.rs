@@ -9,7 +9,6 @@ pub struct Config {
     pub jwt_public_key: String,
     pub resend_api_key: String,
     pub resend_base_url: String,
-    pub allowed_email_domains: Vec<String>,
     pub port: u16,
     pub env: String,
     pub r2_bucket: String,
@@ -30,24 +29,12 @@ impl Config {
     where
         F: for<'a> Fn(&'a str) -> Result<String, VarError>,
     {
-        let allowed_email_domains = required(&get, "ALLOWED_EMAIL_DOMAINS")?
-            .split(',')
-            .map(str::trim)
-            .filter(|domain| !domain.is_empty())
-            .map(str::to_string)
-            .collect::<Vec<_>>();
-
-        if allowed_email_domains.is_empty() {
-            anyhow::bail!("ALLOWED_EMAIL_DOMAINS must contain at least one domain");
-        }
-
         Ok(Self {
             database_url: required(&get, "DATABASE_URL")?,
             jwt_private_key: required(&get, "JWT_PRIVATE_KEY")?,
             jwt_public_key: required(&get, "JWT_PUBLIC_KEY")?,
             resend_api_key: required(&get, "RESEND_API_KEY")?,
             resend_base_url: required(&get, "RESEND_BASE_URL")?,
-            allowed_email_domains,
             port: match get("PORT") {
                 Ok(v) => v.parse::<u16>().context("PORT must be a valid number")?,
                 Err(_) => 8080,
@@ -145,32 +132,6 @@ mod tests {
 
         assert!(
             err.to_string().contains("DATABASE_URL"),
-            "error should name the malformed var, got: {err:#}"
-        );
-    }
-
-    #[test]
-    fn parses_allowed_email_domains_into_list() {
-        let vars = with(
-            &full_vars(),
-            "ALLOWED_EMAIL_DOMAINS",
-            "uniport.edu.ng, student.uni.edu , ",
-        );
-
-        let config = Config::from_getter(getter(&vars)).unwrap();
-        assert_eq!(
-            config.allowed_email_domains,
-            vec!["uniport.edu.ng", "student.uni.edu"]
-        );
-    }
-
-    #[test]
-    fn empty_domain_list_is_rejected() {
-        let vars = with(&full_vars(), "ALLOWED_EMAIL_DOMAINS", "");
-        let err = Config::from_getter(getter(&vars)).unwrap_err();
-
-        assert!(
-            err.to_string().contains("ALLOWED_EMAIL_DOMAINS"),
             "error should name the malformed var, got: {err:#}"
         );
     }

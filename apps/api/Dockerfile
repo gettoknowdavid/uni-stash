@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Builder ----
-FROM rust:1.90-slim-bookworm AS builder
+FROM rust:1.97-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # manifest first, build a throwaway main.rs against it, so `cargo build`
 # here is cached by Docker as long as Cargo.toml/Cargo.lock don't change.
 COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN mkdir src \
+    && echo "fn main() {}" > src/main.rs \
+    && echo "// dummy lib for dependency-only build" > src/lib.rs
 RUN cargo build --release && rm -rf src
 
 # Now bring in the real source and build for real — only this layer
@@ -39,6 +41,9 @@ COPY --from=builder /app/target/release/uni-stash-be /app/uni-stash-be
 # directory relative to Cargo.toml — this only matters if you're NOT using
 # the embedded-migrations macro path, but copying it over is cheap insurance.
 COPY --from=builder /app/migrations /app/migrations
+
+RUN useradd --system --no-create-home appuser
+USER appuser
 
 EXPOSE 8080
 CMD ["/app/uni-stash-be"]
