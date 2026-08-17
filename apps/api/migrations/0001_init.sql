@@ -47,11 +47,11 @@ CREATE TABLE categories (
 CREATE TABLE listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     seller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id SMALLINT NOT NULL REFERENCES categories(id),
+    category_id SMALLINT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     price INTEGER,
-    condition TEXT NOT NULL DEFAULT 'user' CHECK (condition IN ('new', 'used', 'fair')),
+    condition TEXT NOT NULL DEFAULT 'used' CHECK (condition IN ('new', 'used', 'fair')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reserved', 'sold', 'deleted')),
     reserved_by UUID REFERENCES users(id),
     reserved_at TIMESTAMPTZ,
@@ -122,8 +122,8 @@ CREATE INDEX idx_messages_undelivered ON messages(chat_id) WHERE delivered_at IS
 CREATE TABLE reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
-    reported_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    listing_id UUID REFERENCES listings(id) ON DELETE CASCADE,
+    reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     reason TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewed', 'dismissed')),
 
