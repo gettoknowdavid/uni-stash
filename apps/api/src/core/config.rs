@@ -35,9 +35,16 @@ impl Config {
             jwt_public_key: required(&get, "JWT_PUBLIC_KEY")?,
             resend_api_key: required(&get, "RESEND_API_KEY")?,
             resend_base_url: required(&get, "RESEND_BASE_URL")?,
+            // PORT is optional (defaults to 8080). Treat a blank value the same
+            // as unset — Render injects PORT automatically for web services, but
+            // a `PORT=` line pasted from .env.example would otherwise crash the
+            // parse below with "cannot parse integer from empty string".
             port: match get("PORT") {
-                Ok(v) => v.parse::<u16>().context("PORT must be a valid number")?,
-                Err(_) => 8080,
+                Ok(v) if !v.trim().is_empty() => v
+                    .trim()
+                    .parse::<u16>()
+                    .context("PORT must be a valid number")?,
+                _ => 8080,
             },
             env: required(&get, "ENV")?,
             r2_bucket: required(&get, "R2_BUCKET")?,
@@ -152,5 +159,23 @@ mod tests {
         let vars = without(&full_vars(), "PORT");
         let config = Config::from_getter(getter(&vars)).unwrap();
         assert_eq!(config.port, 8080);
+    }
+
+    #[test]
+    fn blank_port_defaults_to_8080() {
+        // Mirrors a `PORT=` line (empty value) — e.g. .env.example pasted into
+        // Render's env vars — which used to crash with a parse error.
+        for blank in ["", "   "] {
+            let vars = with(&full_vars(), "PORT", blank);
+            let config = Config::from_getter(getter(&vars)).unwrap();
+            assert_eq!(config.port, 8080, "blank PORT should default to 8080");
+        }
+    }
+
+    #[test]
+    fn port_value_is_trimmed_before_parsing() {
+        let vars = with(&full_vars(), "PORT", " 8081 ");
+        let config = Config::from_getter(getter(&vars)).unwrap();
+        assert_eq!(config.port, 8081);
     }
 }
