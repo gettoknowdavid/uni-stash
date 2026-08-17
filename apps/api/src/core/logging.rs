@@ -9,32 +9,46 @@ use tracing::Span;
 use tracing_actix_web::{DefaultRootSpanBuilder, RootSpanBuilder, TracingLogger};
 use tracing_subscriber::EnvFilter;
 
-/// Installs the global tracing setup. Call exactly once, at boot, after
-/// `Config` is loaded.
+/// Installs the global tracing setup. Call once, at boot, after `Config` is
+/// loaded. Logging setup is best-effort and must never crash boot: if a
+/// subscriber or `log` logger is already installed (e.g. an embedding binary
+/// or test harness), degrade to a warning instead of panicking.
 pub fn init(env: &str) {
-    // Route `log`-crate records (actix-server, actix-web internals) into
-    // tracing so nothing is split across two logging systems.
-    let _ = tracing_log::LogTracer::init();
-
-    install_panic_hook();
-
     let filter = filter();
 
+    // Install the fmt subscriber FIRST. When the `tracing-log` feature is
+    // compiled in (enabled transitively today), `try_init` also installs a
+    // `LogTracer` bridging `log`-crate records (actix-server, actix-web
+    // internals) into tracing. Installing our own LogTracer before this call
+    // used to panic: fmt's `.init()` attempts a second LogTracer install,
+    // gets `SetLoggerError`, and treats it as fatal.
+    //
     // prod: machine-readable JSON for log aggregation; dev/test: compact lines.
     // Span fields are inlined into event lines by default (`with_current_span`).
-    if env == "prod" {
+    let result = if env == "prod" {
         tracing_subscriber::fmt()
             .with_env_filter(filter)
             .with_target(false)
             .json()
-            .init();
+            .try_init()
     } else {
         tracing_subscriber::fmt()
             .with_env_filter(filter)
             .with_target(false)
             .compact()
-            .init();
+            .try_init()
+    };
+
+    if let Err(err) = result {
+        eprintln!("warning: failed to install global tracing subscriber: {err}");
     }
+
+    // Belt-and-suspenders for builds without the `tracing-log` feature: route
+    // `log`-crate records into tracing so nothing is split across two logging
+    // systems. No-op when the fmt subscriber already installed one.
+    let _ = tracing_log::LogTracer::init();
+
+    install_panic_hook();
 }
 
 /// Logs any panic (request handler, background task, worker thread) with the
