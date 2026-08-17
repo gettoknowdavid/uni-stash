@@ -1,8 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 
+CREATE TABLE schools (
+    id SMALLSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    domain CITEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id SMALLINT NOT NULL REFERENCES schools(id),
     email CITEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     display_name TEXT NOT NULL,
@@ -11,6 +19,7 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE INDEX idx_users_school ON users(school_id);
 
 CREATE TABLE refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,6 +35,7 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_family ON refresh_tokens(family_id);
 CREATE UNIQUE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+
 
 CREATE TABLE categories (
     id SMALLSERIAL PRIMARY KEY,
