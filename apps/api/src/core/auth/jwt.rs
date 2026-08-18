@@ -41,7 +41,7 @@ pub fn sign_access_token(
     };
     let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
     let token = jsonwebtoken::encode(&header, &claims, &keys.encoding)
-        .map_err(|e| AppError::Internal(anyhow!("failued to sign token: {e}")))?;
+        .map_err(|e| AppError::Internal(anyhow!("failed to sign token: {e}")))?;
     Ok(token)
 }
 
@@ -93,7 +93,7 @@ mod tests {
     fn sign_with_custom_claims(keys: &JwtKeys, claims: AccessClaims) -> Result<String, AppError> {
         let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
         let token = jsonwebtoken::encode(&header, &claims, &keys.encoding)
-            .map_err(|e| AppError::Internal(anyhow!("failued to sign token: {e}")))?;
+            .map_err(|e| AppError::Internal(anyhow!("failed to sign token: {e}")))?;
         Ok(token)
     }
 

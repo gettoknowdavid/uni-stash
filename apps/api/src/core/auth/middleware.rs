@@ -38,7 +38,9 @@ impl FromRequest for AuthUser {
         let header_str = match header.to_str() {
             Ok(value) => value,
             Err(_) => {
-                return ready(Err(AppError::Unauthorized("no header found".to_string())));
+                return ready(Err(AppError::Unauthorized(
+                    "invalid header encoding".to_string(),
+                )));
             }
         };
         if !header_str.starts_with("Bearer ") {
@@ -47,7 +49,7 @@ impl FromRequest for AuthUser {
             )));
         }
 
-        let token = header_str.strip_prefix("Bearer ").unwrap_or(&header_str);
+        let token = &header_str[7..]; // safe: we already checked starts_with("Bearer ")
         if token.is_empty() {
             return ready(Err(AppError::Unauthorized(
                 "empty bearer token".to_string(),

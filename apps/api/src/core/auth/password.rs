@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use argon2::{Algorithm::Argon2d, PasswordHasher, PasswordVerifier, Version};
+use argon2::{Algorithm::Argon2id, PasswordHasher, PasswordVerifier, Version};
 
 use crate::core::error::AppError;
 
@@ -21,7 +21,7 @@ fn argon2_params() -> argon2::Params {
 /// Returns a PHC string (e.g. `$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>`).
 pub fn hash_password(raw: &str) -> Result<String, AppError> {
     let salt = argon2::password_hash::SaltString::generate(argon2::password_hash::rand_core::OsRng);
-    let argon2 = argon2::Argon2::new(Argon2d, Version::V0x13, argon2_params());
+    let argon2 = argon2::Argon2::new(Argon2id, Version::V0x13, argon2_params());
     argon2
         .hash_password(raw.as_bytes(), &salt)
         .map(|hash| hash.to_string())
