@@ -9,6 +9,37 @@ struct ErrorBody<'a> {
 struct ErrorDetail<'a> {
     code: &'a str,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fields: Option<&'a [FieldError]>,
+}
+
+/// A single field-level validation error, serialised inside the
+/// `fields` array of the JSON response body.
+///
+/// Example response when multiple fields fail validation:
+///
+/// ```json
+/// {
+///   "error": {
+///     "code": "validation",
+///     "message": "Validation failed",
+///     "fields": [
+///       {"field": "email", "message": "Must be a valid email"},
+///       {"field": "password", "message": "Must be at least 10 characters"}
+///     ]
+///   }
+/// }
+/// ```
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct FieldError {
+    pub field: String,
+    pub message: String,
+}
+
+impl std::fmt::Display for FieldError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.field, self.message)
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -34,6 +65,15 @@ pub enum AppError {
     #[error("Validation error on {field}: {reason}")]
     ValidationError { field: String, reason: String },
 
+    /// Multi-field validation failure (e.g. from `validator::Validate`).
+    ///
+    /// Both this and the single-field [`AppError::ValidationError`] share
+    /// the `"validation"` code and `422` status. This variant adds the
+    /// `fields` array so the client can display per-field messages for
+    /// every failing constraint simultaneously.
+    #[error("Validation failed")]
+    ValidationErrors(Vec<FieldError>),
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -48,7 +88,7 @@ impl AppError {
             AppError::Unauthorized { .. } => "unauthorized",
             AppError::Forbidden => "forbidden",
             AppError::TokenExpired => "token_expired",
-            AppError::ValidationError { .. } => "validation",
+            AppError::ValidationError { .. } | AppError::ValidationErrors(_) => "validation",
             AppError::Internal { .. } => "internal_server_error",
         }
     }
@@ -57,7 +97,17 @@ impl AppError {
     pub fn client_message(&self) -> String {
         match self {
             AppError::Internal { .. } => "internal server error".to_string(),
+            AppError::ValidationErrors(_) => "Validation failed".to_string(),
             other => other.to_string(),
+        }
+    }
+
+    /// Returns the field-level errors when this is a validation variant,
+    /// or `None` otherwise.
+    fn fields(&self) -> Option<&[FieldError]> {
+        match self {
+            AppError::ValidationErrors(v) => Some(v),
+            _ => None,
         }
     }
 }
@@ -74,6 +124,7 @@ impl ResponseError for AppError {
                     error: ErrorDetail {
                         code: self.code(),
                         message: self.client_message(),
+                        fields: self.fields(),
                     },
                 })
                 .unwrap_or_else(|_| {
@@ -91,7 +142,9 @@ impl ResponseError for AppError {
                 actix_web::http::StatusCode::UNAUTHORIZED
             }
             AppError::Forbidden => actix_web::http::StatusCode::FORBIDDEN,
-            AppError::ValidationError { .. } => actix_web::http::StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::ValidationError { .. } | AppError::ValidationErrors(_) => {
+                actix_web::http::StatusCode::UNPROCESSABLE_ENTITY
+            }
             AppError::Internal { .. } => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -106,6 +159,49 @@ impl From<sqlx::Error> for AppError {
             }
             other => AppError::Internal(other.into()),
         }
+    }
+}
+
+/// Converts `validator`'s multi-field error into our typed
+/// [`AppError::ValidationErrors`].
+///
+/// Handlers can use this with the `?` operator:
+///
+/// ```ignore
+/// req.validate()?;
+/// ```
+///
+/// Only field-level errors are surfaced; global errors (the `errors()`
+/// map on `ValidationErrors`) are folded into the message string since
+/// they don't have a specific field to point at.
+impl From<validator::ValidationErrors> for AppError {
+    fn from(err: validator::ValidationErrors) -> Self {
+        let mut fields: Vec<FieldError> = Vec::new();
+
+        for (field, field_errs) in err.field_errors() {
+            for field_err in field_errs {
+                let message = field_err
+                    .message
+                    .as_ref()
+                    .map(|m| m.to_string())
+                    .unwrap_or_else(|| format!("failed {} validation", field_err.code));
+                fields.push(FieldError {
+                    field: field.to_string(),
+                    message,
+                });
+            }
+        }
+
+        if fields.is_empty() {
+            // Only global errors present — surface them as a single
+            // synthetic entry so the client still gets a 422.
+            fields.push(FieldError {
+                field: "_global".to_string(),
+                message: err.to_string(),
+            });
+        }
+
+        AppError::ValidationErrors(fields)
     }
 }
 
@@ -148,6 +244,12 @@ mod tests {
                 "Access denied",
             ),
             (
+                AppError::TokenExpired,
+                StatusCode::UNAUTHORIZED,
+                "token_expired",
+                "Token expired",
+            ),
+            (
                 AppError::ValidationError {
                     field: "email".to_string(),
                     reason: "invalid format".to_string(),
@@ -180,6 +282,11 @@ mod tests {
             let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
             assert_eq!(json["error"]["code"], expected_code);
             assert_eq!(json["error"]["message"], expected_message);
+            // None of these base variants should emit a `fields` key.
+            assert!(
+                json["error"]["fields"].is_null(),
+                "fields must be absent for {expected_code}"
+            );
         }
     }
 
@@ -226,6 +333,132 @@ mod tests {
 
         assert_eq!(err.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         assert!(matches!(err, AppError::Internal(_)));
+    }
+
+    // ------------------------------------------------------------------
+    // ValidationErrors variant
+    // ------------------------------------------------------------------
+
+    #[actix_web::test]
+    async fn validation_errors_emits_fields_array_and_422() {
+        let err = AppError::ValidationErrors(vec![
+            FieldError {
+                field: "email".to_string(),
+                message: "Must be a valid email".to_string(),
+            },
+            FieldError {
+                field: "password".to_string(),
+                message: "Must be at least 10 characters".to_string(),
+            },
+        ]);
+
+        assert_eq!(err.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(err.code(), "validation");
+
+        let resp = err.error_response();
+        let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(json["error"]["code"], "validation");
+        assert_eq!(json["error"]["message"], "Validation failed");
+
+        let fields = json["error"]["fields"].as_array().unwrap();
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0]["field"], "email");
+        assert_eq!(fields[0]["message"], "Must be a valid email");
+        assert_eq!(fields[1]["field"], "password");
+        assert_eq!(fields[1]["message"], "Must be at least 10 characters");
+    }
+
+    #[actix_web::test]
+    async fn validation_errors_single_field_emits_one_element_fields_array() {
+        let err = AppError::ValidationErrors(vec![FieldError {
+            field: "title".to_string(),
+            message: "cannot be blank".to_string(),
+        }]);
+
+        let resp = err.error_response();
+        let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let fields = json["error"]["fields"].as_array().unwrap();
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0]["field"], "title");
+    }
+
+    #[actix_web::test]
+    async fn single_field_validation_error_has_no_fields_key() {
+        let err = AppError::ValidationError {
+            field: "email".to_string(),
+            reason: "invalid format".to_string(),
+        };
+
+        let resp = err.error_response();
+        let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(json["error"]["fields"].is_null());
+    }
+
+    #[test]
+    fn from_validator_validation_errors_converts_field_errors() {
+        use validator::Validate;
+
+        #[derive(validator::Validate)]
+        struct Signup {
+            #[validate(email(message = "must be a valid email"))]
+            email: String,
+
+            #[validate(length(min = 10, message = "must be at least 10 characters"))]
+            password: String,
+        }
+
+        let bad = Signup {
+            email: "not-an-email".into(),
+            password: "short".into(),
+        };
+
+        let val_err = bad.validate().unwrap_err();
+        let app_err: AppError = val_err.into();
+
+        assert_eq!(app_err.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(app_err.code(), "validation");
+
+        // Pattern-match to extract the fields vec.
+        if let AppError::ValidationErrors(fields) = &app_err {
+            // Both fields should appear; order may vary since HashMap is
+            // unordered, so collect into a set.
+            let field_names: std::collections::HashSet<&str> =
+                fields.iter().map(|f| f.field.as_str()).collect();
+            assert!(field_names.contains("email"));
+            assert!(field_names.contains("password"));
+            assert_eq!(fields.len(), 2);
+        } else {
+            panic!("expected ValidationErrors variant, got: {app_err:?}");
+        }
+    }
+
+    #[test]
+    fn from_validator_validation_errors_single_field() {
+        use validator::Validate;
+
+        #[derive(validator::Validate)]
+        struct OnlyEmail {
+            #[validate(email)]
+            email: String,
+        }
+
+        let bad = OnlyEmail {
+            email: "nope".into(),
+        };
+        let val_err = bad.validate().unwrap_err();
+        let app_err: AppError = val_err.into();
+
+        if let AppError::ValidationErrors(fields) = &app_err {
+            assert_eq!(fields.len(), 1);
+            assert_eq!(fields[0].field, "email");
+            assert!(!fields[0].message.is_empty());
+        } else {
+            panic!("expected ValidationErrors variant");
+        }
     }
 
     /// Minimal `DatabaseError` impl used to exercise the unique-violation
