@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 actix-web = "4.14.1"
 anyhow = "1.0.104"
+argon2 = { version = "0.5.3", features = ["default"] }
 aws-sdk-s3 = { version = "1.141.0", features = ["rustls"] }
 dotenvy = "0.15.7"
 jsonwebtoken = "11.0.0"
