@@ -51,9 +51,9 @@ pub fn verify_access_token(keys: &JwtKeys, token: &str) -> Result<AccessClaims, 
 
     let token_data = match decode::<AccessClaims>(token, &keys.decoding, &validation) {
         Err(e) if e.kind() == &ErrorKind::ExpiredSignature => {
-            return Err(AppError::Unauthorized("token expired".to_string()));
+            return Err(AppError::TokenExpired);
         }
-        Err(e) => return Err(AppError::Unauthorized("invalid token".to_string())),
+        Err(_) => return Err(AppError::Unauthorized("invalid token".to_string())),
         Ok(token_data) => token_data,
     };
     let claims = token_data.claims;

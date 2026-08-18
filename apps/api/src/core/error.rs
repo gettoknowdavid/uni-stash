@@ -28,6 +28,9 @@ pub enum AppError {
     #[error("Access denied")]
     Forbidden,
 
+    #[error("Token expired")]
+    TokenExpired,
+
     #[error("Validation error on {field}: {reason}")]
     ValidationError { field: String, reason: String },
 
@@ -44,6 +47,7 @@ impl AppError {
             AppError::Conflict { .. } => "conflict",
             AppError::Unauthorized { .. } => "unauthorized",
             AppError::Forbidden => "forbidden",
+            AppError::TokenExpired => "token_expired",
             AppError::ValidationError { .. } => "validation",
             AppError::Internal { .. } => "internal_server_error",
         }
@@ -83,7 +87,9 @@ impl ResponseError for AppError {
             AppError::NotFound { .. } => actix_web::http::StatusCode::NOT_FOUND,
             AppError::BadRequest { .. } => actix_web::http::StatusCode::BAD_REQUEST,
             AppError::Conflict { .. } => actix_web::http::StatusCode::CONFLICT,
-            AppError::Unauthorized { .. } => actix_web::http::StatusCode::UNAUTHORIZED,
+            AppError::Unauthorized { .. } | AppError::TokenExpired { .. } => {
+                actix_web::http::StatusCode::UNAUTHORIZED
+            }
             AppError::Forbidden => actix_web::http::StatusCode::FORBIDDEN,
             AppError::ValidationError { .. } => actix_web::http::StatusCode::UNPROCESSABLE_ENTITY,
             AppError::Internal { .. } => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
