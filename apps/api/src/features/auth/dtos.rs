@@ -24,3 +24,8 @@ pub struct InsertUserInput<'a> {
     pub password: &'a str,
     pub display_name: &'a str,
 }
+
+#[derive(serde::Deserialize)]
+pub struct VerifyEmailRequest {
+    pub token: String,
+}

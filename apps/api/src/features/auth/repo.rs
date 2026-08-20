@@ -42,4 +42,14 @@ impl AuthRepo {
         .await?;
         Ok(user)
     }
+
+    pub async fn mark_email_verified(&self, user_id: &uuid::Uuid) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE users SET email_verified = true WHERE id = $1",
+            user_id
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
 }

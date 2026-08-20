@@ -1,10 +1,13 @@
 use actix_web::{HttpResponse, web};
+use serde_json::json;
 use validator::Validate;
 
-use crate::core::auth;
+use crate::core::auth::{self, jwt};
 use crate::core::error::AppError;
 use crate::core::state::AppState;
-use crate::features::auth::dtos::{InsertUserInput, SignUpRequest, SignUpResponse};
+use crate::features::auth::dtos::{
+    InsertUserInput, SignUpRequest, SignUpResponse, VerifyEmailRequest,
+};
 
 pub async fn signup(
     state: web::Data<AppState>,
@@ -39,4 +42,19 @@ pub async fn signup(
         display_name: user.display_name,
         email_verified: false,
     }))
+}
+
+// Single-use enforcement decision: this token is NOT tracked as single-use
+// in the DB. The 30-minute expiry (jwt.rs EMAIL_VERIFY_TTL_MINUTES) is the
+// only defense against replay. Rationale: unlike refresh tokens, a replayed
+// verify-email token has a low-severity blast radius — it can only flip
+// `email_verified` to true again (already-true is idempotent), not grant
+// any new capability. Revisit if verify-email tokens ever carry more power.
+pub async fn verify_email(
+    state: web::Data<AppState>,
+    body: web::Json<VerifyEmailRequest>,
+) -> Result<HttpResponse, AppError> {
+    let claims = jwt::verify_email_verify_token(&state.jwt_keys, &body.token)?;
+    state.auth_repo.mark_email_verified(&claims.sub).await?;
+    Ok(HttpResponse::Ok().json(json!({"email_verified": true})))
 }
