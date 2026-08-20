@@ -1,6 +1,7 @@
 use actix_web::{App, HttpServer, web};
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
+use uni_stash_be::core::jobs;
 use uni_stash_be::core::logging;
 use uni_stash_be::core::state::AppState;
 use uni_stash_be::{configure_health, features};
@@ -31,6 +32,11 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let port = config.port;
+
+    // Spawn background jobs (cleanup, future email scheduling, etc.).
+    // Must happen after DB pool is ready but before the server starts
+    // accepting requests, so the first cleanup runs promptly.
+    jobs::spawn(state.db.clone());
 
     HttpServer::new(move || {
         App::new()
