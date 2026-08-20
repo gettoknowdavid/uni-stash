@@ -6,7 +6,8 @@ use crate::core::auth::{self, jwt, password};
 use crate::core::error::AppError;
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    InsertUserInput, LoginRequest, LoginResponse, SignUpRequest, SignUpResponse, VerifyEmailRequest,
+    InsertUserInput, LoginRequest, LoginResponse, RefreshRequest, RefreshResponse, SignUpRequest,
+    SignUpResponse, VerifyEmailRequest,
 };
 
 pub async fn signup(
@@ -88,6 +89,85 @@ pub async fn login(
     Ok(HttpResponse::Ok().json(LoginResponse {
         access_token,
         refresh_token,
+        expires_in: 900,
+    }))
+}
+
+/// POST /api/v1/auth/refresh
+///
+/// Rotate a refresh token: present the old one, get back a fresh access +
+/// refresh pair. All three DB writes (revoke old, insert new, link
+/// superseded_by) are atomic — a partial failure would strand the user
+/// with no valid refresh token and no record of why.
+///
+/// This handler owns the business flow. The repo provides composable
+/// primitives (find, revoke, issue, supersede); this function decides
+/// the orchestration — expiry checks, reuse detection, transaction
+/// boundaries, and JWT signing.
+pub async fn refresh(
+    state: web::Data<AppState>,
+    body: web::Json<RefreshRequest>,
+) -> Result<HttpResponse, AppError> {
+    let now = time::OffsetDateTime::now_utc();
+
+    // 1. Hash the presented token and look it up.
+    let hash = auth::refresh_token::hash_refresh_token(&body.refresh_token);
+    let row = state
+        .auth_repo
+        .find_refresh_token_by_hash(&hash)
+        .await?
+        .ok_or_else(|| AppError::Unauthorized("invalid refresh token".into()))?;
+
+    // 2. Check expiry.
+    if row.expires_at < now {
+        return Err(AppError::Unauthorized("refresh token expired".into()));
+    }
+
+    // 3. Reuse detection — if already revoked, this is a stolen/replayed token.
+    //    CM-3.8 will handle full family revocation here. For now, reject.
+    if row.revoked {
+        return Err(AppError::Unauthorized(
+            "refresh token revoked (possible reuse detected)".into(),
+        ));
+    }
+
+    // 4. Atomic rotation inside a single transaction.
+    //    Three writes — revoke old, insert new, link superseded_by — must all
+    //    succeed or all fail. Partial failure strands the user.
+    let mut tx = state.auth_repo.begin().await?;
+
+    state.auth_repo.revoke_refresh_token(&mut *tx, row.id).await?;
+    let (new_plain, new_id) = state
+        .auth_repo
+        .issue_refresh_token(&mut *tx, row.user_id, row.family_id)
+        .await?;
+    state
+        .auth_repo
+        .supersede_refresh_token(&mut *tx, row.id, new_id)
+        .await?;
+
+    tx.commit().await?;
+
+    // 5. Fetch the user for access token claims.
+    //    An orphaned refresh token pointing at a deleted user shouldn't exist
+    //    (CASCADE deletes it), so treat this as Internal, not 401.
+    let user = state
+        .auth_repo
+        .find_user_by_id(&row.user_id)
+        .await?
+        .ok_or_else(|| {
+            AppError::Internal(anyhow::anyhow!(
+                "refresh token references deleted user {}",
+                row.user_id
+            ))
+        })?;
+
+    // 6. Sign a fresh access token.
+    let access_token = jwt::sign_access_token(&state.jwt_keys, &user)?;
+
+    Ok(HttpResponse::Ok().json(RefreshResponse {
+        access_token,
+        refresh_token: new_plain,
         expires_in: 900,
     }))
 }

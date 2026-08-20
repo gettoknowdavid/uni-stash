@@ -2,7 +2,7 @@ use crate::{
     core::{auth::refresh_token, error::AppError},
     features::auth::{
         dtos::InsertUserInput,
-        models::{School, User},
+        models::{RefreshToken, School, User},
     },
 };
 
@@ -60,6 +60,13 @@ impl AuthRepo {
         Ok(user)
     }
 
+    pub async fn find_user_by_id(&self, user_id: &uuid::Uuid) -> Result<Option<User>, AppError> {
+        let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
+            .fetch_optional(&self.db)
+            .await?;
+        Ok(user)
+    }
+
     /// Issues a new refresh token for `user_id` within the given `family_id`.
     ///
     /// Returns `(plain_token, row_id)` — the plaintext value goes to the client;
@@ -98,5 +105,63 @@ impl AuthRepo {
         .await?;
 
         Ok((plain, id))
+    }
+
+    /// Mark a refresh token as revoked and record the revocation timestamp.
+    pub async fn revoke_refresh_token<'e, E>(
+        &self,
+        executor: E,
+        token_id: uuid::Uuid,
+    ) -> Result<(), AppError>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+    {
+        sqlx::query!(
+            "UPDATE refresh_tokens SET revoked = true, revoked_at = now() WHERE id = $1",
+            token_id,
+        )
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    /// Link `superseded_by` on the old token to point to the new token.
+    pub async fn supersede_refresh_token<'e, E>(
+        &self,
+        executor: E,
+        old_token_id: uuid::Uuid,
+        new_token_id: uuid::Uuid,
+    ) -> Result<(), AppError>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+    {
+        sqlx::query!(
+            "UPDATE refresh_tokens SET superseded_by = $1 WHERE id = $2",
+            new_token_id,
+            old_token_id,
+        )
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn find_refresh_token_by_hash(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<RefreshToken>, AppError> {
+        let token = sqlx::query_as!(
+            RefreshToken,
+            "SELECT * FROM refresh_tokens WHERE token_hash = $1",
+            token_hash
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(token)
+    }
+
+    /// Begin a new database transaction.
+    pub async fn begin(&self) -> Result<sqlx::Transaction<'static, sqlx::Postgres>, AppError> {
+        Ok(self.db.begin().await?)
     }
 }

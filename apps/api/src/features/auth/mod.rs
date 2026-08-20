@@ -24,6 +24,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .wrap(Governor::new(&governor_conf))
             .route("/signup", web::post().to(handlers::signup))
             .route("/verify-email", web::post().to(handlers::verify_email))
-            .route("/login", web::post().to(handlers::login)),
+            .route("/login", web::post().to(handlers::login))
+            .route("/refresh", web::post().to(handlers::refresh)),
     );
 }
