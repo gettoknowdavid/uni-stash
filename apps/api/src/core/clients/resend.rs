@@ -116,7 +116,7 @@ mod tests {
             http,
             api_key: "re_test_key".into(),
             base_url: base_url.into(),
-            frontend_base_url: "https://example.com".into(),
+            frontend_base_url: "https://uni-stash.com".into(),
         }))
     }
 
