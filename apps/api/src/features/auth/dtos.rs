@@ -57,3 +57,8 @@ pub struct RefreshResponse {
     pub refresh_token: String,
     pub expires_in: i64,
 }
+
+#[derive(serde::Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
+}

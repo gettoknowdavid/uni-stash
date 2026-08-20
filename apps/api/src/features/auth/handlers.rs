@@ -5,9 +5,10 @@ use validator::Validate;
 use crate::core::auth::{self, jwt, password};
 use crate::core::error::AppError;
 use crate::core::state::AppState;
+use crate::core::auth::middleware::AuthUser;
 use crate::features::auth::dtos::{
-    InsertUserInput, LoginRequest, LoginResponse, RefreshRequest, RefreshResponse, SignUpRequest,
-    SignUpResponse, VerifyEmailRequest,
+    InsertUserInput, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest, RefreshResponse,
+    SignUpRequest, SignUpResponse, VerifyEmailRequest,
 };
 
 pub async fn signup(
@@ -149,4 +150,37 @@ pub async fn refresh(
         refresh_token: refresh,
         expires_in: expires,
     }))
+}
+
+/// POST /api/v1/auth/logout
+///
+/// Revoke the presented refresh token.  Idempotent: always returns 200
+/// regardless of whether the token was valid, already revoked, or unknown.
+pub async fn logout(
+    state: web::Data<AppState>,
+    body: web::Json<LogoutRequest>,
+) -> Result<HttpResponse, AppError> {
+    state
+        .auth_repo
+        .revoke_refresh_token_by_hash(&body.refresh_token)
+        .await?;
+    Ok(HttpResponse::Ok().json(json!({ "status": "ok" })))
+}
+
+/// GET /api/v1/auth/me
+///
+/// Returns the authenticated user's profile.  `role` is fetched fresh from
+/// the DB (not from JWT claims) — this avoids trusting a potentially stale
+/// token for authorization-adjacent data, keeping role-trust discipline
+/// consistent with CM-9.2's later pattern.
+pub async fn me(
+    state: web::Data<AppState>,
+    user: AuthUser,
+) -> Result<HttpResponse, AppError> {
+    let profile = state
+        .auth_repo
+        .find_user_profile_by_id(&user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+    Ok(HttpResponse::Ok().json(profile))
 }

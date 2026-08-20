@@ -2,7 +2,7 @@ use crate::{
     core::{auth::refresh_token, error::AppError},
     features::auth::{
         dtos::InsertUserInput,
-        models::{RefreshToken, School, User},
+        models::{RefreshToken, School, User, UserProfile},
     },
 };
 
@@ -167,6 +167,45 @@ impl AuthRepo {
         .await?;
 
         Ok(token)
+    }
+
+    /// Revoke a refresh token by its plaintext value (hashed internally).
+    ///
+    /// Idempotent: returns `Ok(())` even if the token is unknown or already
+    /// revoked — this satisfies the logout idempotency AC.
+    pub async fn revoke_refresh_token_by_hash(
+        &self,
+        presented_plain: &str,
+    ) -> Result<(), AppError> {
+        let hash = refresh_token::hash_refresh_token(presented_plain);
+        sqlx::query!(
+            "UPDATE refresh_tokens SET revoked = true, revoked_at = now()
+             WHERE token_hash = $1 AND revoked = false",
+            hash,
+        )
+        .execute(&self.db)
+        .await?;
+        // Idempotent: 0 rows affected is fine (unknown or already revoked).
+        Ok(())
+    }
+
+    /// Fetch the slim profile for GET /auth/me.
+    ///
+    /// Returns `None` if the user was deleted (shouldn't happen for a
+    /// valid JWT, but defensive).
+    pub async fn find_user_profile_by_id(
+        &self,
+        user_id: &uuid::Uuid,
+    ) -> Result<Option<UserProfile>, AppError> {
+        let profile = sqlx::query_as!(
+            UserProfile,
+            "SELECT id, email, display_name, email_verified, role
+             FROM users WHERE id = $1",
+            user_id,
+        )
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(profile)
     }
 
     pub async fn find_refresh_token_by_id(
