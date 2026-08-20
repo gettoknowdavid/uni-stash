@@ -12,6 +12,7 @@
 
 use actix_web::{App, test, web};
 use sqlx::PgPool;
+use uni_stash_be::features::auth::models::User;
 use uuid::Uuid;
 
 use uni_stash_be::core::auth::jwt;
@@ -110,14 +111,10 @@ async fn call_verify_email(
     state: &web::Data<AppState>,
     token: &str,
 ) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/verify-email",
-                web::post().to(uni_stash_be::features::auth::handlers::verify_email),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/verify-email",
+        web::post().to(uni_stash_be::features::auth::handlers::verify_email),
+    ))
     .await;
 
     let req = test::TestRequest::post()
@@ -205,15 +202,20 @@ async fn access_token_returns_401_unauthorized(pool: PgPool) {
     let mock = wiremock::MockServer::start().await;
     let state = test_state(pool.clone(), &mock.uri());
 
+    let user = User {
+        id: user_id,
+        school_id,
+        email: "carol@test.edu".into(),
+        display_name: "Carol".into(),
+        email_verified: false,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
+        password_hash: "".into(),
+    };
+
     // Sign a valid access token — purpose is "access", not "email_verify".
-    let access_token = jwt::sign_access_token(
-        &state.jwt_keys,
-        user_id,
-        "carol@test.edu".into(),
-        "Carol".into(),
-        false,
-    )
-    .expect("sign access token");
+    let access_token = jwt::sign_access_token(&state.jwt_keys, &user).expect("sign access token");
 
     let resp = call_verify_email(&state, &access_token).await;
 

@@ -1,5 +1,5 @@
 use crate::{
-    core::error::AppError,
+    core::{auth::refresh_token, error::AppError},
     features::auth::{
         dtos::InsertUserInput,
         models::{School, User},
@@ -51,5 +51,52 @@ impl AuthRepo {
         .execute(&self.db)
         .await?;
         Ok(())
+    }
+
+    pub async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
+        let user = sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", email)
+            .fetch_optional(&self.db)
+            .await?;
+        Ok(user)
+    }
+
+    /// Issues a new refresh token for `user_id` within the given `family_id`.
+    ///
+    /// Returns `(plain_token, row_id)` — the plaintext value goes to the client;
+    /// only the SHA-256 hash is stored in `refresh_tokens.token_hash`.
+    ///
+    /// Accepts any sqlx [`Executor`], so the caller decides the transactional
+    /// boundary:
+    ///
+    /// * **`&pool`** — CM-3.6 fresh login: no transaction needed, single insert.
+    /// * **`&mut tx`** — CM-3.7 rotation: same transaction as revoke-old-token
+    ///   write, guaranteeing atomicity.
+    pub async fn issue_refresh_token<'e, E>(
+        &self,
+        executor: E,
+        user_id: uuid::Uuid,
+        family_id: uuid::Uuid,
+    ) -> Result<(String, uuid::Uuid), AppError>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+    {
+        let plain = refresh_token::generate_refresh_token_plain();
+        let hash = refresh_token::hash_refresh_token(&plain);
+        let expires_at = time::OffsetDateTime::now_utc()
+            + time::Duration::days(refresh_token::REFRESH_TOKEN_TTL_DAYS);
+
+        let id = sqlx::query_scalar!(
+            "INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id",
+            user_id,
+            &hash,
+            family_id,
+            expires_at,
+        )
+        .fetch_one(executor)
+        .await?;
+
+        Ok((plain, id))
     }
 }

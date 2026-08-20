@@ -8,16 +8,19 @@
 //   AC 4 — Valid token → 200 with typed user info (no re-parsing needed)
 //   AC 5 — Wrong-purpose token rejected (email_verify ≠ access)
 
+use std::str::FromStr;
+
 use actix_web::{App, http::header, test, web};
 use jsonwebtoken::Header;
 use uni_stash_be::core::clients::JwtKeys;
+use uni_stash_be::features::auth::models::User;
 use uuid::Uuid;
 
 use uni_stash_be::core::auth::jwt::{self, AccessClaims};
 use uni_stash_be::core::auth::middleware::AuthUser;
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
-use uni_stash_be::core::state::{AppState};
+use uni_stash_be::core::state::AppState;
 
 // ---------------------------------------------------------------------------
 // Test fixtures — the same 2048-bit RSA keypair used by CM-3.2 unit tests.
@@ -219,15 +222,20 @@ async fn tampered_signature_returns_401() {
     )
     .await;
 
-    let user_id = Uuid::new_v4();
-    let token = jwt::sign_access_token(
-        &state.jwt_keys,
-        user_id,
-        "valid@campus.edu".into(),
-        "Valid User".into(),
-        true,
-    )
-    .unwrap();
+    let user_id = uuid::Uuid::from_str("dad19d3d-f97c-4d9e-8ce4-30565eeb8a07").unwrap();
+    let user = User {
+        id: user_id,
+        school_id: 1,
+        email: "valid@campus.edu".into(),
+        display_name: "Valid User".into(),
+        email_verified: true,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
+        password_hash: "".into(),
+    };
+
+    let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
 
     // Flip the last character to invalidate the signature.
     let mut chars: Vec<char> = token.chars().collect();
@@ -301,15 +309,20 @@ async fn valid_token_returns_200_with_user_info() {
     )
     .await;
 
-    let user_id = Uuid::new_v4();
-    let token = jwt::sign_access_token(
-        &state.jwt_keys,
-        user_id,
-        "alice@campus.edu".into(),
-        "Alice Adebayo".into(),
-        true,
-    )
-    .unwrap();
+    let user_id = uuid::Uuid::from_str("dad19d3d-f97c-4d9e-8ce4-30565eeb8a07").unwrap();
+    let user = User {
+        id: user_id,
+        school_id: 1,
+        email: "alice@campus.edu".into(),
+        display_name: "Alice Adebayo".into(),
+        email_verified: true,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
+        password_hash: "".into(),
+    };
+
+    let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
 
     let req = test::TestRequest::get()
         .uri("/protected")
@@ -338,15 +351,19 @@ async fn unverified_email_round_trips_through_extractor() {
     )
     .await;
 
-    let user_id = Uuid::new_v4();
-    let token = jwt::sign_access_token(
-        &state.jwt_keys,
-        user_id,
-        "bob@campus.edu".into(),
-        "Bob B".into(),
-        false, // email not yet verified
-    )
-    .unwrap();
+    let user_id = uuid::Uuid::from_str("dad19d3d-f97c-4d9e-8ce4-30565eeb8a07").unwrap();
+    let user = User {
+        id: user_id,
+        school_id: 1,
+        email: "bob@campus.edu".into(),
+        display_name: "Bob B".into(),
+        email_verified: false,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
+        password_hash: "".into(),
+    };
+    let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
 
     let req = test::TestRequest::get()
         .uri("/protected")

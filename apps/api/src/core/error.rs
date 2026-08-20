@@ -62,6 +62,9 @@ pub enum AppError {
     #[error("Token expired")]
     TokenExpired,
 
+    #[error("Email not verified")]
+    EmailNotVerified,
+
     #[error("Validation error on {field}: {reason}")]
     ValidationError { field: String, reason: String },
 
@@ -94,6 +97,7 @@ impl AppError {
             AppError::Unauthorized { .. } => "unauthorized",
             AppError::Forbidden => "forbidden",
             AppError::TokenExpired => "token_expired",
+            AppError::EmailNotVerified => "email_not_verified",
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => "validation",
             AppError::Internal { .. } => "internal_server_error",
             AppError::Database(_) => "database_error",
@@ -149,7 +153,9 @@ impl ResponseError for AppError {
             AppError::Unauthorized { .. } | AppError::TokenExpired { .. } => {
                 actix_web::http::StatusCode::UNAUTHORIZED
             }
-            AppError::Forbidden => actix_web::http::StatusCode::FORBIDDEN,
+            AppError::Forbidden | AppError::EmailNotVerified => {
+                actix_web::http::StatusCode::FORBIDDEN
+            }
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => {
                 actix_web::http::StatusCode::UNPROCESSABLE_ENTITY
             }

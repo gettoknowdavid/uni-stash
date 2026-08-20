@@ -9,6 +9,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1/auth")
             .route("/signup", web::post().to(handlers::signup))
-            .route("verify-email", web::post().to(handlers::verify_email)),
+            .route("/verify-email", web::post().to(handlers::verify_email))
+            .route("/login", web::post().to(handlers::login)),
     );
 }

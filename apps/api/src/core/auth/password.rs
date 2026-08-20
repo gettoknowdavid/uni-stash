@@ -1,7 +1,15 @@
+use std::sync::OnceLock;
+
 use anyhow::anyhow;
 use argon2::{Algorithm::Argon2id, PasswordHasher, PasswordVerifier, Version};
 
 use crate::core::error::AppError;
+
+// A fixed, precomputed Argon2id hash of a random string, generated once at
+// compile time or lazily via OnceLock — NEVER matches any real password.
+// Used to keep the timing profile identical between "user not found" and
+// "user found, wrong password" paths.
+pub static DUMMY_HASH: OnceLock<String> = OnceLock::new();
 
 /// Free-tier memory budget note: 19 MiB / 2 iterations / 1 lane is the OWASP
 /// FLOOR for Argon2id, not a target — chosen because the deploy target
@@ -41,6 +49,11 @@ pub fn verify_password(raw: &str, stored_hash: &str) -> Result<bool, AppError> {
         Err(argon2::password_hash::Error::Password) => Ok(false),
         Err(e) => Err(AppError::Internal(anyhow!(e))),
     }
+}
+
+/// Returns a precomputed dummy hash that matches no real password.
+pub fn dummy_hash() -> &'static str {
+    DUMMY_HASH.get_or_init(|| hash_password("dummy-password-never-matches-anything").unwrap())
 }
 
 #[cfg(test)]

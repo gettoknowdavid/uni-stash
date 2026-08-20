@@ -38,22 +38,16 @@ pub struct EmailVerifyClaims {
 /// Signs an access token using the provided JWT keys and claims.
 ///
 /// Returns the signed token as a string, or an `AppError` if signing fails.
-pub fn sign_access_token(
-    keys: &JwtKeys,
-    user_id: Uuid,
-    email: String,
-    display_name: String,
-    email_verified: bool,
-) -> Result<String, AppError> {
+pub fn sign_access_token(keys: &JwtKeys, user: &User) -> Result<String, AppError> {
     let now = time::OffsetDateTime::now_utc().unix_timestamp();
     let claims = AccessClaims {
-        sub: user_id,
+        sub: user.id,
         iat: now,
         exp: now + (ACCESS_TOKEN_TTL_MINUTES * 60),
         purpose: "access".to_string(),
-        email: email,
-        display_name: display_name,
-        email_verified: email_verified,
+        email: user.email.clone(),
+        display_name: user.display_name.clone(),
+        email_verified: user.email_verified,
     };
     let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
     let token = jsonwebtoken::encode(&header, &claims, &keys.encoding)
@@ -160,20 +154,27 @@ mod tests {
         Ok(token)
     }
 
+    fn get_user() -> User {
+        User {
+            id: Uuid::from_str(USER_ID_STR).unwrap(),
+            school_id: 1,
+            email: "some@example.com".to_string(),
+            display_name: "Some User".to_string(),
+            email_verified: true,
+            role: "student".to_string(),
+            created_at: time::OffsetDateTime::now_utc(),
+            updated_at: time::OffsetDateTime::now_utc(),
+            password_hash: "".to_string(),
+        }
+    }
+
     #[test]
     fn test_signed_token_round_trips() {
         let keys = test_keys();
-        let user_id = Uuid::from_str(USER_ID_STR).unwrap();
-        let token = sign_access_token(
-            &keys,
-            user_id,
-            "some@example.com".to_string(),
-            "Some User".to_string(),
-            true,
-        )
-        .unwrap();
+        let user = get_user();
+        let token = sign_access_token(&keys, &user).unwrap();
         let claims = verify_access_token(&keys, &token).unwrap();
-        assert_eq!(claims.sub, user_id);
+        assert_eq!(claims.sub, user.id);
         assert_eq!(claims.purpose, "access");
         assert_eq!(claims.email_verified, true);
     }
@@ -220,15 +221,8 @@ mod tests {
     #[test]
     fn test_tampered_signature_is_rejected() {
         let keys = test_keys();
-        let user_id = Uuid::from_str(USER_ID_STR).unwrap();
-        let token = sign_access_token(
-            &keys,
-            user_id,
-            "some@example.com".to_string(),
-            "Some User".to_string(),
-            true,
-        )
-        .unwrap();
+        let user = get_user();
+        let token = sign_access_token(&keys, &user).unwrap();
         let tampered = token[..token.len() - 5].to_string() + "AAAAA";
         let tampered_result = verify_access_token(&keys, &tampered);
         assert!(tampered_result.is_err());

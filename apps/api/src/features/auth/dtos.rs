@@ -29,3 +29,19 @@ pub struct InsertUserInput<'a> {
 pub struct VerifyEmailRequest {
     pub token: String,
 }
+
+#[derive(serde::Deserialize, validator::Validate)]
+pub struct LoginRequest {
+    #[validate(email)]
+    pub email: String,
+
+    #[validate(length(min = 1))]
+    pub password: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct LoginResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: i64,
+}
