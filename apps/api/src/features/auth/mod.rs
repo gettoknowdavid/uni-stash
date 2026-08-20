@@ -1,7 +1,6 @@
 use actix_web::web;
 
 pub mod dtos;
-pub mod email;
 pub mod handlers;
 pub mod models;
 pub mod repo;

@@ -3,7 +3,7 @@ use jsonwebtoken::{decode, errors::ErrorKind};
 use uuid::Uuid;
 
 use crate::{
-    core::{error::AppError, state::JwtKeys},
+    core::{clients::JwtKeys, error::AppError},
     features::auth::models::User,
 };
 

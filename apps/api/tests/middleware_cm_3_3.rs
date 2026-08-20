@@ -10,13 +10,14 @@
 
 use actix_web::{App, http::header, test, web};
 use jsonwebtoken::Header;
+use uni_stash_be::core::clients::JwtKeys;
 use uuid::Uuid;
 
 use uni_stash_be::core::auth::jwt::{self, AccessClaims};
 use uni_stash_be::core::auth::middleware::AuthUser;
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
-use uni_stash_be::core::state::{AppState, JwtKeys};
+use uni_stash_be::core::state::{AppState};
 
 // ---------------------------------------------------------------------------
 // Test fixtures — the same 2048-bit RSA keypair used by CM-3.2 unit tests.
