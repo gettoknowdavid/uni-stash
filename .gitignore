@@ -15,9 +15,8 @@ apps/api/target/
 apps/api/**/*.rs.bk
 **/*.pdb
 
-# sqlx offline query cache (keep if using `cargo sqlx prepare` for CI without a live DB;
-# remove this ignore line if you commit .sqlx/ intentionally)
-apps/api/.sqlx/
+# sqlx offline query cache — committed so CI can build with SQLX_OFFLINE=true
+# Regenerate with: cargo sqlx prepare --workspace
 
 # Shuttle.rs
 apps/api/Secrets.toml

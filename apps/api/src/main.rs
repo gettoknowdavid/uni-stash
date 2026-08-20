@@ -1,9 +1,9 @@
 use actix_web::{App, HttpServer, web};
-use uni_stash_be::configure_health;
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
 use uni_stash_be::core::logging;
 use uni_stash_be::core::state::AppState;
+use uni_stash_be::{configure_health, features};
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -37,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
             .wrap(logging::http_middleware())
             .app_data(state.clone())
             .configure(configure_health)
+            .configure(features::auth::configure)
     })
     // 0.0.0.0, not 127.0.0.1 — Render's proxy connects from outside the
     // container's loopback interface. Port comes from Config (CM-1.2),

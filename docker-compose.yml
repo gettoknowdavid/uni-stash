@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uni-stash-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: uni_stash
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Seed the DB with extensions needed by migrations on first boot.
+      # pgcrypto + citext are CREATE IF NOT EXISTS in the migration, but
+      # running them here ensures `docker compose exec` shells have them too.
+      - ./apps/api/init-extensions.sql:/docker-entrypoint-initdb.d/001-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uni_stash"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:

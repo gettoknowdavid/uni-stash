@@ -9,6 +9,7 @@ pub struct Config {
     pub jwt_public_key: String,
     pub resend_api_key: String,
     pub resend_base_url: String,
+    pub frontend_base_url: String,
     pub port: u16,
     pub env: String,
     pub r2_bucket: String,
@@ -35,6 +36,7 @@ impl Config {
             jwt_public_key: required(&get, "JWT_PUBLIC_KEY")?,
             resend_api_key: required(&get, "RESEND_API_KEY")?,
             resend_base_url: required(&get, "RESEND_BASE_URL")?,
+            frontend_base_url: required(&get, "FRONTEND_BASE_URL")?,
             // PORT is optional (defaults to 8080). Treat a blank value the same
             // as unset — Render injects PORT automatically for web services, but
             // a `PORT=` line pasted from .env.example would otherwise crash the
@@ -89,6 +91,7 @@ mod tests {
             ("R2_ACCESS_KEY_ID", "test-access-key"),
             ("R2_SECRET_ACCESS_KEY", "test-secret-key"),
             ("R2_ENDPOINT", "https://r2.example.com"),
+            ("FRONTEND_BASE_URL", "https://uni-stash.com"),
         ]
     }
 

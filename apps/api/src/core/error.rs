@@ -76,6 +76,12 @@ pub enum AppError {
 
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
+
+    /// Raw sqlx error pass-through. Use this with `.map_err(AppError::Database)`
+    /// when you want to preserve the original error without the smart mapping
+    /// that `From<sqlx::Error>` provides (RowNotFound → NotFound, etc.).
+    #[error("{0}")]
+    Database(sqlx::Error),
 }
 
 impl AppError {
@@ -90,6 +96,7 @@ impl AppError {
             AppError::TokenExpired => "token_expired",
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => "validation",
             AppError::Internal { .. } => "internal_server_error",
+            AppError::Database(_) => "database_error",
         }
     }
 
@@ -97,6 +104,7 @@ impl AppError {
     pub fn client_message(&self) -> String {
         match self {
             AppError::Internal { .. } => "internal server error".to_string(),
+            AppError::Database(_) => "database error".to_string(),
             AppError::ValidationErrors(_) => "Validation failed".to_string(),
             other => other.to_string(),
         }
@@ -145,7 +153,9 @@ impl ResponseError for AppError {
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => {
                 actix_web::http::StatusCode::UNPROCESSABLE_ENTITY
             }
-            AppError::Internal { .. } => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Internal { .. } | AppError::Database(_) => {
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+            }
         }
     }
 }
@@ -333,6 +343,15 @@ mod tests {
 
         assert_eq!(err.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
         assert!(matches!(err, AppError::Internal(_)));
+    }
+
+    #[test]
+    fn database_variant_preserves_raw_error() {
+        let err = AppError::Database(sqlx::Error::PoolTimedOut);
+
+        assert_eq!(err.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(err.code(), "database_error");
+        assert!(matches!(err, AppError::Database(_)));
     }
 
     // ------------------------------------------------------------------

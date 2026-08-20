@@ -2,10 +2,16 @@ use anyhow::anyhow;
 use jsonwebtoken::{decode, errors::ErrorKind};
 use uuid::Uuid;
 
-use crate::core::{error::AppError, state::JwtKeys};
+use crate::{
+    core::{error::AppError, state::JwtKeys},
+    features::auth::models::User,
+};
 
 /// Access token TTL in minutes.
 const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+
+/// Email verification TTL in minutes.
+const EMAIL_VERIFY_TTL_MINUTES: i64 = 30;
 
 /// Access token claims.
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -13,10 +19,20 @@ pub struct AccessClaims {
     pub sub: Uuid,
     pub exp: i64,
     pub iat: i64,
+    /// The purpose of the token, e.g. "access" or "email_verify".
     pub purpose: String,
     pub email: String,
     pub display_name: String,
     pub email_verified: bool,
+}
+
+/// Email verification claims.
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct EmailVerifyClaims {
+    pub sub: Uuid,
+    pub exp: i64,
+    pub iat: i64,
+    pub purpose: String,
 }
 
 /// Signs an access token using the provided JWT keys and claims.
@@ -65,6 +81,53 @@ pub fn verify_access_token(keys: &JwtKeys, token: &str) -> Result<AccessClaims, 
     let claims = token_data.claims;
 
     if claims.purpose != "access" {
+        return Err(AppError::Unauthorized("invalid token purpose".to_string()));
+    }
+
+    Ok(claims)
+}
+
+/// Signs an email verification token for the given user.
+///
+/// Returns:
+/// - `Ok(token)`: The signed email verification token.
+/// - `Err(AppError)`: An error if the token could not be signed.
+pub fn sign_email_verify_token(keys: &JwtKeys, user: User) -> Result<String, AppError> {
+    let now = time::OffsetDateTime::now_utc().unix_timestamp();
+    let claims = EmailVerifyClaims {
+        sub: user.id,
+        exp: now + EMAIL_VERIFY_TTL_MINUTES * 60,
+        iat: now,
+        purpose: "email_verify".to_string(),
+    };
+    let header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
+    let token = jsonwebtoken::encode(&header, &claims, &keys.encoding)
+        .map_err(|e| AppError::Internal(e.into()))?;
+    Ok(token)
+}
+
+/// Verifies an email verification token.
+///
+/// Returns:
+/// - `Ok(claims)`: The verified email verification claims.
+/// - `Err(AppError)`: An error if the token could not be verified.
+pub fn verify_email_verify_token(
+    keys: &JwtKeys,
+    token: &str,
+) -> Result<EmailVerifyClaims, AppError> {
+    let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+    validation.set_required_spec_claims(&["exp", "sub"]);
+
+    let token_data = match decode::<EmailVerifyClaims>(token, &keys.decoding, &validation) {
+        Err(e) if e.kind() == &ErrorKind::ExpiredSignature => {
+            return Err(AppError::TokenExpired);
+        }
+        Err(_) => return Err(AppError::Unauthorized("invalid token".to_string())),
+        Ok(token_data) => token_data,
+    };
+    let claims = token_data.claims;
+
+    if claims.purpose != "email_verify" {
         return Err(AppError::Unauthorized("invalid token purpose".to_string()));
     }
 

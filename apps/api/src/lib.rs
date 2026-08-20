@@ -5,6 +5,7 @@
 //! can import it by name.
 
 pub mod core;
+pub mod features;
 
 /// `GET /health` — CM-1.7 AC 1. Returns 200 unconditionally; this endpoint
 /// intentionally does not touch the DB pool or any external service — its
