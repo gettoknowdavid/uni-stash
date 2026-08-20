@@ -6,6 +6,7 @@ use crate::{
         config::Config,
         db::Db,
         error::AppError,
+        rate_limit::PerEmailLimiter,
     },
     features::auth::repo::AuthRepo,
 };
@@ -20,8 +21,9 @@ pub struct AppState {
     pub r2_client: R2Client,
     pub resend: ResendClient,
     pub ws_registry: WsRegistry,
-
     pub auth_repo: AuthRepo,
+    /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
+    pub email_limiter: PerEmailLimiter,
 }
 impl AppState {
     pub fn new(config: &Config, db: Db) -> anyhow::Result<Self, AppError> {
@@ -31,6 +33,7 @@ impl AppState {
             resend: ResendClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(db.pool.clone()),
+            email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })
     }

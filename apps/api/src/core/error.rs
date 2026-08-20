@@ -77,6 +77,9 @@ pub enum AppError {
     #[error("Validation failed")]
     ValidationErrors(Vec<FieldError>),
 
+    #[error("Too many requests")]
+    TooManyRequests,
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 
@@ -97,6 +100,7 @@ impl AppError {
             AppError::Unauthorized { .. } => "unauthorized",
             AppError::Forbidden => "forbidden",
             AppError::TokenExpired => "token_expired",
+            AppError::TooManyRequests => "too_many_requests",
             AppError::EmailNotVerified => "email_not_verified",
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => "validation",
             AppError::Internal { .. } => "internal_server_error",
@@ -107,6 +111,7 @@ impl AppError {
     /// Returns a human-readable message suitable for the client.
     pub fn client_message(&self) -> String {
         match self {
+            AppError::TooManyRequests => "too many requests".to_string(),
             AppError::Internal { .. } => "internal server error".to_string(),
             AppError::Database(_) => "database error".to_string(),
             AppError::ValidationErrors(_) => "Validation failed".to_string(),
@@ -156,6 +161,7 @@ impl ResponseError for AppError {
             AppError::Forbidden | AppError::EmailNotVerified => {
                 actix_web::http::StatusCode::FORBIDDEN
             }
+            AppError::TooManyRequests => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
             AppError::ValidationError { .. } | AppError::ValidationErrors(_) => {
                 actix_web::http::StatusCode::UNPROCESSABLE_ENTITY
             }

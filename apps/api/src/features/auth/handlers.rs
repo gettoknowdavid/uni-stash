@@ -14,6 +14,7 @@ pub async fn signup(
     body: web::Json<SignUpRequest>,
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
+    state.email_limiter.check_and_record(&body.email)?;
     let school = state
         .auth_repo
         .find_school_by_domain(&body.email)
@@ -64,6 +65,7 @@ pub async fn login(
     body: web::Json<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
+    state.email_limiter.check_and_record(&body.email)?;
     let user_opt = state.auth_repo.find_user_by_email(&body.email).await?;
     let (hash, user) = match &user_opt {
         Some(u) => (u.password_hash.clone(), Some(u)),
