@@ -8,6 +8,7 @@ struct ResendClientInner {
     http: reqwest::Client,
     api_key: String,
     base_url: String,
+    frontend_base_url: String,
 }
 
 /// Sends transactional email via Resend's REST API.
@@ -28,6 +29,7 @@ impl ResendClient {
             http,
             api_key: config.resend_api_key.clone(),
             base_url: config.resend_base_url.clone(),
+            frontend_base_url: config.frontend_base_url.clone(),
         })))
     }
 
@@ -48,11 +50,10 @@ impl ResendClient {
         &self,
         to_email: &str,
         verify_token: &str,
-        frontend_base_url: &str,
     ) -> Result<(), AppError> {
         let verification_url = format!(
             "{}/verify-email?token={}",
-            frontend_base_url.trim_end_matches('/'),
+            self.0.frontend_base_url.trim_end_matches('/'),
             verify_token,
         );
 
@@ -115,6 +116,7 @@ mod tests {
             http,
             api_key: "re_test_key".into(),
             base_url: base_url.into(),
+            frontend_base_url: "https://example.com".into(),
         }))
     }
 
@@ -128,20 +130,17 @@ mod tests {
                 "Authorization",
                 "Bearer re_test_key",
             ))
-            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(
-                serde_json::json!({"id": "test-email-id"}),
-            ))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"id": "test-email-id"})),
+            )
             .expect(1)
             .mount(&mock)
             .await;
 
         let client = resend_client(&mock.uri());
         let result = client
-            .send_verification_email(
-                "alice@example.com",
-                "tok_abc123",
-                "https://uni-stash.com",
-            )
+            .send_verification_email("alice@example.com", "tok_abc123")
             .await;
 
         assert!(result.is_ok());
@@ -164,11 +163,7 @@ mod tests {
 
         let client = resend_client(&mock.uri());
         let result = client
-            .send_verification_email(
-                "bad@example.com",
-                "tok_abc123",
-                "https://uni-stash.com",
-            )
+            .send_verification_email("bad@example.com", "tok_abc123")
             .await;
 
         let err = result.unwrap_err();
@@ -181,20 +176,17 @@ mod tests {
 
         wiremock::Mock::given(wiremock::matchers::method("POST"))
             .and(wiremock::matchers::path("/emails"))
-            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(
-                serde_json::json!({"id": "test-email-id"}),
-            ))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"id": "test-email-id"})),
+            )
             .expect(1)
             .mount(&mock)
             .await;
 
         let client = resend_client(&mock.uri());
         client
-            .send_verification_email(
-                "bob@test.com",
-                "tok_xyz789",
-                "https://uni-stash.com/",
-            )
+            .send_verification_email("bob@test.com", "tok_xyz789")
             .await
             .unwrap();
 
@@ -203,8 +195,7 @@ mod tests {
         let requests = mock.received_requests().await.unwrap();
         assert_eq!(requests.len(), 1);
 
-        let body: serde_json::Value =
-            serde_json::from_slice(&requests[0].body).unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
         let html = body["html"].as_str().unwrap();
         // Trailing slash on frontend_base_url should be trimmed.
         assert!(
@@ -218,11 +209,7 @@ mod tests {
         // Port 1 is closed on every platform — simulates Resend being down.
         let client = resend_client("http://127.0.0.1:1");
         let result = client
-            .send_verification_email(
-                "alice@example.com",
-                "tok_abc123",
-                "https://uni-stash.com",
-            )
+            .send_verification_email("alice@example.com", "tok_abc123")
             .await;
 
         let err = result.unwrap_err();

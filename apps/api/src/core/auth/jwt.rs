@@ -92,7 +92,7 @@ pub fn verify_access_token(keys: &JwtKeys, token: &str) -> Result<AccessClaims, 
 /// Returns:
 /// - `Ok(token)`: The signed email verification token.
 /// - `Err(AppError)`: An error if the token could not be signed.
-pub fn sign_email_verify_token(keys: &JwtKeys, user: User) -> Result<String, AppError> {
+pub fn sign_email_verify_token(keys: &JwtKeys, user: &User) -> Result<String, AppError> {
     let now = time::OffsetDateTime::now_utc().unix_timestamp();
     let claims = EmailVerifyClaims {
         sub: user.id,

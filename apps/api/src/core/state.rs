@@ -1,10 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use crate::core::{
-    clients::{JwtKeys, R2Client, ResendClient},
-    config::Config,
-    db::Db,
-    error::AppError,
+use crate::{
+    core::{
+        clients::{JwtKeys, R2Client, ResendClient},
+        config::Config,
+        db::Db,
+        error::AppError,
+    },
+    features::auth::repo::AuthRepo,
 };
 
 /// PLACEHOLDER for the chat session registry.
@@ -17,15 +20,18 @@ pub struct AppState {
     pub r2_client: R2Client,
     pub resend: ResendClient,
     pub ws_registry: WsRegistry,
+
+    pub auth_repo: AuthRepo,
 }
 impl AppState {
     pub fn new(config: &Config, db: Db) -> anyhow::Result<Self, AppError> {
         Ok(Self {
-            db: db.pool,
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
             r2_client: R2Client::from_config(config),
             resend: ResendClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
+            auth_repo: AuthRepo::new(db.pool.clone()),
+            db: db.pool,
         })
     }
 }
