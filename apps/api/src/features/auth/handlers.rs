@@ -123,51 +123,30 @@ pub async fn refresh(
         return Err(AppError::Unauthorized("refresh token expired".into()));
     }
 
-    // 3. Reuse detection — if already revoked, this is a stolen/replayed token.
-    //    CM-3.8 will handle full family revocation here. For now, reject.
+    // 3. Reuse detection — if already revoked, CM-3.8 decides the outcome:
+    //    - Within grace window → legitimate duplicate, rotate from current token.
+    //    - Outside grace → compromise, revoke entire family.
     if row.revoked {
-        return Err(AppError::Unauthorized(
-            "refresh token revoked (possible reuse detected)".into(),
-        ));
+        let (access, refresh, expires) = state
+            .auth_repo
+            .handle_reused_token(&state.jwt_keys, &row)
+            .await?;
+        return Ok(HttpResponse::Ok().json(RefreshResponse {
+            access_token: access,
+            refresh_token: refresh,
+            expires_in: expires,
+        }));
     }
 
-    // 4. Atomic rotation inside a single transaction.
-    //    Three writes — revoke old, insert new, link superseded_by — must all
-    //    succeed or all fail. Partial failure strands the user.
-    let mut tx = state.auth_repo.begin().await?;
-
-    state.auth_repo.revoke_refresh_token(&mut *tx, row.id).await?;
-    let (new_plain, new_id) = state
+    // 4. Happy path: single-use, not yet revoked — atomic rotation.
+    let (access, refresh, expires) = state
         .auth_repo
-        .issue_refresh_token(&mut *tx, row.user_id, row.family_id)
+        .rotate_from_row(&state.jwt_keys, &row)
         .await?;
-    state
-        .auth_repo
-        .supersede_refresh_token(&mut *tx, row.id, new_id)
-        .await?;
-
-    tx.commit().await?;
-
-    // 5. Fetch the user for access token claims.
-    //    An orphaned refresh token pointing at a deleted user shouldn't exist
-    //    (CASCADE deletes it), so treat this as Internal, not 401.
-    let user = state
-        .auth_repo
-        .find_user_by_id(&row.user_id)
-        .await?
-        .ok_or_else(|| {
-            AppError::Internal(anyhow::anyhow!(
-                "refresh token references deleted user {}",
-                row.user_id
-            ))
-        })?;
-
-    // 6. Sign a fresh access token.
-    let access_token = jwt::sign_access_token(&state.jwt_keys, &user)?;
 
     Ok(HttpResponse::Ok().json(RefreshResponse {
-        access_token,
-        refresh_token: new_plain,
-        expires_in: 900,
+        access_token: access,
+        refresh_token: refresh,
+        expires_in: expires,
     }))
 }
