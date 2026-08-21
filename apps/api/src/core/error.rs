@@ -179,6 +179,9 @@ impl From<sqlx::Error> for AppError {
             sqlx::Error::Database(e) if e.is_unique_violation() => {
                 AppError::Conflict("resource already exists".to_string())
             }
+            sqlx::Error::Database(e) if e.is_foreign_key_violation() => {
+                AppError::BadRequest("referenced resource does not exist".to_string())
+            }
             other => AppError::Internal(other.into()),
         }
     }
