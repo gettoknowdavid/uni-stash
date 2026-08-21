@@ -30,8 +30,7 @@ impl ListingsRepo {
             input.condition.to_string(),
         )
         .fetch_one(&self.db)
-        .await
-        .map_err(|e| AppError::Internal(e.into()))?;
+        .await?;
         Ok(listing)
     }
 }

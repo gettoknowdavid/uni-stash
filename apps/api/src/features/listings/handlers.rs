@@ -27,5 +27,5 @@ pub async fn create_listing(
         condition: body.condition.clone(),
     };
     let listing = state.listings_repo.insert_listing(&input).await?;
-    Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
+    Ok(HttpResponse::Created().json(ListingResponse::from(listing)))
 }
