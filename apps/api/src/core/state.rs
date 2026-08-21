@@ -8,7 +8,7 @@ use crate::{
         error::AppError,
         rate_limit::PerEmailLimiter,
     },
-    features::auth::repo::AuthRepo,
+    features::{auth::repo::AuthRepo, listings::repo::ListingsRepo},
 };
 
 /// PLACEHOLDER for the chat session registry.
@@ -22,6 +22,7 @@ pub struct AppState {
     pub resend: ResendClient,
     pub ws_registry: WsRegistry,
     pub auth_repo: AuthRepo,
+    pub listings_repo: ListingsRepo,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
@@ -33,6 +34,7 @@ impl AppState {
             resend: ResendClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(db.pool.clone()),
+            listings_repo: ListingsRepo::new(db.pool.clone()),
             email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })

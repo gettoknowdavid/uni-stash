@@ -7,6 +7,27 @@ pub enum ListingStatus {
     Sold,
     Deleted,
 }
+impl std::convert::From<String> for ListingStatus {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "active" => ListingStatus::Active,
+            "reserved" => ListingStatus::Reserved,
+            "sold" => ListingStatus::Sold,
+            "deleted" => ListingStatus::Deleted,
+            _ => ListingStatus::Active,
+        }
+    }
+}
+impl ToString for ListingStatus {
+    fn to_string(&self) -> String {
+        match self {
+            ListingStatus::Active => "active".to_string(),
+            ListingStatus::Reserved => "reserved".to_string(),
+            ListingStatus::Sold => "sold".to_string(),
+            ListingStatus::Deleted => "deleted".to_string(),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, sqlx::Type, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -15,6 +36,25 @@ pub enum Condition {
     New,
     Used,
     Fair,
+}
+impl std::convert::From<String> for Condition {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "new" => Condition::New,
+            "used" => Condition::Used,
+            "fair" => Condition::Fair,
+            _ => Condition::New,
+        }
+    }
+}
+impl ToString for Condition {
+    fn to_string(&self) -> String {
+        match self {
+            Condition::New => "new".to_string(),
+            Condition::Used => "used".to_string(),
+            Condition::Fair => "fair".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, sqlx::FromRow, serde::Serialize)]
