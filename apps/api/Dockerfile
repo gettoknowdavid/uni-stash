@@ -19,6 +19,7 @@ COPY Cargo.toml Cargo.lock ./
 RUN mkdir src \
     && echo "fn main() {}" > src/main.rs \
     && echo "// dummy lib for dependency-only build" > src/lib.rs
+ENV SQLX_OFFLINE=true
 RUN cargo build --release && rm -rf src
 
 # Now bring in the real source and build for real — only this layer
