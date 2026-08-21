@@ -1,5 +1,4 @@
 target/
-.sqlx/
 *.pem
 *.key
 .env
