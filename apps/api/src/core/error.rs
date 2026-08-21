@@ -353,6 +353,15 @@ mod tests {
     }
 
     #[test]
+    fn sqlx_fk_violation_maps_to_bad_request() {
+        let db_err: Box<dyn sqlx::error::DatabaseError> = Box::new(ForeignKeyViolationDbError);
+        let err = AppError::from(sqlx::Error::Database(db_err));
+
+        assert_eq!(err.status_code(), StatusCode::BAD_REQUEST);
+        assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[test]
     fn other_sqlx_errors_map_to_internal() {
         let err = AppError::from(sqlx::Error::PoolTimedOut);
 
@@ -492,6 +501,41 @@ mod tests {
             assert!(!fields[0].message.is_empty());
         } else {
             panic!("expected ValidationErrors variant");
+        }
+    }
+
+    /// Minimal `DatabaseError` impl used to exercise the foreign-key-violation
+    /// mapping without needing a live database.
+    #[derive(Debug)]
+    struct ForeignKeyViolationDbError;
+
+    impl std::fmt::Display for ForeignKeyViolationDbError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "foreign key constraint fails")
+        }
+    }
+
+    impl std::error::Error for ForeignKeyViolationDbError {}
+
+    impl sqlx::error::DatabaseError for ForeignKeyViolationDbError {
+        fn message(&self) -> &str {
+            "foreign key constraint fails"
+        }
+
+        fn kind(&self) -> sqlx::error::ErrorKind {
+            sqlx::error::ErrorKind::ForeignKeyViolation
+        }
+
+        fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+            self
         }
     }
 
