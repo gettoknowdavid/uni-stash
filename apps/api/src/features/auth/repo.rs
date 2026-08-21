@@ -255,11 +255,9 @@ impl AuthRepo {
     /// Called by the background cleanup job (CM-3.10).  Returns the number
     /// of rows deleted so the job can log it.
     pub async fn cleanup_expired_refresh_tokens(&self) -> Result<u64, AppError> {
-        let result = sqlx::query!(
-            "DELETE FROM refresh_tokens WHERE expires_at < now()"
-        )
-        .execute(&self.db)
-        .await?;
+        let result = sqlx::query!("DELETE FROM refresh_tokens WHERE expires_at < now()")
+            .execute(&self.db)
+            .await?;
         Ok(result.rows_affected())
     }
 
@@ -269,7 +267,8 @@ impl AuthRepo {
     /// (CM-3.8) but should be cleaned up eventually to prevent unbounded
     /// table growth.  Returns the number of rows deleted.
     pub async fn cleanup_old_revoked_tokens(&self, older_than_secs: i64) -> Result<u64, AppError> {
-        let cutoff = time::OffsetDateTime::now_utc() - time::SignedDuration::seconds(older_than_secs);
+        let cutoff =
+            time::OffsetDateTime::now_utc() - time::SignedDuration::seconds(older_than_secs);
         let result = sqlx::query!(
             "DELETE FROM refresh_tokens WHERE revoked = true AND revoked_at < $1",
             cutoff,
@@ -336,9 +335,7 @@ impl AuthRepo {
         // revoked for some other reason).
         let within_grace = row
             .revoked_at
-            .map(|t| {
-                now.unix_timestamp() - t.unix_timestamp() <= REUSE_GRACE_WINDOW_SECONDS
-            })
+            .map(|t| now.unix_timestamp() - t.unix_timestamp() <= REUSE_GRACE_WINDOW_SECONDS)
             .unwrap_or(false)
             && row.superseded_by.is_some();
 

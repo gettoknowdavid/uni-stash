@@ -2,10 +2,10 @@ use actix_web::{HttpResponse, web};
 use serde_json::json;
 use validator::Validate;
 
+use crate::core::auth::middleware::AuthUser;
 use crate::core::auth::{self, jwt, password};
 use crate::core::error::AppError;
 use crate::core::state::AppState;
-use crate::core::auth::middleware::AuthUser;
 use crate::features::auth::dtos::{
     InsertUserInput, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest, RefreshResponse,
     SignUpRequest, SignUpResponse, VerifyEmailRequest,
@@ -173,10 +173,7 @@ pub async fn logout(
 /// the DB (not from JWT claims) — this avoids trusting a potentially stale
 /// token for authorization-adjacent data, keeping role-trust discipline
 /// consistent with CM-9.2's later pattern.
-pub async fn me(
-    state: web::Data<AppState>,
-    user: AuthUser,
-) -> Result<HttpResponse, AppError> {
+pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpResponse, AppError> {
     let profile = state
         .auth_repo
         .find_user_profile_by_id(&user.id)
