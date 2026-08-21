@@ -5,6 +5,7 @@ use validator::Validate;
 use crate::core::auth::middleware::AuthUser;
 use crate::core::auth::{self, jwt, password};
 use crate::core::error::AppError;
+use crate::core::json::ValidatedJson;
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
     InsertUserInput, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest, RefreshResponse,
@@ -13,7 +14,7 @@ use crate::features::auth::dtos::{
 
 pub async fn signup(
     state: web::Data<AppState>,
-    body: web::Json<SignUpRequest>,
+    body: ValidatedJson<SignUpRequest>,
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
     state.email_limiter.check_and_record(&body.email)?;
@@ -55,7 +56,7 @@ pub async fn signup(
 // any new capability. Revisit if verify-email tokens ever carry more power.
 pub async fn verify_email(
     state: web::Data<AppState>,
-    body: web::Json<VerifyEmailRequest>,
+    body: ValidatedJson<VerifyEmailRequest>,
 ) -> Result<HttpResponse, AppError> {
     let claims = jwt::verify_email_verify_token(&state.jwt_keys, &body.token)?;
     state.auth_repo.mark_email_verified(&claims.sub).await?;
@@ -64,7 +65,7 @@ pub async fn verify_email(
 
 pub async fn login(
     state: web::Data<AppState>,
-    body: web::Json<LoginRequest>,
+    body: ValidatedJson<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
     state.email_limiter.check_and_record(&body.email)?;
@@ -107,7 +108,7 @@ pub async fn login(
 /// boundaries, and JWT signing.
 pub async fn refresh(
     state: web::Data<AppState>,
-    body: web::Json<RefreshRequest>,
+    body: ValidatedJson<RefreshRequest>,
 ) -> Result<HttpResponse, AppError> {
     let now = time::OffsetDateTime::now_utc();
 
@@ -158,7 +159,7 @@ pub async fn refresh(
 /// regardless of whether the token was valid, already revoked, or unknown.
 pub async fn logout(
     state: web::Data<AppState>,
-    body: web::Json<LogoutRequest>,
+    body: ValidatedJson<LogoutRequest>,
 ) -> Result<HttpResponse, AppError> {
     state
         .auth_repo

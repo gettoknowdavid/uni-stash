@@ -3,6 +3,7 @@ pub mod clients;
 pub mod config;
 pub mod db;
 pub mod error;
+pub mod json;
 pub mod jobs;
 pub mod logging;
 pub mod rate_limit;
