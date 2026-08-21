@@ -1,10 +1,14 @@
 use sqlx::QueryBuilder;
+use uuid::Uuid;
 
 use crate::{
     core::error::AppError,
     features::listings::{
         cursor::encode_cursor,
-        dtos::{InsertListingInput, ListingFilters, ListingSummary},
+        dtos::{
+            CategorySummary, ImageSummary, InsertListingInput, ListingDetailResponse,
+            ListingFilters, ListingPatch, ListingSummary, SellerSummary,
+        },
         models::Listing,
     },
 };
@@ -40,13 +44,17 @@ impl ListingsRepo {
         Ok(listing)
     }
 
-    /// Returns `(listings, next_cursor)` where `next_cursor` is `None` when
-    /// there are no more pages.
+    // ----------------------------------------------------------------
+    // CM-4.2 — Browse / filter with cursor pagination
+    // ----------------------------------------------------------------
+
+    /// Uses QueryBuilder for dynamic filters — compile-time .sqlx offline
+    /// verification does not apply to this query (deliberate, scoped exception).
+    /// Every value is still parameterised via push_bind, so no SQL injection.
     pub async fn list(
         &self,
         filters: &ListingFilters,
     ) -> Result<(Vec<ListingSummary>, Option<String>), AppError> {
-        // Cap the page size at 50 to prevent abuse (per CM-4.2 AC).
         let limit = filters.limit.min(50);
 
         let mut query: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
@@ -66,10 +74,6 @@ impl ListingsRepo {
             query.push(" AND price <= ").push_bind(max_price);
         }
 
-        // Keyset pagination: (created_at, id) < ($cursor_created_at, $cursor_id).
-        // Postgres tuple comparison handles the tie-breaker correctly for
-        // ORDER BY created_at DESC, id DESC — it is equivalent to:
-        //   created_at < $ts OR (created_at = $ts AND id < $id)
         if let Some(ref cursor) = filters.cursor {
             query
                 .push(" AND (created_at, id) < (")
@@ -80,8 +84,6 @@ impl ListingsRepo {
         }
 
         query.push(" ORDER BY created_at DESC, id DESC LIMIT ");
-
-        // fetch one extra row for has_more detection
         query.push_bind(limit + 1);
 
         let rows: Vec<ListingSummary> = query.build_query_as().fetch_all(&self.db).await?;
@@ -106,5 +108,217 @@ impl ListingsRepo {
         };
 
         Ok((listings, next_cursor))
+    }
+
+    // ----------------------------------------------------------------
+    // CM-4.3 — Detail view
+    // ----------------------------------------------------------------
+
+    /// Fetch a listing with seller, category, and images. Returns None
+    /// if the listing doesn't exist.
+    pub async fn find_detail_by_id(
+        &self,
+        listing_id: Uuid,
+    ) -> Result<Option<ListingDetailResponse>, AppError> {
+        let row = sqlx::query!(
+            "SELECT l.id, l.title, l.description, l.price, l.condition, l.status, l.created_at,
+                    u.id AS seller_id, u.display_name AS seller_display_name,
+                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label
+             FROM listings l
+             JOIN users u ON u.id = l.seller_id
+             JOIN categories c ON c.id = l.category_id
+             WHERE l.id = $1",
+            listing_id,
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        let images: Vec<ImageSummary> = sqlx::query_as!(
+            ImageSummary,
+            "SELECT id, object_key, position FROM images WHERE listing_id = $1 ORDER BY position",
+            listing_id,
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        Ok(Some(ListingDetailResponse {
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            price: row.price,
+            condition: row.condition.into(),
+            status: row.status.into(),
+            created_at: row.created_at,
+            seller: SellerSummary {
+                id: row.seller_id,
+                display_name: row.seller_display_name,
+            },
+            category: CategorySummary {
+                id: row.category_id,
+                slug: row.category_slug,
+                label: row.category_label,
+            },
+            images,
+        }))
+    }
+
+    // ----------------------------------------------------------------
+    // CM-4.4 — Partial update
+    // ----------------------------------------------------------------
+
+    /// Apply a partial patch to a listing. Uses SELECT ... FOR UPDATE
+    /// to prevent TOCTOU races against concurrent state transitions.
+    pub async fn update_partial(
+        &self,
+        listing_id: Uuid,
+        seller_id: Uuid,
+        patch: &ListingPatch,
+    ) -> Result<Listing, AppError> {
+        let mut tx = self.db.begin().await?;
+
+        // Lock and validate ownership + status
+        let row = sqlx::query!(
+            "SELECT seller_id, status FROM listings WHERE id = $1 FOR UPDATE",
+            listing_id,
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => {
+                let _ = tx.rollback();
+                return Err(AppError::NotFound("listing not found".into()));
+            }
+        };
+
+        if row.seller_id != seller_id {
+            let _ = tx.rollback();
+            return Err(AppError::Forbidden);
+        }
+        if row.status != "active" {
+            let _ = tx.rollback();
+            return Err(AppError::Conflict(
+                "listing is not active".into(),
+            ));
+        }
+
+        // Build dynamic UPDATE — only SET columns present in patch
+        let mut query: QueryBuilder<sqlx::Postgres> =
+            QueryBuilder::new("UPDATE listings SET updated_at = now()");
+
+        let mut has_fields = false;
+
+        if let Some(ref title) = patch.title {
+            query.push(", title = ").push_bind(title.clone());
+            has_fields = true;
+        }
+        if let Some(ref description) = patch.description {
+            query.push(", description = ").push_bind(description.clone());
+            has_fields = true;
+        }
+        if let Some(category_id) = patch.category_id {
+            query.push(", category_id = ").push_bind(category_id);
+            has_fields = true;
+        }
+        if let Some(ref price) = patch.price {
+            match price {
+                Some(val) => {
+                    query.push(", price = ").push_bind(*val);
+                }
+                None => {
+                    query.push(", price = NULL");
+                }
+            }
+            has_fields = true;
+        }
+        if let Some(ref condition) = patch.condition {
+            query.push(", condition = ").push_bind(condition.to_string());
+            has_fields = true;
+        }
+
+        if !has_fields {
+            let _ = tx.rollback();
+            return Err(AppError::BadRequest("no fields to update".into()));
+        }
+
+        query.push(" WHERE id = ");
+        query.push_bind(listing_id);
+        query.push(
+            " RETURNING id, seller_id, category_id, title, description, price, condition, status, reserved_by, reserved_at, created_at, updated_at",
+        );
+
+        let listing = query
+            .build_query_as::<Listing>()
+            .fetch_one(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        Ok(listing)
+    }
+
+    // ----------------------------------------------------------------
+    // CM-4.5 — Soft delete
+    // ----------------------------------------------------------------
+
+    /// Soft-delete a listing by setting status = 'deleted'.
+    /// Returns Ok(()) on success, or appropriate error if not found/forbidden.
+    pub async fn soft_delete(&self, listing_id: Uuid, seller_id: Uuid) -> Result<(), AppError> {
+        let mut tx = self.db.begin().await?;
+
+        let row = sqlx::query!(
+            "SELECT seller_id FROM listings WHERE id = $1 FOR UPDATE",
+            listing_id,
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => {
+                let _ = tx.rollback();
+                return Err(AppError::NotFound("listing not found".into()));
+            }
+        };
+
+        if row.seller_id != seller_id {
+            let _ = tx.rollback();
+            return Err(AppError::Forbidden);
+        }
+
+        sqlx::query!(
+            "UPDATE listings SET status = 'deleted', reserved_by = NULL, reserved_at = NULL, updated_at = now() WHERE id = $1",
+            listing_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    // ----------------------------------------------------------------
+    // CM-4.8 — Stale reservation cleanup
+    // ----------------------------------------------------------------
+
+    /// Find listing IDs with reservations older than `older_than_hours`.
+    pub async fn find_stale_reservation_ids(
+        &self,
+        older_than_hours: i64,
+    ) -> Result<Vec<Uuid>, AppError> {
+        let ids = sqlx::query_scalar!(
+            "SELECT id FROM listings
+             WHERE status = 'reserved'
+               AND reserved_at < now() - make_interval(hours => $1)",
+            older_than_hours as i32,
+        )
+        .fetch_all(&self.db)
+        .await?;
+        Ok(ids)
     }
 }

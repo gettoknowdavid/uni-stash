@@ -14,6 +14,7 @@
 //!   └─ jobs::spawn(pool)
 //!        ├─ cleanup_expired_tokens     (every 15 min)
 //!        ├─ cleanup_old_revoked_tokens (every 1 hour)
+//!        ├─ auto_unreserve_stale       (every 5 min)
 //!        └─ ... future jobs (email scheduling, etc.)
 //! ```
 
@@ -30,6 +31,12 @@ const CLEANUP_REVOKED_INTERVAL: time::Duration = time::Duration::from_secs(60 * 
 /// Must be long enough for the CM-3.8 grace window (5 seconds) plus any
 /// reasonable client retry window.  24 hours gives ample headroom.
 const REVOKED_TOKEN_RETENTION_SECS: i64 = 24 * 60 * 60;
+
+/// Interval between stale-reservation checks (every 5 minutes).
+const STALE_RESERVATION_INTERVAL: time::Duration = time::Duration::from_secs(5 * 60);
+
+/// How long before a reservation is considered stale (48 hours).
+const STALE_RESERVATION_HOURS: i64 = 48;
 
 /// Spawns all background jobs on the current Tokio runtime.
 ///
@@ -54,7 +61,7 @@ pub fn spawn(pool: PgPool) {
 
     spawn_job(
         "cleanup_old_revoked_tokens",
-        pool,
+        pool.clone(),
         CLEANUP_REVOKED_INTERVAL,
         |pool| async move {
             let repo = crate::features::auth::repo::AuthRepo::new(pool);
@@ -63,6 +70,38 @@ pub fn spawn(pool: PgPool) {
                 .await?;
             if deleted > 0 {
                 tracing::info!(deleted, "cleanup: deleted old revoked refresh tokens");
+            }
+            Ok::<_, anyhow::Error>(())
+        },
+    );
+
+    // CM-4.8 — Auto-unreserve stale listings (48h)
+    spawn_job(
+        "auto_unreserve_stale_listings",
+        pool,
+        STALE_RESERVATION_INTERVAL,
+        |pool| async move {
+            let repo = crate::features::listings::repo::ListingsRepo::new(pool.clone());
+            let stale_ids = repo
+                .find_stale_reservation_ids(STALE_RESERVATION_HOURS)
+                .await?;
+            for listing_id in stale_ids {
+                match crate::features::listings::state_machine::unreserve_system(
+                    &pool, listing_id,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        tracing::info!(listing_id = %listing_id, "auto-unreserved stale listing");
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            listing_id = %listing_id,
+                            error = %e,
+                            "failed to auto-unreserve listing"
+                        );
+                    }
+                }
             }
             Ok::<_, anyhow::Error>(())
         },
@@ -104,23 +143,30 @@ mod tests {
 
     #[test]
     fn cleanup_intervals_are_sane() {
-        // Expired cleanup should run at least every 30 min.
         assert!(
             CLEANUP_EXPIRED_INTERVAL <= time::Duration::from_secs(30 * 60),
             "expired cleanup interval too long: {:?}",
             CLEANUP_EXPIRED_INTERVAL
         );
-        // Revoked retention should be at least 1 hour (grace window safety).
         assert!(
             REVOKED_TOKEN_RETENTION_SECS >= 3600,
             "revoked retention too short: {}s",
             REVOKED_TOKEN_RETENTION_SECS
         );
-        // Revoked cleanup interval should be <= retention.
         assert!(
             CLEANUP_REVOKED_INTERVAL
                 <= time::Duration::from_secs(REVOKED_TOKEN_RETENTION_SECS as u64),
             "revoked cleanup runs less often than retention period"
         );
+    }
+
+    #[test]
+    fn stale_reservation_interval_is_reasonable() {
+        assert!(
+            STALE_RESERVATION_INTERVAL <= time::Duration::from_secs(15 * 60),
+            "stale reservation check interval too long: {:?}",
+            STALE_RESERVATION_INTERVAL
+        );
+        assert_eq!(STALE_RESERVATION_HOURS, 48);
     }
 }
