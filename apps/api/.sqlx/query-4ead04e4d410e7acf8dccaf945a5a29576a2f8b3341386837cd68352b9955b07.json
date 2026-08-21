@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE listings SET status = 'deleted', reserved_by = NULL, reserved_at = NULL, updated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4ead04e4d410e7acf8dccaf945a5a29576a2f8b3341386837cd68352b9955b07"
+}

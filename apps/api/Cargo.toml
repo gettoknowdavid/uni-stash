@@ -27,6 +27,8 @@ tracing-actix-web = "0.7.22"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 uuid = { version = "1.24.1", features = ["serde", "v4"] }
+utoipa = { version = "5", features = ["actix_extras", "time", "uuid"] }
+utoipa-actix-web = "0.1"
 validator = { version = "0.21.0", features = ["derive"] }
 
 [dev-dependencies]

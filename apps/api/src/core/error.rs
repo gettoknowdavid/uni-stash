@@ -13,6 +13,23 @@ struct ErrorDetail<'a> {
     fields: Option<&'a [FieldError]>,
 }
 
+/// OpenAPI-compatible error response shape. Used in `#[utoipa::path]`
+/// annotations since `AppError` itself can't derive `ToSchema` (it
+/// contains `anyhow::Error`).
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ErrorResponse {
+    /// Machine-readable error code
+    pub error: ErrorResponseBody,
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct ErrorResponseBody {
+    pub code: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields: Option<Vec<FieldError>>,
+}
+
 /// A single field-level validation error, serialised inside the
 /// `fields` array of the JSON response body.
 ///
@@ -30,9 +47,11 @@ struct ErrorDetail<'a> {
 ///   }
 /// }
 /// ```
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct FieldError {
+    #[schema(example = "email")]
     pub field: String,
+    #[schema(example = "Must be a valid email")]
     pub message: String,
 }
 
@@ -196,8 +215,8 @@ impl From<sqlx::Error> for AppError {
 /// req.validate()?;
 /// ```
 ///
-/// Only field-level errors are surfaced; global errors (the `errors()`
-/// map on `ValidationErrors`) are folded into the message string since
+/// Only field-level errors are surfaced; global errors (the `errors()` map
+/// on `ValidationErrors`) are folded into the message string since
 /// they don't have a specific field to point at.
 impl From<validator::ValidationErrors> for AppError {
     fn from(err: validator::ValidationErrors) -> Self {

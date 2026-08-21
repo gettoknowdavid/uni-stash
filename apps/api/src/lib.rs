@@ -6,6 +6,7 @@
 
 pub mod core;
 pub mod features;
+pub mod openapi;
 
 /// `GET /health` — CM-1.7 AC 1. Returns 200 unconditionally; this endpoint
 /// intentionally does not touch the DB pool or any external service — its
@@ -21,4 +22,22 @@ pub async fn health() -> actix_web::HttpResponse {
 /// between them.
 pub fn configure_health(cfg: &mut actix_web::web::ServiceConfig) {
     cfg.service(health);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::openapi::ApiDoc;
+    use utoipa::OpenApi;
+
+    /// Generate the OpenAPI spec and write it to `openapi.json` on disk.
+    ///
+    /// Run with: `cargo test export_openapi -- --nocapture`
+    /// The file will be written to `apps/api/openapi.json`.
+    #[test]
+    fn export_openapi() {
+        let spec = ApiDoc::openapi().to_pretty_json().unwrap();
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("openapi.json");
+        std::fs::write(&path, &spec).unwrap();
+        println!("OpenAPI spec written to {}", path.display());
+    }
 }

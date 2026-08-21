@@ -7,19 +7,24 @@ use crate::features::listings::{cursor, models};
 // Create (CM-4.1)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, serde::Serialize, Validate)]
+#[derive(Debug, Deserialize, serde::Serialize, Validate, utoipa::ToSchema)]
 pub struct CreateListingRequest {
     #[validate(length(min = 1, max = 200))]
+    #[schema(value_type = String, min_length = 1, max_length = 200, example = "Organic Chemistry 8th Ed")]
     pub title: String,
 
     #[validate(length(max = 5000))]
+    #[schema(value_type = Option<String>, max_length = 5000, example = "Used textbook, good condition")]
     pub description: Option<String>,
 
+    #[schema(example = 1)]
     pub category_id: i16,
 
     #[validate(range(min = 0))]
+    #[schema(value_type = Option<i32>, example = 45)]
     pub price: Option<i32>,
 
+    #[schema(example = "used")]
     pub condition: models::Condition,
 }
 
@@ -36,7 +41,7 @@ pub struct InsertListingInput<'a> {
 // Listing response (CM-4.1)
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ListingResponse {
     pub id: uuid::Uuid,
     pub seller_id: uuid::Uuid,
@@ -75,23 +80,29 @@ impl From<models::Listing> for ListingResponse {
 // Browse (CM-4.2)
 // ---------------------------------------------------------------------------
 
-#[derive(Deserialize)]
+#[derive(Deserialize, utoipa::ToSchema)]
 pub struct ListListingsQuery {
+    #[schema(example = 1)]
     pub category: Option<i16>,
+    #[schema(example = 10)]
     pub min_price: Option<i32>,
+    #[schema(example = 100)]
     pub max_price: Option<i32>,
+    #[schema(example = "active")]
     pub status: Option<String>,
+    #[schema(example = "MTcyMDAwMDAwMDAwMDAwMDAwMDoxMjM0NTY3OC0=")]
     pub cursor: Option<String>,
+    #[schema(example = 20)]
     pub limit: Option<i64>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ListListingsResponse {
     pub listings: Vec<ListingSummary>,
     pub next_cursor: Option<String>,
 }
 
-#[derive(serde::Serialize, sqlx::FromRow)]
+#[derive(serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
 pub struct ListingSummary {
     pub id: uuid::Uuid,
     pub title: String,
@@ -114,7 +125,7 @@ pub struct ListingFilters {
 // Detail (CM-4.3)
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ListingDetailResponse {
     pub id: uuid::Uuid,
     pub title: String,
@@ -128,20 +139,20 @@ pub struct ListingDetailResponse {
     pub images: Vec<ImageSummary>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct SellerSummary {
     pub id: uuid::Uuid,
     pub display_name: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct CategorySummary {
     pub id: i16,
     pub slug: String,
     pub label: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct ImageSummary {
     pub id: uuid::Uuid,
     pub object_key: String,
@@ -152,14 +163,17 @@ pub struct ImageSummary {
 // Edit (CM-4.4)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
 pub struct UpdateListingRequest {
     #[validate(length(min = 1, max = 200))]
+    #[schema(value_type = Option<String>, min_length = 1, max_length = 200)]
     pub title: Option<String>,
 
     #[validate(length(max = 5000))]
+    #[schema(value_type = Option<String>, max_length = 5000)]
     pub description: Option<String>,
 
+    #[schema(example = 1)]
     pub category_id: Option<i16>,
 
     // Double-Option to distinguish absent from null:
@@ -167,8 +181,10 @@ pub struct UpdateListingRequest {
     //   Some(None) = field present as null → set to NULL (barter)
     //   Some(Some(n)) = field present with value → set to n
     #[serde(default, deserialize_with = "deserialize_double_option")]
+    #[schema(value_type = Option<i32>)]
     pub price: Option<Option<i32>>,
 
+    #[schema(example = "used")]
     pub condition: Option<models::Condition>,
 }
 

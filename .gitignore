@@ -69,3 +69,6 @@ apps/api/load-tests/*.json
 apps/api/load-tests/raw/
 
 .freebuff/
+
+# Generated OpenAPI spec
+apps/api/openapi.json

@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE listings\n         SET status = 'active', reserved_by = NULL, reserved_at = NULL, updated_at = now()\n         WHERE id = $1\n         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "seller_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "seller_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "category_id",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "category_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "price",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "price"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "condition: _",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "condition"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "status: _",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "reserved_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "reserved_by"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "reserved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "reserved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "57d3a6b3bf8a020703d80766dbe3e41aa1b424382bebff1c504b99e16ee7ebcf"
+}
