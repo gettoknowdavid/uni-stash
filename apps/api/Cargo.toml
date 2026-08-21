@@ -9,6 +9,7 @@ actix-web = "4.14.1"
 anyhow = "1.0.104"
 argon2 = { version = "0.5.3", features = ["default"] }
 aws-sdk-s3 = { version = "1.141.0", features = ["rustls"] }
+base64 = "0.23.1"
 dotenvy = "0.15.7"
 hex = "0.4.3"
 jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }

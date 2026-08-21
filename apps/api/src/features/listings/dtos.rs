@@ -1,4 +1,4 @@
-use crate::features::listings::models;
+use crate::features::listings::{cursor, models};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, validator::Validate)]
 pub struct CreateListingRequest {
@@ -13,15 +13,6 @@ pub struct CreateListingRequest {
     #[validate(range(min = 0))]
     pub price: Option<i32>,
 
-    pub condition: models::Condition,
-}
-
-pub struct InsertListingInput<'a> {
-    pub seller_id: uuid::Uuid,
-    pub category_id: i16,
-    pub title: &'a str,
-    pub description: &'a str,
-    pub price: Option<i32>,
     pub condition: models::Condition,
 }
 
@@ -57,6 +48,51 @@ impl From<models::Listing> for ListingResponse {
             updated_at: listing.updated_at,
         }
     }
+}
+
+#[derive(serde::Deserialize)]
+pub struct ListListingsQuery {
+    pub category: Option<i16>,
+    pub min_price: Option<i32>,
+    pub max_price: Option<i32>,
+    pub status: Option<String>,
+    pub cursor: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(serde::Serialize)]
+pub struct ListListingsResponse {
+    pub listings: Vec<ListingSummary>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+pub struct ListingSummary {
+    pub id: uuid::Uuid,
+    pub title: String,
+    pub price: Option<i32>,
+    pub condition: models::Condition,
+    pub status: models::ListingStatus,
+    pub created_at: time::OffsetDateTime,
+}
+
+pub struct InsertListingInput<'a> {
+    pub seller_id: uuid::Uuid,
+    pub category_id: i16,
+    pub title: &'a str,
+    pub description: &'a str,
+    pub price: Option<i32>,
+    pub condition: models::Condition,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ListingFilters {
+    pub category: Option<i16>,
+    pub min_price: Option<i32>,
+    pub max_price: Option<i32>,
+    pub status: models::ListingStatus,
+    pub cursor: Option<cursor::ListingCursor>,
+    pub limit: i64,
 }
 
 #[cfg(test)]
