@@ -40,3 +40,21 @@ pub struct ListingResponse {
     pub created_at: time::OffsetDateTime,
     pub updated_at: time::OffsetDateTime,
 }
+impl From<models::Listing> for ListingResponse {
+    fn from(listing: models::Listing) -> Self {
+        ListingResponse {
+            id: listing.id,
+            seller_id: listing.seller_id,
+            category_id: listing.category_id,
+            title: listing.title,
+            description: listing.description,
+            price: listing.price,
+            condition: listing.condition,
+            status: listing.status,
+            reserved_by: listing.reserved_by,
+            reserved_at: listing.reserved_at,
+            created_at: listing.created_at,
+            updated_at: listing.updated_at,
+        }
+    }
+}
