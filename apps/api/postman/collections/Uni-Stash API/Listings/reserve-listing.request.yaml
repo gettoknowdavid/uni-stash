@@ -1,0 +1,6 @@
+$kind: http-request
+name: Reserve Listing
+method: POST
+url: '{{baseUrl}}/api/v1/listings/{{listingId}}/reserve'
+order: 7000
+headers: []

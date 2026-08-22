@@ -13,7 +13,8 @@ body:
       "title": "Calculus Textbook",
       "description": "Barely used, great condition",
       "price": 2500,
-      "category_id": 1
+      "category_id": 1,
+      "condition": "used"
     }
 scripts:
   - type: afterResponse
