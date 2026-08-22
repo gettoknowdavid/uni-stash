@@ -3,6 +3,9 @@ use utoipa::OpenApi;
 
 use crate::core::error::{ErrorResponse, ErrorResponseBody, FieldError};
 use crate::features::auth::dtos::*;
+use crate::features::auth::dtos::{
+    ForgotPasswordRequest, ResendVerificationRequest, ResetPasswordRequest, VerifyOtpRequest,
+};
 use crate::features::auth::models::UserProfile;
 use crate::features::images::dtos::*;
 use crate::features::listings::dtos::*;
@@ -50,18 +53,77 @@ pub async fn signup() -> HttpResponse {
     unreachable!("spec only")
 }
 
-/// Verify email address using the token sent to the user's inbox.
+/// Verify an OTP code for email verification or password reset.
+///
+/// Pass `type: "email_verify"` after signup, or `type: "password_reset"`
+/// after requesting a password reset.
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/verify-email",
+    path = "/api/v1/auth/verify-otp",
     tag = "auth",
-    request_body = VerifyEmailRequest,
+    request_body = VerifyOtpRequest,
     responses(
-        (status = 200, description = "Email verified successfully"),
-        (status = 401, description = "Invalid or expired token", body = ErrorResponse)
+        (status = 200, description = "OTP verified successfully", body = serde_json::Value),
+        (status = 400, description = "Invalid or expired OTP", body = ErrorResponse),
+        (status = 422, description = "Validation failed", body = ErrorResponse)
     )
 )]
-pub async fn verify_email() -> HttpResponse {
+pub async fn verify_otp() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Resend a verification OTP to the given email address.
+///
+/// Generates a new 6-digit code and invalidates any previous one.
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/resend-verification",
+    tag = "auth",
+    request_body = ResendVerificationRequest,
+    responses(
+        (status = 200, description = "Verification code sent", body = serde_json::Value),
+        (status = 400, description = "Email already verified", body = ErrorResponse),
+        (status = 404, description = "No account with this email", body = ErrorResponse),
+        (status = 422, description = "Validation failed", body = ErrorResponse)
+    )
+)]
+pub async fn resend_verification() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Request a password reset OTP.
+///
+/// Always returns 200 to prevent user enumeration. If the email exists,
+/// a 6-digit code is sent.
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/forgot-password",
+    tag = "auth",
+    request_body = ForgotPasswordRequest,
+    responses(
+        (status = 200, description = "Reset code sent (if account exists)", body = serde_json::Value),
+        (status = 422, description = "Validation failed", body = ErrorResponse)
+    )
+)]
+pub async fn forgot_password() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Reset password using a valid OTP code.
+///
+/// The OTP must be type `password_reset` and received via the forgot-password flow.
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/reset-password",
+    tag = "auth",
+    request_body = ResetPasswordRequest,
+    responses(
+        (status = 200, description = "Password updated", body = serde_json::Value),
+        (status = 400, description = "Invalid or expired OTP", body = ErrorResponse),
+        (status = 422, description = "Validation failed (password too short)", body = ErrorResponse)
+    )
+)]
+pub async fn reset_password() -> HttpResponse {
     unreachable!("spec only")
 }
 
@@ -417,7 +479,10 @@ pub async fn delete_image() -> HttpResponse {
         health,
         // Auth
         signup,
-        verify_email,
+        verify_otp,
+        resend_verification,
+        forgot_password,
+        reset_password,
         login,
         refresh,
         logout,
@@ -440,7 +505,10 @@ pub async fn delete_image() -> HttpResponse {
         // Auth
         SignUpRequest,
         SignUpResponse,
-        VerifyEmailRequest,
+        VerifyOtpRequest,
+        ResendVerificationRequest,
+        ForgotPasswordRequest,
+        ResetPasswordRequest,
         LoginRequest,
         LoginResponse,
         RefreshRequest,

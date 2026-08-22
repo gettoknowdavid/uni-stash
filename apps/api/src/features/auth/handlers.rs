@@ -3,14 +3,19 @@ use serde_json::json;
 use validator::Validate;
 
 use crate::core::auth::middleware::AuthUser;
-use crate::core::auth::{self, jwt, password};
+use crate::core::auth::{self, jwt, otp, password};
 use crate::core::error::AppError;
 use crate::core::json::ValidatedJson;
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    InsertUserInput, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest, RefreshResponse,
-    SignUpRequest, SignUpResponse, VerifyEmailRequest,
+    ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginResponse, LogoutRequest,
+    RefreshRequest, RefreshResponse, ResetPasswordRequest, SignUpRequest, SignUpResponse,
+    VerifyOtpRequest,
 };
+
+// ---------------------------------------------------------------------------
+// Signup (CM-3.4) — now sends OTP instead of JWT token
+// ---------------------------------------------------------------------------
 
 pub async fn signup(
     state: web::Data<AppState>,
@@ -35,11 +40,20 @@ pub async fn signup(
             display_name: &body.display_name,
         })
         .await?;
-    let verify_token = auth::jwt::sign_email_verify_token(&state.jwt_keys, &user)?;
-    state
+
+    // Generate OTP and send via email (replaces JWT token flow)
+    let (otp_code, _otp_id) = state.auth_repo.insert_otp(user.id, "email_verify").await?;
+
+    // Best-effort email — if Resend fails, the user row exists and they
+    // can use POST /auth/resend-verification to retry.
+    if let Err(e) = state
         .resend
-        .send_verification_email(&user.email, &verify_token)
-        .await?;
+        .send_otp_email(&user.email, &otp_code, "email_verify")
+        .await
+    {
+        tracing::warn!(error = %e, email = %user.email, "failed to send verification OTP");
+    }
+
     Ok(HttpResponse::Created().json(SignUpResponse {
         id: user.id,
         email: user.email,
@@ -48,20 +62,151 @@ pub async fn signup(
     }))
 }
 
-// Single-use enforcement decision: this token is NOT tracked as single-use
-// in the DB. The 30-minute expiry (jwt.rs EMAIL_VERIFY_TTL_MINUTES) is the
-// only defense against replay. Rationale: unlike refresh tokens, a replayed
-// verify-email token has a low-severity blast radius — it can only flip
-// `email_verified` to true again (already-true is idempotent), not grant
-// any new capability. Revisit if verify-email tokens ever carry more power.
-pub async fn verify_email(
+// ---------------------------------------------------------------------------
+// Verify OTP (replaces verify_email) — CM-3.5
+// ---------------------------------------------------------------------------
+
+/// Verify an OTP code. Works for both email verification and password reset.
+///
+/// The client passes `type` to indicate which flow it's completing.
+pub async fn verify_otp(
     state: web::Data<AppState>,
-    body: ValidatedJson<VerifyEmailRequest>,
+    body: ValidatedJson<VerifyOtpRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let claims = jwt::verify_email_verify_token(&state.jwt_keys, &body.token)?;
-    state.auth_repo.mark_email_verified(&claims.sub).await?;
-    Ok(HttpResponse::Ok().json(json!({"email_verified": true})))
+    body.validate()?;
+    otp::validate_otp_format(&body.code)?;
+
+    let user_id = state
+        .auth_repo
+        .verify_otp(&body.code, &body.otp_type)
+        .await?;
+
+    // If this was an email verification OTP, mark the user as verified
+    if body.otp_type == "email_verify" {
+        state.auth_repo.mark_email_verified(&user_id).await?;
+    }
+
+    Ok(HttpResponse::Ok().json(json!({
+        "verified": true,
+        "type": body.otp_type,
+    })))
 }
+
+// ---------------------------------------------------------------------------
+// Resend verification — new endpoint
+// ---------------------------------------------------------------------------
+
+/// Resend an OTP for email verification.
+///
+/// Generates a fresh OTP and sends it. The previous OTP is automatically
+/// invalidated. Idempotent from the user's perspective — they just get
+/// a new code.
+pub async fn resend_verification(
+    state: web::Data<AppState>,
+    body: ValidatedJson<crate::features::auth::dtos::ResendVerificationRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+
+    let user = state
+        .auth_repo
+        .find_user_by_email(&body.email)
+        .await?
+        .ok_or(AppError::NotFound("no account with this email".into()))?;
+
+    if user.email_verified {
+        return Err(AppError::BadRequest("email is already verified".into()));
+    }
+
+    let (otp_code, _otp_id) = state.auth_repo.insert_otp(user.id, "email_verify").await?;
+
+    if let Err(e) = state
+        .resend
+        .send_otp_email(&user.email, &otp_code, "email_verify")
+        .await
+    {
+        tracing::warn!(error = %e, email = %user.email, "failed to resend verification OTP");
+        return Err(AppError::Internal(anyhow::anyhow!(
+            "failed to send verification email"
+        )));
+    }
+
+    Ok(HttpResponse::Ok().json(json!({
+        "message": "verification code sent"
+    })))
+}
+
+// ---------------------------------------------------------------------------
+// Forgot password — new endpoint
+// ---------------------------------------------------------------------------
+
+/// Request a password reset OTP.
+///
+/// Always returns 200 regardless of whether the email exists — prevents
+/// user enumeration. The OTP is only sent if the email matches a real account.
+pub async fn forgot_password(
+    state: web::Data<AppState>,
+    body: ValidatedJson<ForgotPasswordRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+
+    // Always return 200 to prevent user enumeration
+    let user_opt = state.auth_repo.find_user_by_email(&body.email).await?;
+
+    if let Some(user) = user_opt {
+        let (otp_code, _otp_id) = state
+            .auth_repo
+            .insert_otp(user.id, "password_reset")
+            .await?;
+
+        if let Err(e) = state
+            .resend
+            .send_otp_email(&user.email, &otp_code, "password_reset")
+            .await
+        {
+            tracing::warn!(error = %e, email = %user.email, "failed to send password reset OTP");
+        }
+    }
+
+    // Always return success — don't reveal whether the email exists
+    Ok(HttpResponse::Ok().json(json!({
+        "message": "if an account with that email exists, a reset code has been sent"
+    })))
+}
+
+// ---------------------------------------------------------------------------
+// Reset password — new endpoint
+// ---------------------------------------------------------------------------
+
+/// Reset password using a valid OTP code.
+///
+/// Verifies the OTP (must be type `password_reset`), then updates the
+/// user's password. The OTP is consumed (single-use).
+pub async fn reset_password(
+    state: web::Data<AppState>,
+    body: ValidatedJson<ResetPasswordRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+    otp::validate_otp_format(&body.code)?;
+
+    let user_id = state
+        .auth_repo
+        .verify_otp(&body.code, "password_reset")
+        .await?;
+
+    let new_hash = auth::password::hash_password(&body.new_password)?;
+    state
+        .auth_repo
+        .update_password_hash(&user_id, &new_hash)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "message": "password updated successfully"
+    })))
+}
+
+// ---------------------------------------------------------------------------
+// Login (CM-3.6) — unchanged
+// ---------------------------------------------------------------------------
 
 pub async fn login(
     state: web::Data<AppState>,
@@ -95,24 +240,16 @@ pub async fn login(
     }))
 }
 
-/// POST /api/v1/auth/refresh
-///
-/// Rotate a refresh token: present the old one, get back a fresh access +
-/// refresh pair. All three DB writes (revoke old, insert new, link
-/// superseded_by) are atomic — a partial failure would strand the user
-/// with no valid refresh token and no record of why.
-///
-/// This handler owns the business flow. The repo provides composable
-/// primitives (find, revoke, issue, supersede); this function decides
-/// the orchestration — expiry checks, reuse detection, transaction
-/// boundaries, and JWT signing.
+// ---------------------------------------------------------------------------
+// Refresh (CM-3.7 / CM-3.8) — unchanged
+// ---------------------------------------------------------------------------
+
 pub async fn refresh(
     state: web::Data<AppState>,
     body: ValidatedJson<RefreshRequest>,
 ) -> Result<HttpResponse, AppError> {
     let now = time::OffsetDateTime::now_utc();
 
-    // 1. Hash the presented token and look it up.
     let hash = auth::refresh_token::hash_refresh_token(&body.refresh_token);
     let row = state
         .auth_repo
@@ -120,14 +257,10 @@ pub async fn refresh(
         .await?
         .ok_or_else(|| AppError::Unauthorized("invalid refresh token".into()))?;
 
-    // 2. Check expiry.
     if row.expires_at < now {
         return Err(AppError::Unauthorized("refresh token expired".into()));
     }
 
-    // 3. Reuse detection — if already revoked, CM-3.8 decides the outcome:
-    //    - Within grace window → legitimate duplicate, rotate from current token.
-    //    - Outside grace → compromise, revoke entire family.
     if row.revoked {
         let (access, refresh, expires) = state
             .auth_repo
@@ -140,7 +273,6 @@ pub async fn refresh(
         }));
     }
 
-    // 4. Happy path: single-use, not yet revoked — atomic rotation.
     let (access, refresh, expires) = state
         .auth_repo
         .rotate_from_row(&state.jwt_keys, &row)
@@ -153,10 +285,10 @@ pub async fn refresh(
     }))
 }
 
-/// POST /api/v1/auth/logout
-///
-/// Revoke the presented refresh token.  Idempotent: always returns 200
-/// regardless of whether the token was valid, already revoked, or unknown.
+// ---------------------------------------------------------------------------
+// Logout (CM-3.9) — unchanged
+// ---------------------------------------------------------------------------
+
 pub async fn logout(
     state: web::Data<AppState>,
     body: ValidatedJson<LogoutRequest>,
@@ -168,12 +300,10 @@ pub async fn logout(
     Ok(HttpResponse::Ok().json(json!({ "status": "ok" })))
 }
 
-/// GET /api/v1/auth/me
-///
-/// Returns the authenticated user's profile.  `role` is fetched fresh from
-/// the DB (not from JWT claims) — this avoids trusting a potentially stale
-/// token for authorization-adjacent data, keeping role-trust discipline
-/// consistent with CM-9.2's later pattern.
+// ---------------------------------------------------------------------------
+// Me (CM-3.9) — unchanged
+// ---------------------------------------------------------------------------
+
 pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpResponse, AppError> {
     let profile = state
         .auth_repo

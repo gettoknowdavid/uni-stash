@@ -69,6 +69,22 @@ impl AuthRepo {
         Ok(user)
     }
 
+    /// Update a user's password hash. Used by the password reset flow.
+    pub async fn update_password_hash(
+        &self,
+        user_id: &uuid::Uuid,
+        new_hash: &str,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2",
+            new_hash,
+            user_id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_user_by_id(&self, user_id: &uuid::Uuid) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
             .fetch_optional(&self.db)
@@ -266,6 +282,116 @@ impl AuthRepo {
     /// Revoked tokens are kept briefly for the grace-window reuse check
     /// (CM-3.8) but should be cleaned up eventually to prevent unbounded
     /// table growth.  Returns the number of rows deleted.
+    // ------------------------------------------------------------------
+    // OTP management
+    // ------------------------------------------------------------------
+
+    /// Generate a new OTP for the given user and type.
+    ///
+    /// Invalidates any existing active OTP of the same type for this user
+    /// by setting `used_at` on the old row. Returns the plaintext OTP code
+    /// (to be sent via email) and the OTP row ID.
+    pub async fn insert_otp(
+        &self,
+        user_id: uuid::Uuid,
+        otp_type: &str,
+    ) -> Result<(String, uuid::Uuid), AppError> {
+        use crate::core::auth::otp;
+
+        let mut tx = self.db.begin().await?;
+
+        // Invalidate any existing active OTP of this type for this user
+        sqlx::query!(
+            "UPDATE otps SET used_at = now()
+             WHERE user_id = $1 AND type = $2 AND used_at IS NULL",
+            user_id,
+            otp_type,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        // Generate and store the new OTP
+        let plain = otp::generate_otp();
+        let code_hash = otp::hash_otp(&plain);
+        let expires_at =
+            time::OffsetDateTime::now_utc() + time::Duration::minutes(otp::OTP_TTL_MINUTES);
+
+        let id = sqlx::query_scalar!(
+            "INSERT INTO otps (user_id, code, type, expires_at)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id",
+            user_id,
+            &code_hash,
+            otp_type,
+            expires_at,
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok((plain, id))
+    }
+
+    /// Verify an OTP code for the given type.
+    ///
+    /// Returns the `user_id` on success. Checks:
+    /// 1. Code matches a stored hash
+    /// 2. Not expired
+    /// 3. Not already used
+    ///
+    /// Marks the OTP as used atomically.
+    pub async fn verify_otp(&self, code: &str, otp_type: &str) -> Result<uuid::Uuid, AppError> {
+        use crate::core::auth::otp;
+
+        let code_hash = otp::hash_otp(code);
+        let now = time::OffsetDateTime::now_utc();
+
+        let mut tx = self.db.begin().await?;
+
+        // Find the OTP: must match code + type, not be expired, not be used
+        let row = sqlx::query!(
+            "SELECT id, user_id, expires_at
+             FROM otps
+             WHERE code = $1 AND type = $2 AND used_at IS NULL AND expires_at > $3
+             FOR UPDATE",
+            &code_hash,
+            otp_type,
+            now,
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let row = match row {
+            Some(r) => r,
+            None => {
+                let _ = tx.rollback();
+                return Err(AppError::BadRequest("invalid or expired OTP".into()));
+            }
+        };
+
+        // Mark as used
+        sqlx::query!("UPDATE otps SET used_at = now() WHERE id = $1", row.id,)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        Ok(row.user_id)
+    }
+
+    /// Delete expired OTPs and OTPs used more than 24 hours ago.
+    ///
+    /// Called by the background cleanup job. Returns rows deleted.
+    pub async fn cleanup_expired_otps(&self) -> Result<u64, AppError> {
+        let result = sqlx::query!(
+            "DELETE FROM otps
+             WHERE expires_at < now()
+                OR (used_at IS NOT NULL AND used_at < now() - interval '24 hours')"
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     pub async fn cleanup_old_revoked_tokens(&self, older_than_secs: i64) -> Result<u64, AppError> {
         let cutoff =
             time::OffsetDateTime::now_utc() - time::SignedDuration::seconds(older_than_secs);

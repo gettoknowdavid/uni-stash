@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE otps SET used_at = now()\n             WHERE user_id = $1 AND type = $2 AND used_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c3f36cc3d6e53dd44e24f24abe0fa314e291ba554a6fd1386462ac4af1f1559a"
+}
