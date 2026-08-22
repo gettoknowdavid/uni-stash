@@ -220,7 +220,11 @@ mod tests {
         std::fs::create_dir_all(&tmp_dir).unwrap();
         let pem_path = tmp_dir.join("test_key.pem");
         let mut f = std::fs::File::create(&pem_path).unwrap();
-        writeln!(f, "-----BEGIN PUBLIC KEY-----\nfake-key-content\n-----END PUBLIC KEY-----").unwrap();
+        writeln!(
+            f,
+            "-----BEGIN PUBLIC KEY-----\nfake-key-content\n-----END PUBLIC KEY-----"
+        )
+        .unwrap();
 
         // Leak the path string so it has 'static lifetime for the test
         let path_str = Box::leak(pem_path.to_str().unwrap().to_string().into_boxed_str());
