@@ -1,0 +1,5 @@
+$kind: http-request
+name: Delete Image
+method: DELETE
+url: '{{baseUrl}}/api/v1/images/{{imageId}}'
+order: 3000
