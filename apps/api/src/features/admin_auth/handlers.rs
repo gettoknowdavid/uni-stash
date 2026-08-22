@@ -148,7 +148,7 @@ pub async fn forgot_password(
         let (otp_code, _otp_id) = state.admin_auth_repo.insert_admin_otp(admin.id).await?;
 
         if let Err(e) = state
-            .resend
+            .smtp
             .send_otp_email(&admin.email, &otp_code, "admin_password_reset")
             .await
         {

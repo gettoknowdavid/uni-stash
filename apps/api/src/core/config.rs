@@ -8,8 +8,11 @@ pub struct Config {
     pub database_url: String,
     pub jwt_private_key: String,
     pub jwt_public_key: String,
-    pub resend_api_key: String,
-    pub resend_base_url: String,
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_user: String,
+    pub smtp_password: String,
+    pub smtp_from: String,
     pub frontend_base_url: String,
     pub port: u16,
     pub env: String,
@@ -51,12 +54,12 @@ impl Config {
             dotenvy::dotenv().ok();
 
             // Re-check: if .env defined ENV, load the env-specific file on top
-            if let Ok(env) = var("ENV") {
-                if !env.trim().is_empty() {
-                    let env_file = format!(".env.{env}");
-                    if std::path::Path::new(&env_file).exists() {
-                        dotenvy::from_filename(&env_file).ok();
-                    }
+            if let Ok(env) = var("ENV")
+                && !env.trim().is_empty()
+            {
+                let env_file = format!(".env.{env}");
+                if std::path::Path::new(&env_file).exists() {
+                    dotenvy::from_filename(&env_file).ok();
                 }
             }
         }
@@ -74,8 +77,14 @@ impl Config {
             database_url: required(&get, "DATABASE_URL")?,
             jwt_private_key: jwt_key(&get, "JWT_PRIVATE_KEY")?,
             jwt_public_key: jwt_key(&get, "JWT_PUBLIC_KEY")?,
-            resend_api_key: required(&get, "RESEND_API_KEY")?,
-            resend_base_url: required(&get, "RESEND_BASE_URL")?,
+            smtp_host: required(&get, "SMTP_HOST")?,
+            smtp_port: required(&get, "SMTP_PORT")?
+                .trim()
+                .parse::<u16>()
+                .context("SMTP_PORT must be a valid number")?,
+            smtp_user: required(&get, "SMTP_USER")?,
+            smtp_password: required(&get, "SMTP_PASSWORD")?,
+            smtp_from: required(&get, "SMTP_FROM")?,
             frontend_base_url: required(&get, "FRONTEND_BASE_URL")?,
             // PORT is optional (defaults to 8080). Treat a blank value the same
             // as unset — Render injects PORT automatically for web services, but
@@ -150,9 +159,11 @@ mod tests {
             ("DATABASE_URL", "postgres://localhost:5432/uni_stash"),
             ("JWT_PRIVATE_KEY", "test-private-key"),
             ("JWT_PUBLIC_KEY", "test-public-key"),
-            ("RESEND_API_KEY", "re_test_123"),
-            ("RESEND_BASE_URL", "https://api.resend.com"),
-            ("ALLOWED_EMAIL_DOMAINS", "uniport.edu.ng"),
+            ("SMTP_HOST", "smtp.example.com"),
+            ("SMTP_PORT", "587"),
+            ("SMTP_USER", "test@example.com"),
+            ("SMTP_PASSWORD", "test_password"),
+            ("SMTP_FROM", "Test <test@example.com>"),
             ("PORT", "8080"),
             ("ENV", "dev"),
             ("R2_BUCKET", "uni-stash-images"),
@@ -194,11 +205,11 @@ mod tests {
 
     #[test]
     fn missing_required_var_returns_descriptive_error() {
-        let vars = without(&full_vars(), "RESEND_API_KEY");
+        let vars = without(&full_vars(), "SMTP_HOST");
         let err = Config::from_getter(getter(&vars)).unwrap_err();
 
         assert!(
-            err.to_string().contains("RESEND_API_KEY"),
+            err.to_string().contains("SMTP_HOST"),
             "error should name the missing var, got: {err:#}"
         );
     }

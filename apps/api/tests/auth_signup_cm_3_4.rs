@@ -9,7 +9,8 @@
 //   AC 2 — 400 on unrecognized email domain
 //   AC 3 — 201 + row inserted with email_verified = false on success
 //   AC 4 — 409 on duplicate email
-//   AC 5 — Resend failure → 500, user row still exists (no rollback)
+//   AC 5 — Email failure is best-effort: signup still returns 201, user row
+//          exists. The handler catches the error and logs a warning.
 
 use actix_web::{App, ResponseError, test, web};
 use sqlx::PgPool;
@@ -26,13 +27,16 @@ use validator::Validate;
 const TEST_PRIVATE_PEM: &str = include_str!("fixtures/test_rsa_private.pem");
 const TEST_PUBLIC_PEM: &str = include_str!("fixtures/test_rsa_public.pem");
 
-fn test_config(resend_base_url: &str) -> Config {
+fn test_config() -> Config {
     Config {
         database_url: "postgres://localhost:5432/uni_stash".into(),
         jwt_private_key: TEST_PRIVATE_PEM.into(),
         jwt_public_key: TEST_PUBLIC_PEM.into(),
-        resend_api_key: "re_test_key".into(),
-        resend_base_url: resend_base_url.into(),
+        smtp_host: "smtp.example.com".into(),
+        smtp_port: 587,
+        smtp_user: "test@example.com".into(),
+        smtp_password: "test_password".into(),
+        smtp_from: "Test <test@example.com>".into(),
         port: 8080,
         env: "test".into(),
         r2_bucket: "".into(),
@@ -43,8 +47,8 @@ fn test_config(resend_base_url: &str) -> Config {
     }
 }
 
-fn test_state(pool: PgPool, resend_base_url: &str) -> web::Data<AppState> {
-    let config = test_config(resend_base_url);
+fn test_state(pool: PgPool) -> web::Data<AppState> {
+    let config = test_config();
     let db = Db { pool };
     web::Data::new(AppState::new(&config, db).expect("AppState"))
 }
@@ -150,11 +154,9 @@ async fn empty_display_name_returns_422() {
 
 #[sqlx::test]
 async fn unrecognized_domain_returns_400(pool: PgPool) {
-    // Seed a school with a known domain — the signup email uses a different one.
     seed_school(&pool, "known.edu").await;
 
-    let mock = wiremock::MockServer::start().await;
-    let state = test_state(pool, &mock.uri());
+    let state = test_state(pool);
 
     let body = signup_body("alice@unknown.edu", "long enough password", "Alice");
     let resp = call_signup(&state, &body).await;
@@ -172,18 +174,7 @@ async fn unrecognized_domain_returns_400(pool: PgPool) {
 async fn successful_signup_returns_201_with_email_verified_false(pool: PgPool) {
     seed_school(&pool, "test.edu").await;
 
-    let mock = wiremock::MockServer::start().await;
-    wiremock::Mock::given(wiremock::matchers::method("POST"))
-        .and(wiremock::matchers::path("/emails"))
-        .respond_with(
-            wiremock::ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!({"id": "email-id-123"})),
-        )
-        .expect(1)
-        .mount(&mock)
-        .await;
-
-    let state = test_state(pool.clone(), &mock.uri());
+    let state = test_state(pool.clone());
 
     let body = signup_body("alice@test.edu", "correct horse battery staple", "Alice");
     let resp = call_signup(&state, &body).await;
@@ -212,17 +203,7 @@ async fn successful_signup_returns_201_with_email_verified_false(pool: PgPool) {
 async fn duplicate_email_returns_409(pool: PgPool) {
     seed_school(&pool, "test.edu").await;
 
-    let mock = wiremock::MockServer::start().await;
-    wiremock::Mock::given(wiremock::matchers::method("POST"))
-        .and(wiremock::matchers::path("/emails"))
-        .respond_with(
-            wiremock::ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!({"id": "email-id-123"})),
-        )
-        .mount(&mock)
-        .await;
-
-    let state = test_state(pool.clone(), &mock.uri());
+    let state = test_state(pool.clone());
 
     let body = signup_body("bob@test.edu", "correct horse battery staple", "Bob");
 
@@ -245,65 +226,33 @@ async fn duplicate_email_returns_409(pool: PgPool) {
 }
 
 // ===========================================================================
-// AC 5 — Resend failure → 500, user row still exists (no rollback)
+// AC 5 — Email failure is best-effort: signup returns 201, user row exists.
+//
+// With SMTP (Brevo), email sending is best-effort — the handler catches
+// errors and logs a warning. Signup always succeeds even if SMTP is
+// unreachable. The user can retry via POST /auth/resend-verification.
 // ===========================================================================
 
 #[sqlx::test]
-async fn resend_failure_returns_500_but_user_row_exists(pool: PgPool) {
+async fn signup_succeeds_even_when_smtp_is_unreachable(pool: PgPool) {
     seed_school(&pool, "test.edu").await;
 
-    // Mock Resend to return 500 — simulates an outage.
-    let mock = wiremock::MockServer::start().await;
-    wiremock::Mock::given(wiremock::matchers::method("POST"))
-        .and(wiremock::matchers::path("/emails"))
-        .respond_with(
-            wiremock::ResponseTemplate::new(500)
-                .set_body_json(serde_json::json!({"message": "internal server error"})),
-        )
-        .expect(1)
-        .mount(&mock)
-        .await;
-
-    let state = test_state(pool.clone(), &mock.uri());
+    // AppState::new() will accept any SMTP config — the actual connection
+    // only happens when send() is called. The handler catches send errors.
+    let state = test_state(pool.clone());
 
     let body = signup_body("carol@test.edu", "correct horse battery staple", "Carol");
     let resp = call_signup(&state, &body).await;
 
-    // Handler surfaces the Resend failure as a 500.
-    assert_eq!(resp.status(), 500);
-    let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["error"]["code"], "internal_server_error");
+    // Signup succeeds (201) even though SMTP will fail on send.
+    // The handler catches the error and logs a warning.
+    assert_eq!(resp.status(), 201);
 
-    // The user row was NOT rolled back — it exists with email_verified = false.
-    // This is the deliberate "allow-retry-verification" design: the client can
-    // retry signup (hits 409 for the duplicate) or a future resend-verification
-    // endpoint will handle it.
+    // The user row was created with email_verified = false.
     let verified = user_email_verified(&pool, "carol@test.edu").await;
     assert_eq!(
         verified,
         Some(false),
-        "user row must survive Resend failure with email_verified = false"
-    );
-}
-
-/// Variant: Resend is completely unreachable (connection refused) → still 500,
-/// user row still exists.
-#[sqlx::test]
-async fn resend_unreachable_returns_500_but_user_row_exists(pool: PgPool) {
-    seed_school(&pool, "test.edu").await;
-
-    // Port 1 is closed on every platform — simulates Resend being fully down.
-    let state = test_state(pool.clone(), "http://127.0.0.1:1");
-
-    let body = signup_body("dave@test.edu", "correct horse battery staple", "Dave");
-    let resp = call_signup(&state, &body).await;
-
-    assert_eq!(resp.status(), 500);
-
-    let verified = user_email_verified(&pool, "dave@test.edu").await;
-    assert_eq!(
-        verified,
-        Some(false),
-        "user row must survive Resend connection failure with email_verified = false"
+        "user row must exist with email_verified = false"
     );
 }
