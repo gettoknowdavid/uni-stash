@@ -533,9 +533,93 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-## Epic 7: WebSocket Chat Infrastructure
+## Epic 7: Partner School Management
 
-### CM-7.1 — `ChatServer` actor & registry
+### CM-7.1 — `AdminUser` extractor with DB-rechecked role
+
+**Description:** Build the admin-only Actix extractor that re-reads `role` from the `users` table on every request, never trusting a JWT claim.
+**Acceptance Criteria:**
+
+- `AdminUser` extractor implements `FromRequest`, first extracting `AuthUser` (validates JWT) then querying `users.role` from the DB
+- Non-admin users (role != 'admin') receive `403 Forbidden`
+- Missing or invalid token still returns `401` (via the inner `AuthUser` extraction)
+- The role check is explicitly documented as re-reading from DB per TRD §2.5.1, not trusting JWT claims
+- Unit test: admin user gets `AdminUser`, non-admin gets 403
+  **Technical Implementation Notes:**
+- Lives at `apps/api/src/core/auth/middleware.rs` alongside `AuthUser`.
+- Clone the DB pool before the async block to avoid holding `&HttpRequest` across an await point (HttpRequest is not Sync).
+- This extractor is reusable for any future admin-only endpoint (e.g. CM-10.1 reports moderation).
+
+---
+
+### CM-7.2 — `features/schools` scaffolding & `GET /schools` + `GET /schools/{id}`
+
+**Description:** Create the schools feature module with public read endpoints for browsing registered partner schools.
+**Acceptance Criteria:**
+
+- `features/schools/{mod.rs, handlers.rs, repo.rs, dtos.rs}` created per TRD §1.2 layout
+- `GET /schools` returns all schools ordered by name, with optional `?q=` search filtering by name or domain (case-insensitive)
+- `GET /schools/{id}` returns a single school by ID
+- Both endpoints are public (no auth required)
+- Response schema: `{ id, name, domain, created_at }`
+- Empty results return an empty array, not an error
+  **Technical Implementation Notes:**
+- Route registration in `features/schools/mod.rs`, wired into `main.rs`.
+- `SchoolsRepo` added to `AppState`.
+
+---
+
+### CM-7.3 — `POST /schools` admin-only school creation
+
+**Description:** Let admin users register new partner schools.
+**Acceptance Criteria:**
+
+- `POST /schools` requires `AdminUser` extractor (admin-only)
+- Request validated via `validator`: `name` (2–200 chars), `domain` (3–253 chars)
+- Duplicate domain returns `409 Conflict` (unique constraint on `schools.domain`)
+- Returns `201` with the created school object
+- Non-admin users receive `403 Forbidden`
+- Unauthenticated requests receive `401 Unauthorized`
+  **Technical Implementation Notes:**
+- Domain uniqueness is enforced by the DB unique constraint; the handler maps the resulting `sqlx::Error::Database` unique-violation to `AppError::Conflict` via the existing `From<sqlx::Error>` impl.
+
+---
+
+### CM-7.4 — `PATCH /schools/{id}` and `DELETE /schools/{id}` admin-only update/delete
+
+**Description:** Complete the school management CRUD with admin-only update and delete.
+**Acceptance Criteria:**
+
+- `PATCH /schools/{id}`: admin-only, partial update (only provided fields change), returns `200` with updated school
+- `PATCH` with no fields returns `400 Bad Request`
+- `PATCH` with duplicate domain returns `409 Conflict`
+- `DELETE /schools/{id}`: admin-only, returns `204 No Content` on success
+- `DELETE` of a school with referencing users returns `400` (FK violation, not cascade)
+- `DELETE` / `PATCH` of non-existent school returns `404`
+- Both endpoints rate-limited via `actix-governor` (same config as listings: 30 req/min per IP)
+  **Technical Implementation Notes:**
+- FK violation on delete is mapped to `AppError::BadRequest` by the existing `From<sqlx::Error>` impl.
+- `COALESCE($2, name)` pattern for partial updates — null fields are left unchanged.
+
+---
+
+### CM-7.5 — School integration tests
+
+**Description:** Write comprehensive integration tests covering all school CRUD operations and access control.
+**Acceptance Criteria:**
+
+- Tests cover: list schools, get school, create school (admin), create school (non-admin → 403), create school (duplicate domain → 409), update school (admin), update school (non-admin → 403), delete school (admin), delete school (non-admin → 403), delete school with users → 400, search by name, search by domain
+- Tests use `sqlx::test` for isolated DB per test
+- Tests seed admin users with `role = 'admin'` and sign JWTs via the test keypair
+  **Technical Implementation Notes:**
+- Test file: `apps/api/tests/schools_cm.rs`.
+- Reuse the `test_config` / `test_state` / `sign_access_token` pattern from existing test files.
+
+---
+
+## Epic 8: WebSocket Chat Infrastructure
+
+### CM-8.1 — `ChatServer` actor & registry
 
 **Description:** Implement the single-instance `ChatServer` actor that owns the in-memory user-session registry.
 **Acceptance Criteria:**
@@ -551,7 +635,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-7.2 — WS handshake auth & `ChatSession` connect lifecycle
+### CM-8.2 — WS handshake auth & `ChatSession` connect lifecycle
 
 **Description:** Implement the `GET /ws/chats?token=...` upgrade endpoint with pre-upgrade JWT validation and `ChatSession` actor spawning/registration.
 **Acceptance Criteria:**
@@ -565,7 +649,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-7.3 — Heartbeat (ping/pong) & dead-connection reaping
+### CM-8.3 — Heartbeat (ping/pong) & dead-connection reaping
 
 **Description:** Implement the 15s ping / 30s pong-timeout heartbeat so a dropped TCP connection doesn't stay marked "online" indefinitely.
 **Acceptance Criteria:**
@@ -578,7 +662,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-7.4 — Presence tracking & disconnect handling
+### CM-8.4 — Presence tracking & disconnect handling
 
 **Description:** Implement online/offline presence notifications to open chat threads' counterparts, and clean deregistration on disconnect.
 **Acceptance Criteria:**
@@ -592,9 +676,9 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-## Epic 8: Chat Persistence & Message Delivery
+## Epic 9: Chat Persistence & Message Delivery
 
-### CM-8.1 — `POST /chats` idempotent thread creation
+### CM-9.1 — `POST /chats` idempotent thread creation
 
 **Description:** Implement thread creation/lookup for a buyer starting a conversation about a listing.
 **Acceptance Criteria:**
@@ -607,7 +691,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-8.2 — `GET /chats` and `GET /chats/{id}/messages`
+### CM-9.2 — `GET /chats` and `GET /chats/{id}/messages`
 
 **Description:** Implement thread listing and cursor-paginated message history.
 **Acceptance Criteria:**
@@ -621,14 +705,14 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-8.3 — Message send flow: persist-first, live-forward, or mark-undelivered
+### CM-9.3 — Message send flow: persist-first, live-forward, or mark-undelivered
 
 **Description:** Implement the core send pipeline triggered by a `{ "type": "send", ... }` WS message: persist to Postgres first, then attempt live delivery.
 **Acceptance Criteria:**
 
 - On receiving a send message, `ChatSession` forwards to `ChatServer`, which persists the message to Postgres **before** attempting any live delivery (a message not in the DB never "happened," even if delivery fails)
 - `chats.last_message_at` is updated as part of the same logical operation
-- If the recipient has an active session in the registry (CM-7.1), the message is forwarded directly over their socket(s) and `delivered_at` is set
+- If the recipient has an active session in the registry (CM-8.1), the message is forwarded directly over their socket(s) and `delivered_at` is set
 - If the recipient has no active session, the message remains `delivered_at = NULL` and an FCM push is fired server-side (not client-triggered)
 - Integration test: send while recipient online → live delivery confirmed; send while recipient offline → row persisted, `delivered_at` null, push fired
   **Technical Implementation Notes:**
@@ -637,7 +721,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-8.4 — Offline delivery / reconnect sync
+### CM-9.4 — Offline delivery / reconnect sync
 
 **Description:** Implement the reconnect-time catch-up flow so a client that was offline receives everything it missed.
 **Acceptance Criteria:**
@@ -647,11 +731,11 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Confirms the `idx_messages_undelivered` partial index (Epic 2) is actually used by this query path (spot-check via `EXPLAIN`)
 - Messages delivered via sync have `delivered_at` updated accordingly
   **Technical Implementation Notes:**
-- This ticket depends on CM-7.2 (connect lifecycle) and CM-8.3 (the undelivered-message state it's syncing) both being complete.
+- This ticket depends on CM-8.2 (connect lifecycle) and CM-9.3 (the undelivered-message state it's syncing) both being complete.
 
 ---
 
-### CM-8.5 — Per-user rate limiting on message sends
+### CM-9.5 — Per-user rate limiting on message sends
 
 **Description:** Apply `actix-governor` rate limiting to the message-send path to blunt spam.
 **Acceptance Criteria:**
@@ -664,9 +748,9 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-## Epic 9: Reports & Moderation
+## Epic 10: Reports & Moderation
 
-### CM-9.1 — `POST /reports` submission endpoint
+### CM-10.1 — `POST /reports` submission endpoint
 
 **Description:** Let authenticated users flag a listing or another user.
 **Acceptance Criteria:**
@@ -680,7 +764,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-9.2 — Admin-only review endpoint with DB-rechecked role
+### CM-10.2 — Admin-only review endpoint with DB-rechecked role
 
 **Description:** Implement the moderation-side endpoint for reviewing and updating report status, with the admin check re-read from the DB rather than trusted from a JWT claim.
 **Acceptance Criteria:**
@@ -694,9 +778,9 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-## Epic 10: Flutter Client — Core Wiring
+## Epic 11: Flutter Client — Core Wiring
 
-### CM-10.1 — `forui` integration & base theming
+### CM-11.1 — `forui` integration & base theming
 
 **Description:** Add the `forui` component library and establish the app's base theme, matching the decision in TRD §5.
 **Acceptance Criteria:**
@@ -710,7 +794,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.2 — API client & Riverpod provider foundation
+### CM-11.2 — API client & Riverpod provider foundation
 
 **Description:** Build the core HTTP client wrapper and the base Riverpod provider structure the rest of the app's features will build on.
 **Acceptance Criteria:**
@@ -724,7 +808,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.3 — Auth token storage & automatic refresh handling
+### CM-11.3 — Auth token storage & automatic refresh handling
 
 **Description:** Implement secure client-side storage of access/refresh tokens and automatic refresh-on-401 handling.
 **Acceptance Criteria:**
@@ -739,7 +823,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.4 — `apps/mobile/lib/features/auth/` — signup, login, verify-email screens
+### CM-11.4 — `apps/mobile/lib/features/auth/` — signup, login, verify-email screens
 
 **Description:** Build the auth UI flows wired to the `/auth` endpoints.
 **Acceptance Criteria:**
@@ -750,11 +834,11 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Riverpod `AuthController`/provider manages auth state (logged out / logging in / logged in) consumed by the rest of the app for route guarding
   **Technical Implementation Notes:**
 - `apps/mobile/lib/features/auth/` mirrors `apps/api/src/features/auth/` per TRD §1.4's naming convention.
-- Use `forui` form components (CM-10.1) for consistency rather than raw Material widgets.
+- Use `forui` form components (CM-11.1) for consistency rather than raw Material widgets.
 
 ---
 
-### CM-10.5 — `apps/mobile/lib/features/listings/` — browse, filter, search, detail
+### CM-11.5 — `apps/mobile/lib/features/listings/` — browse, filter, search, detail
 
 **Description:** Build the listing browse/search/detail screens wired to the `/listings` endpoints.
 **Acceptance Criteria:**
@@ -762,13 +846,13 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Browse screen: category filter, search bar (`q` param), infinite-scroll pagination consuming the cursor-based API
 - Detail screen: shows images, price/barter status, seller name, and reserve/mark-sold/unreserve actions appropriate to the viewer's role (buyer vs. seller) and the listing's current status
 - Loading, empty, and error states present for both browse and detail (full polish is Epic 12, but basic states should exist here, not be entirely deferred)
-- Riverpod providers for listing list (paginated) and listing detail, following the pattern from CM-10.2
+- Riverpod providers for listing list (paginated) and listing detail, following the pattern from CM-11.2
   **Technical Implementation Notes:**
 - Reserve/mark-sold/unreserve actions should optimistically reflect the expected new status but reconcile with the server response, since a `409 Conflict` (lost the race) is an expected, handleable outcome per the backend's design — not an unexpected error.
 
 ---
 
-### CM-10.6 — `apps/mobile/lib/features/listings/` — create/edit with image upload
+### CM-11.6 — `apps/mobile/lib/features/listings/` — create/edit with image upload
 
 **Description:** Build the listing creation and editing UI, including the presign → upload → confirm image flow.
 **Acceptance Criteria:**
@@ -782,26 +866,26 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-10.7 — `apps/mobile/lib/features/categories/`
+### CM-11.7 — `apps/mobile/lib/features/categories/`
 
 **Description:** Build the (likely simple, mostly-static) category selection UI feeding into listing create/edit and browse filters.
 **Acceptance Criteria:**
 
 - Categories fetched from the backend (if a `GET /categories`-style endpoint exists — confirm whether Epic 4/TRD scoped one; if categories are seed data only with no dedicated list endpoint, document that and source them via the listings query params instead) and cached client-side
-- Category picker used consistently in both the browse filter (CM-10.5) and create/edit form (CM-10.6)
+- Category picker used consistently in both the browse filter (CM-11.5) and create/edit form (CM-11.6)
   **Technical Implementation Notes:**
 - Flag during planning: the TRD's REST table doesn't explicitly list a `GET /categories` endpoint. If genuinely missing from the backend scope, this ticket may need a small backend addendum ticket, or categories can be a small hardcoded/config list for MVP — resolve this ambiguity before starting, don't guess silently.
 
 ---
 
-## Epic 11: Flutter Client — Real-Time Chat
+## Epic 12: Flutter Client — Real-Time Chat
 
-### CM-11.1 — WebSocket client connection & Riverpod chat provider
+### CM-12.1 — WebSocket client connection & Riverpod chat provider
 
 **Description:** Build the client-side WS connection lifecycle wired into a Riverpod provider, mirroring the backend's connect/heartbeat/reconnect design.
 **Acceptance Criteria:**
 
-- WS client connects to `/ws/chats?token=<access_token>`, using the currently valid access token from CM-10.3's token storage
+- WS client connects to `/ws/chats?token=<access_token>`, using the currently valid access token from CM-11.3's token storage
 - Handles the server's heartbeat (responds to pings) so the connection isn't reaped by the 30s timeout
 - On unexpected disconnect, client attempts reconnect with backoff, re-authenticating with a (possibly refreshed) token
 - Riverpod provider exposes connection state (connected/connecting/disconnected) to the rest of the chat UI
@@ -811,7 +895,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-11.2 — Thread list & message history (REST-backed)
+### CM-12.2 — Thread list & message history (REST-backed)
 
 **Description:** Build the chat thread list and message history screens backed by `GET /chats` and `GET /chats/{id}/messages`.
 **Acceptance Criteria:**
@@ -820,11 +904,11 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Message history screen paginates upward (`before` cursor) as the user scrolls back
 - Initial load and pagination both go through REST, independent of WS connection state (per TRD §2.6 — REST is ground truth even if WS is momentarily down)
   **Technical Implementation Notes:**
-- Riverpod provider for thread list should be simple to keep in sync with CM-11.3's live-update logic — consider whether the same provider that holds REST-loaded threads is the one live WS events mutate, to avoid two divergent sources of truth in the UI layer.
+- Riverpod provider for thread list should be simple to keep in sync with CM-12.3's live-update logic — consider whether the same provider that holds REST-loaded threads is the one live WS events mutate, to avoid two divergent sources of truth in the UI layer.
 
 ---
 
-### CM-11.3 — Live message handling & reconnect/sync integration
+### CM-12.3 — Live message handling & reconnect/sync integration
 
 **Description:** Wire incoming live WS messages into the chat UI, and implement the client side of the reconnect/sync protocol from CM-8.4.
 **Acceptance Criteria:**
@@ -837,7 +921,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-11.4 — FCM push notification handling (client-side)
+### CM-12.4 — FCM push notification handling (client-side)
 
 **Description:** Register the client for FCM push and handle incoming notifications for new messages when the app is backgrounded/closed.
 **Acceptance Criteria:**
@@ -846,13 +930,13 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 - Tapping a push notification deep-links into the relevant chat thread
 - Foreground message handling doesn't double-notify when the WS connection is already live and has delivered the message via CM-11.3
   **Technical Implementation Notes:**
-- Same ambiguity flag as CM-10.7: the TRD mentions FCM push is "fired server-side" (CM-8.3) but doesn't explicitly detail a token-registration endpoint in its REST table — confirm with backend scope before starting; likely needs a small `POST /auth/fcm-token` or similar addendum if it doesn't already exist.
+- Same ambiguity flag as CM-11.7: the TRD mentions FCM push is "fired server-side" (CM-9.3) but doesn't explicitly detail a token-registration endpoint in its REST table — confirm with backend scope before starting; likely needs a small `POST /auth/fcm-token` or similar addendum if it doesn't already exist.
 
 ---
 
-## Epic 12: Hardening, Rate Limiting & Error States
+## Epic 13: Hardening, Rate Limiting & Error States
 
-### CM-12.1 — Rate limiting audit across all sensitive endpoints
+### CM-13.1 — Rate limiting audit across all sensitive endpoints
 
 **Description:** Confirm `actix-governor` limits are actually applied and correctly configured across every endpoint identified as sensitive in the TRD, not just the ones built first.
 **Acceptance Criteria:**
@@ -865,7 +949,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-12.2 — Client-side empty/error/loading states across all screens
+### CM-13.2 — Client-side empty/error/loading states across all screens
 
 **Description:** Do a systematic pass across every Flutter screen ensuring the three baseline UI states are handled, not just the happy path.
 **Acceptance Criteria:**
@@ -878,7 +962,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-12.3 — Server-side validation edge-case sweep
+### CM-13.3 — Server-side validation edge-case sweep
 
 **Description:** Systematically verify every mutating endpoint's `422` validation behavior against edge cases beyond the ones exercised by earlier feature tickets' happy-path tests.
 **Acceptance Criteria:**
@@ -891,7 +975,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-12.4 — HSTS & HTTPS enforcement confirmation in deployed environment
+### CM-13.4 — HSTS & HTTPS enforcement confirmation in deployed environment
 
 **Description:** Verify transport security is correctly enforced in the actual deployed environment, not just configured in code.
 **Acceptance Criteria:**
@@ -904,9 +988,9 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-## Epic 13: Load Testing & Deployment Finalization
+## Epic 14: Load Testing & Deployment Finalization
 
-### CM-13.1 — `k6` load test targeting `POST /listings/{id}/reserve`
+### CM-14.1 — `k6` load test targeting `POST /listings/{id}/reserve`
 
 **Description:** Write and run a `k6` load test specifically hammering the highest-contention endpoint to produce real concurrency numbers.
 **Acceptance Criteria:**
@@ -920,7 +1004,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-13.2 — CI: path-filtered `backend`/`frontend` jobs, fully wired
+### CM-14.2 — CI: path-filtered `backend`/`frontend` jobs, fully wired
 
 **Description:** Complete the CI workflow stubbed in CM-1.1, implementing the real steps for both jobs with correct path filtering.
 **Acceptance Criteria:**
@@ -935,7 +1019,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-13.3 — CD: explicit `sqlx migrate run` deploy step + Shuttle.rs deploy
+### CM-14.3 — CD: explicit `sqlx migrate run` deploy step + Shuttle.rs deploy
 
 **Description:** Finalize the production deployment pipeline with migrations run as a separate, explicit step — never silently on app boot.
 **Acceptance Criteria:**
@@ -948,7 +1032,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 
 ---
 
-### CM-13.4 — Secrets audit
+### CM-14.4 — Secrets audit
 
 **Description:** Do a final pass confirming no secret material is committed to the repo and everything sensitive is properly injected via GitHub Actions secrets / Shuttle.rs config.
 **Acceptance Criteria:**
@@ -971,13 +1055,14 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 | 4 — Listings CRUD & State Machine    | 8            | CM-4.6 is the project's centerpiece ticket     |
 | 5 — Full-Text Search                 | 2            | Small, layered on Epic 4                       |
 | 6 — Image Upload Pipeline            | 3            |                                                |
-| 7 — WebSocket Chat Infrastructure    | 4            | CM-7.4 partially trimmable under time pressure |
-| 8 — Chat Persistence & Delivery      | 5            | CM-8.3 is this epic's centerpiece              |
-| 9 — Reports & Moderation             | 2            | Safe to defer to Phase 5 per epics doc         |
-| 10 — Flutter Core Wiring             | 7            | CM-10.7 flags a possible backend scope gap     |
-| 11 — Flutter Real-Time Chat          | 4            | CM-11.4 flags a possible backend scope gap     |
-| 12 — Hardening & Error States        | 4            | Audit/closure tickets, not new features        |
-| 13 — Load Test & Deploy Finalization | 4            |                                                |
-| **Total**                            | **64**       |                                                |
+| 7 — Partner School Management        | 5            | AdminUser extractor reusable for Epic 10       |
+| 8 — WebSocket Chat Infrastructure    | 4            | CM-8.4 partially trimmable under time pressure |
+| 9 — Chat Persistence & Delivery      | 5            | CM-9.3 is this epic's centerpiece              |
+| 10 — Reports & Moderation            | 2            | Safe to defer to Phase 5 per epics doc         |
+| 11 — Flutter Core Wiring             | 7            | CM-11.7 flags a possible backend scope gap     |
+| 12 — Flutter Real-Time Chat          | 4            | CM-12.4 flags a possible backend scope gap     |
+| 13 — Hardening & Error States        | 4            | Audit/closure tickets, not new features        |
+| 14 — Load Test & Deploy Finalization | 4            |                                                |
+| **Total**                            | **69**       |                                                |
 
-**Flagged scope gaps to resolve before sprint planning:** CM-10.7 (categories list endpoint) and CM-11.4 (FCM token registration endpoint) both reference backend surface area not explicitly itemized in the TRD's REST tables — confirm during backlog grooming whether these need small backend addendum tickets under Epic 4 (categories) and Epic 3 or 8 (FCM token registration) respectively.
+**Flagged scope gaps to resolve before sprint planning:** CM-11.7 (categories list endpoint) and CM-12.4 (FCM token registration endpoint) both reference backend surface area not explicitly itemized in the TRD's REST tables — confirm during backlog grooming whether these need small backend addendum tickets under Epic 4 (categories) and Epic 3 or 9 (FCM token registration) respectively.

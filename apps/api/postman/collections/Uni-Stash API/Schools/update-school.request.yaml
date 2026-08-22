@@ -1,0 +1,14 @@
+$kind: http-request
+name: Update School
+method: PATCH
+url: '{{baseUrl}}/api/v1/schools/{{schoolId}}'
+order: 5000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "University of Port Harcourt (Updated)"
+    }

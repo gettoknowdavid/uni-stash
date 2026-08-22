@@ -1,0 +1,12 @@
+$kind: environment
+name: Dev (Local)
+values:
+  - key: baseUrl
+    value: http://localhost:8080
+    type: default
+  - key: accessToken
+    value: ""
+    type: secret
+  - key: refreshToken
+    value: ""
+    type: secret
