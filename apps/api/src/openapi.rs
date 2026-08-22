@@ -4,6 +4,7 @@ use utoipa::OpenApi;
 use crate::core::error::{ErrorResponse, ErrorResponseBody, FieldError};
 use crate::features::auth::dtos::*;
 use crate::features::auth::models::UserProfile;
+use crate::features::images::dtos::*;
 use crate::features::listings::dtos::*;
 use crate::features::listings::models::{Condition, ListingStatus};
 
@@ -165,11 +166,13 @@ pub async fn create_listing() -> HttpResponse {
 /// Browse and filter listings with cursor-based pagination.
 ///
 /// Public endpoint — no authentication required. Defaults to active listings.
+/// Pass `q` for full-text search ranked by relevance (title weighted above description).
 #[utoipa::path(
     get,
     path = "/api/v1/listings",
     tag = "listings",
     params(
+        ("q" = Option<String>, Query, description = "Full-text search query (ranks by relevance)"),
         ("category" = Option<i16>, Query, description = "Filter by category ID"),
         ("min_price" = Option<i32>, Query, description = "Minimum price filter"),
         ("max_price" = Option<i32>, Query, description = "Maximum price filter"),
@@ -323,6 +326,81 @@ pub async fn unreserve_listing() -> HttpResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Images (Epic 6)
+// ---------------------------------------------------------------------------
+
+/// Get a presigned URL for direct image upload to cloud storage.
+///
+/// The backend never proxies image bytes. Instead it hands the client a
+/// short-lived PUT URL for uploading directly to Backblaze B2.
+///
+/// Enforces max 3 images per listing. Only the listing owner can request
+/// a presign. Content type must be `image/jpeg`, `image/png`, or `image/webp`.
+#[utoipa::path(
+    post,
+    path = "/api/v1/images/presign",
+    tag = "images",
+    security(("bearer" = [])),
+    request_body = PresignRequest,
+    responses(
+        (status = 200, description = "Presigned upload URL issued", body = PresignResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not the listing owner", body = ErrorResponse),
+        (status = 404, description = "Listing not found", body = ErrorResponse),
+        (status = 422, description = "Validation failed (e.g. unsupported content type)", body = ErrorResponse)
+    )
+)]
+pub async fn presign_image() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Confirm that an image upload completed successfully.
+///
+/// After the client uploads to the presigned URL, it calls this endpoint.
+/// The server performs a HEAD check against B2 to verify the object exists
+/// and is within size limits (max 10 MiB) before inserting the DB row.
+#[utoipa::path(
+    post,
+    path = "/api/v1/images/confirm",
+    tag = "images",
+    security(("bearer" = [])),
+    request_body = ConfirmRequest,
+    responses(
+        (status = 201, description = "Image registered", body = ConfirmResponse),
+        (status = 400, description = "Object not found in storage or file too large", body = ErrorResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not the listing owner", body = ErrorResponse),
+        (status = 404, description = "Listing not found", body = ErrorResponse)
+    )
+)]
+pub async fn confirm_image() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Delete an image from a listing.
+///
+/// Only the listing owner can delete. Removes both the DB row and the
+/// underlying object from cloud storage (best-effort cleanup).
+#[utoipa::path(
+    delete,
+    path = "/api/v1/images/{id}",
+    tag = "images",
+    security(("bearer" = [])),
+    params(
+        ("id" = uuid::Uuid, Path, description = "Image ID")
+    ),
+    responses(
+        (status = 204, description = "Image deleted"),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not the listing owner", body = ErrorResponse),
+        (status = 404, description = "Image not found", body = ErrorResponse)
+    )
+)]
+pub async fn delete_image() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+// ---------------------------------------------------------------------------
 // OpenAPI document
 // ---------------------------------------------------------------------------
 
@@ -337,12 +415,14 @@ pub async fn unreserve_listing() -> HttpResponse {
     ),
     paths(
         health,
+        // Auth
         signup,
         verify_email,
         login,
         refresh,
         logout,
         me,
+        // Listings
         create_listing,
         list_listings,
         get_listing_detail,
@@ -351,6 +431,10 @@ pub async fn unreserve_listing() -> HttpResponse {
         reserve_listing,
         mark_sold,
         unreserve_listing,
+        // Images
+        presign_image,
+        confirm_image,
+        delete_image,
     ),
     components(schemas(
         // Auth
@@ -374,6 +458,11 @@ pub async fn unreserve_listing() -> HttpResponse {
         CategorySummary,
         ImageSummary,
         UpdateListingRequest,
+        // Images
+        PresignRequest,
+        PresignResponse,
+        ConfirmRequest,
+        ConfirmResponse,
         // Shared
         Condition,
         ListingStatus,
@@ -382,9 +471,10 @@ pub async fn unreserve_listing() -> HttpResponse {
         ErrorResponseBody,
     )),
     tags(
-        (name = "health", description = "Health check endpoints"),
+        (name = "health", description = "Health check"),
         (name = "auth", description = "Authentication and account management"),
-        (name = "listings", description = "Listing CRUD, browsing, and state machine")
+        (name = "listings", description = "Listing CRUD, browsing, search, and state machine"),
+        (name = "images", description = "Image upload pipeline (presign, confirm, delete)")
     )
 )]
 pub struct ApiDoc;
