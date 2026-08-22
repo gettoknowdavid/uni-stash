@@ -82,6 +82,10 @@ impl From<models::Listing> for ListingResponse {
 
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct ListListingsQuery {
+    /// Full-text search query. When present, results are ranked by relevance
+    /// (title weighted above description) instead of recency.
+    #[schema(example = "organic chemistry")]
+    pub q: Option<String>,
     #[schema(example = 1)]
     pub category: Option<i16>,
     #[schema(example = 10)]
@@ -113,6 +117,8 @@ pub struct ListingSummary {
 }
 
 pub struct ListingFilters {
+    /// When Some, performs a full-text search ordered by relevance.
+    pub search_query: Option<String>,
     pub category: Option<i16>,
     pub min_price: Option<i32>,
     pub max_price: Option<i32>,
