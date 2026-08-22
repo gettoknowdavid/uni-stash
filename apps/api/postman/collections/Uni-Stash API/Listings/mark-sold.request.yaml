@@ -1,0 +1,6 @@
+$kind: http-request
+name: Mark Sold
+method: POST
+url: '{{baseUrl}}/api/v1/listings/{{listingId}}/mark-sold'
+order: 8000
+headers: []

@@ -1,0 +1,6 @@
+$kind: http-request
+name: Unreserve Listing
+method: POST
+url: '{{baseUrl}}/api/v1/listings/{{listingId}}/unreserve'
+order: 7500
+headers: []
