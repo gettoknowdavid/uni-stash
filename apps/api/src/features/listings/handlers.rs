@@ -6,8 +6,8 @@ use crate::{
     features::listings::{
         cursor::decode_cursor,
         dtos::{
-            CreateListingRequest, InsertListingInput, ListingFilters, ListingPatch,
-            ListListingsQuery, ListListingsResponse, ListingResponse, UpdateListingRequest,
+            CreateListingRequest, InsertListingInput, ListListingsQuery, ListListingsResponse,
+            ListingFilters, ListingPatch, ListingResponse, UpdateListingRequest,
         },
         models::ListingStatus,
         state_machine,
@@ -114,9 +114,7 @@ pub async fn get_listing_detail(
 
     // Owner-only visibility for deleted listings
     let requester_id = user.as_ref().map(|u| u.id);
-    if detail.status == ListingStatus::Deleted
-        && requester_id != Some(detail.seller.id)
-    {
+    if detail.status == ListingStatus::Deleted && requester_id != Some(detail.seller.id) {
         return Err(AppError::NotFound("listing not found".into()));
     }
 
@@ -184,8 +182,7 @@ pub async fn reserve_listing(
     // buyer_id derived from the authenticated user — never from the
     // request body, consistent with the "never trust the body for
     // identity" pattern used in CM-4.1.
-    let listing =
-        state_machine::reserve_listing(&state.db, path.into_inner(), user.id).await?;
+    let listing = state_machine::reserve_listing(&state.db, path.into_inner(), user.id).await?;
 
     Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
 }
@@ -199,8 +196,7 @@ pub async fn mark_sold(
     path: web::Path<uuid::Uuid>,
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
-    let listing =
-        state_machine::mark_sold(&state.db, path.into_inner(), user.id).await?;
+    let listing = state_machine::mark_sold(&state.db, path.into_inner(), user.id).await?;
 
     Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
 }
@@ -210,8 +206,7 @@ pub async fn unreserve_listing(
     path: web::Path<uuid::Uuid>,
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
-    let listing =
-        state_machine::unreserve(&state.db, path.into_inner(), user.id).await?;
+    let listing = state_machine::unreserve(&state.db, path.into_inner(), user.id).await?;
 
     Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
 }

@@ -44,6 +44,8 @@ async fn main() -> anyhow::Result<()> {
             .app_data(state.clone())
             .configure(configure_health)
             .configure(features::auth::configure)
+            .configure(features::admin_auth::configure)
+            .configure(features::admin_management::configure)
             .configure(features::listings::configure)
             .configure(features::images::configure)
             .configure(features::schools::configure)

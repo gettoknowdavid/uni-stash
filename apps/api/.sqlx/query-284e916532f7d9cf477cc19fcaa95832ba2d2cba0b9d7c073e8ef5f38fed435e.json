@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin_otps\n             WHERE expires_at < now()\n                OR (used_at IS NOT NULL AND used_at < now() - interval '24 hours')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "284e916532f7d9cf477cc19fcaa95832ba2d2cba0b9d7c073e8ef5f38fed435e"
+}

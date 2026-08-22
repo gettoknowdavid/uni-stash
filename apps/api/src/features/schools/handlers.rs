@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, web};
 use serde_json::json;
 use validator::Validate;
 
-use crate::core::auth::middleware::AdminUser;
+use crate::core::auth::middleware::AdminSession;
 use crate::core::error::AppError;
 use crate::core::json::ValidatedJson;
 use crate::core::state::AppState;
@@ -65,11 +65,15 @@ pub async fn get_school(
 // ---------------------------------------------------------------------------
 
 pub async fn create_school(
-    _admin: AdminUser,
+    session: AdminSession,
     state: web::Data<AppState>,
     body: ValidatedJson<CreateSchoolRequest>,
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
+
+    if !session.can("schools", "write") {
+        return Err(AppError::Forbidden);
+    }
 
     let school = state
         .schools_repo
@@ -89,13 +93,17 @@ pub async fn create_school(
 // ---------------------------------------------------------------------------
 
 pub async fn update_school(
-    _admin: AdminUser,
+    session: AdminSession,
     state: web::Data<AppState>,
     path: web::Path<i16>,
     body: ValidatedJson<UpdateSchoolRequest>,
 ) -> Result<HttpResponse, AppError> {
     let school_id = path.into_inner();
     body.validate()?;
+
+    if !session.can("schools", "write") {
+        return Err(AppError::Forbidden);
+    }
 
     // Ensure at least one field is being updated
     if body.name.is_none() && body.domain.is_none() {
@@ -120,11 +128,16 @@ pub async fn update_school(
 // ---------------------------------------------------------------------------
 
 pub async fn delete_school(
-    _admin: AdminUser,
+    session: AdminSession,
     state: web::Data<AppState>,
     path: web::Path<i16>,
 ) -> Result<HttpResponse, AppError> {
     let school_id = path.into_inner();
+
+    if !session.can("schools", "write") {
+        return Err(AppError::Forbidden);
+    }
+
     state.schools_repo.delete_school(school_id).await?;
 
     Ok(HttpResponse::NoContent().finish())

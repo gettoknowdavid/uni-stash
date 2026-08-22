@@ -65,7 +65,8 @@ async fn seed_school(pool: &PgPool, domain: &str) -> i16 {
 
 async fn insert_user(pool: &PgPool, school_id: i16, email: &str, email_verified: bool) -> User {
     let hash = password::hash_password("correct horse battery staple").expect("hash password");
-    sqlx::query_as!(User,
+    sqlx::query_as!(
+        User,
         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified, role)
          VALUES ($1, $2, $3, 'Test User', $4, 'student')
          RETURNING *",
@@ -99,24 +100,24 @@ async fn insert_refresh_token(pool: &PgPool, user_id: Uuid, family_id: Uuid) -> 
 
 async fn find_token_by_hash(pool: &PgPool, plain: &str) -> RefreshToken {
     let hash = refresh_token::hash_refresh_token(plain);
-    sqlx::query_as!(RefreshToken, "SELECT * FROM refresh_tokens WHERE token_hash = $1", &hash)
-        .fetch_one(pool)
-        .await
-        .expect("find token by hash")
+    sqlx::query_as!(
+        RefreshToken,
+        "SELECT * FROM refresh_tokens WHERE token_hash = $1",
+        &hash
+    )
+    .fetch_one(pool)
+    .await
+    .expect("find token by hash")
 }
 
 async fn call_logout(
     state: &web::Data<AppState>,
     refresh_token: &str,
 ) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/logout",
-                web::post().to(uni_stash_be::features::auth::handlers::logout),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/logout",
+        web::post().to(uni_stash_be::features::auth::handlers::logout),
+    ))
     .await;
 
     let req = test::TestRequest::post()
@@ -131,14 +132,10 @@ async fn call_me(
     state: &web::Data<AppState>,
     access_token: &str,
 ) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/me",
-                web::get().to(uni_stash_be::features::auth::handlers::me),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/me",
+        web::get().to(uni_stash_be::features::auth::handlers::me),
+    ))
     .await;
 
     let req = test::TestRequest::get()
@@ -247,20 +244,14 @@ async fn me_valid_token_returns_200_with_profile(pool: PgPool) {
 async fn me_no_token_returns_401(pool: PgPool) {
     let state = test_state(pool);
 
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/me",
-                web::get().to(uni_stash_be::features::auth::handlers::me),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/me",
+        web::get().to(uni_stash_be::features::auth::handlers::me),
+    ))
     .await;
 
     // No Authorization header at all.
-    let req = test::TestRequest::get()
-        .uri("/api/v1/auth/me")
-        .to_request();
+    let req = test::TestRequest::get().uri("/api/v1/auth/me").to_request();
 
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), 401, "missing token must return 401");

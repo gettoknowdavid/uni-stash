@@ -1,3 +1,4 @@
+pub mod admin_jwt;
 pub mod jwt;
 pub mod middleware;
 pub mod otp;

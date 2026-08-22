@@ -2,9 +2,9 @@ use std::future::Future;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 
-use actix_web::dev::Payload;
 use actix_web::FromRequest;
 use actix_web::HttpRequest;
+use actix_web::dev::Payload;
 
 use crate::core::error::{AppError, FieldError};
 
@@ -113,7 +113,7 @@ mod tests {
     use super::*;
     use actix_web::http::StatusCode;
     use actix_web::test as actix_test;
-    use actix_web::{web, App, HttpResponse};
+    use actix_web::{App, HttpResponse, web};
 
     // ---- Types used by tests ----
 
@@ -143,10 +143,8 @@ mod tests {
 
     #[actix_web::test]
     async fn valid_json_deserializes_ok() {
-        let app = actix_test::init_service(
-            App::new().route("/", web::post().to(echo_simple)),
-        )
-        .await;
+        let app =
+            actix_test::init_service(App::new().route("/", web::post().to(echo_simple))).await;
 
         let req = actix_test::TestRequest::post()
             .uri("/")
@@ -159,10 +157,8 @@ mod tests {
 
     #[actix_web::test]
     async fn invalid_json_returns_422_validation_error() {
-        let app = actix_test::init_service(
-            App::new().route("/", web::post().to(echo_simple)),
-        )
-        .await;
+        let app =
+            actix_test::init_service(App::new().route("/", web::post().to(echo_simple))).await;
 
         let req = actix_test::TestRequest::post()
             .uri("/")
@@ -181,10 +177,7 @@ mod tests {
 
     #[actix_web::test]
     async fn unknown_enum_variant_surfaces_variant_name() {
-        let app = actix_test::init_service(
-            App::new().route("/", web::post().to(echo_color)),
-        )
-        .await;
+        let app = actix_test::init_service(App::new().route("/", web::post().to(echo_color))).await;
 
         // "broken" is not a valid Color variant
         let req = actix_test::TestRequest::post()
@@ -200,10 +193,7 @@ mod tests {
         assert_eq!(body["error"]["code"], "validation");
         let fields = body["error"]["fields"].as_array().unwrap();
         assert!(
-            fields[0]["message"]
-                .as_str()
-                .unwrap()
-                .contains("broken"),
+            fields[0]["message"].as_str().unwrap().contains("broken"),
             "expected variant name in error message, got: {}",
             fields[0]["message"]
         );
@@ -211,10 +201,8 @@ mod tests {
 
     #[actix_web::test]
     async fn malformed_json_returns_422() {
-        let app = actix_test::init_service(
-            App::new().route("/", web::post().to(echo_simple)),
-        )
-        .await;
+        let app =
+            actix_test::init_service(App::new().route("/", web::post().to(echo_simple))).await;
 
         let req = actix_test::TestRequest::post()
             .uri("/")
@@ -233,10 +221,8 @@ mod tests {
     async fn missing_content_type_produces_422() {
         // actix's Json extractor rejects missing content-type;
         // our wrapper surfaces it as a validation error.
-        let app = actix_test::init_service(
-            App::new().route("/", web::post().to(echo_simple)),
-        )
-        .await;
+        let app =
+            actix_test::init_service(App::new().route("/", web::post().to(echo_simple))).await;
 
         let req = actix_test::TestRequest::post()
             .uri("/")

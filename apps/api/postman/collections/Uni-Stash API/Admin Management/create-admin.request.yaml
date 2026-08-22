@@ -1,0 +1,29 @@
+$kind: http-request
+name: Create Admin
+method: POST
+url: '{{baseUrl}}/api/v1/admin/admins'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminAccessToken}}"
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "newadmin@university.edu",
+      "password": "Password123!",
+      "display_name": "New Admin",
+      "level": "standard"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("adminId", body.id);
+      }

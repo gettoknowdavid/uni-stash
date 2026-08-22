@@ -45,9 +45,7 @@ pub async fn reserve_listing(
 
     if row.status != "active" {
         let _ = tx.rollback().await;
-        return Err(AppError::Conflict(
-            "listing is no longer available".into(),
-        ));
+        return Err(AppError::Conflict("listing is no longer available".into()));
     }
     if row.seller_id == buyer_id {
         let _ = tx.rollback().await;

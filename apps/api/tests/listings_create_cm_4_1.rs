@@ -66,7 +66,12 @@ async fn seed_school(pool: &PgPool, domain: &str) -> i16 {
 
 /// Insert a user directly into the DB with the given email_verified flag.
 /// Returns the user's UUID.
-async fn seed_verified_user(pool: &PgPool, school_id: i16, email: &str, email_verified: bool) -> uuid::Uuid {
+async fn seed_verified_user(
+    pool: &PgPool,
+    school_id: i16,
+    email: &str,
+    email_verified: bool,
+) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified)
          VALUES ($1, $2, 'dummy_hash', 'Test User', $3)
@@ -128,7 +133,12 @@ fn listing_body(title: &str, category_id: i16) -> serde_json::Value {
     })
 }
 
-fn full_listing_body(title: &str, category_id: i16, price: Option<i32>, condition: &str) -> serde_json::Value {
+fn full_listing_body(
+    title: &str,
+    category_id: i16,
+    price: Option<i32>,
+    condition: &str,
+) -> serde_json::Value {
     let mut body = serde_json::json!({
         "title": title,
         "category_id": category_id,
@@ -145,14 +155,10 @@ async fn call_create_listing(
     body: &serde_json::Value,
     auth_header: Option<&str>,
 ) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/listings",
-                web::post().to(uni_stash_be::features::listings::handlers::create_listing),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/listings",
+        web::post().to(uni_stash_be::features::listings::handlers::create_listing),
+    ))
     .await;
 
     let mut builder = test::TestRequest::post()
@@ -218,9 +224,9 @@ async fn create_listing_requires_email_verified(pool: PgPool) {
 
 #[actix_web::test]
 async fn create_listing_validates_title_before_db_call() {
-    use validator::Validate;
     use uni_stash_be::features::listings::dtos::CreateListingRequest;
     use uni_stash_be::features::listings::models;
+    use validator::Validate;
 
     // Empty title fails validation
     let req = CreateListingRequest {
@@ -238,9 +244,9 @@ async fn create_listing_validates_title_before_db_call() {
 
 #[actix_web::test]
 async fn create_listing_rejects_negative_price() {
-    use validator::Validate;
     use uni_stash_be::features::listings::dtos::CreateListingRequest;
     use uni_stash_be::features::listings::models;
+    use validator::Validate;
 
     let req = CreateListingRequest {
         title: "Laptop".into(),
@@ -279,7 +285,11 @@ async fn empty_title_does_not_insert_row(pool: PgPool) {
     assert_eq!(json["error"]["code"], "validation");
 
     // Prove no row was inserted
-    assert_eq!(listing_count(&pool).await, 0, "validation failure must not insert a row");
+    assert_eq!(
+        listing_count(&pool).await,
+        0,
+        "validation failure must not insert a row"
+    );
 }
 
 // ===========================================================================

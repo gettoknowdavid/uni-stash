@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, PartialEq, sqlx::Type, serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
+#[derive(Clone, Debug, PartialEq, sqlx::Type, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum ListingStatus {
@@ -29,7 +29,7 @@ impl ToString for ListingStatus {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, sqlx::Type, serde::Deserialize, serde::Serialize, utoipa::ToSchema)]
+#[derive(Clone, Debug, PartialEq, sqlx::Type, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum Condition {

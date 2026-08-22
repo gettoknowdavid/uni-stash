@@ -30,7 +30,9 @@ fn test_state(pool: PgPool) -> web::Data<AppState> {
 
 async fn seed_school(pool: &PgPool) -> i16 {
     sqlx::query_scalar("INSERT INTO schools (name, domain) VALUES ('T', 't.edu') RETURNING id")
-        .fetch_one(pool).await.unwrap()
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
 
 async fn seed_user(pool: &PgPool, school_id: i16, email: &str) -> uuid::Uuid {
@@ -40,8 +42,13 @@ async fn seed_user(pool: &PgPool, school_id: i16, email: &str) -> uuid::Uuid {
 }
 
 async fn seed_category(pool: &PgPool, slug: &str) -> i16 {
-    sqlx::query_scalar::<_, i16>("INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id")
-        .bind(slug).fetch_one(pool).await.unwrap()
+    sqlx::query_scalar::<_, i16>(
+        "INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id",
+    )
+    .bind(slug)
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
 async fn seed_listing(pool: &PgPool, seller: uuid::Uuid, cat: i16) -> uuid::Uuid {
@@ -51,28 +58,42 @@ async fn seed_listing(pool: &PgPool, seller: uuid::Uuid, cat: i16) -> uuid::Uuid
     ).bind(seller).bind(cat).fetch_one(pool).await.unwrap()
 }
 
-fn sign_token(keys: &uni_stash_be::core::clients::JwtKeys, user_id: uuid::Uuid, email: &str) -> String {
+fn sign_token(
+    keys: &uni_stash_be::core::clients::JwtKeys,
+    user_id: uuid::Uuid,
+    email: &str,
+) -> String {
     let user = uni_stash_be::features::auth::models::User {
-        id: user_id, school_id: 1, email: email.into(), display_name: "U".into(),
-        email_verified: true, role: "student".into(),
-        created_at: time::OffsetDateTime::now_utc(), updated_at: time::OffsetDateTime::now_utc(),
+        id: user_id,
+        school_id: 1,
+        email: email.into(),
+        display_name: "U".into(),
+        email_verified: true,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
         password_hash: String::new(),
     };
     jwt::sign_access_token(keys, &user).unwrap()
 }
 
 async fn call_update(
-    state: &web::Data<AppState>, listing_id: uuid::Uuid,
-    body: &serde_json::Value, token: &str,
+    state: &web::Data<AppState>,
+    listing_id: uuid::Uuid,
+    body: &serde_json::Value,
+    token: &str,
 ) -> actix_web::dev::ServiceResponse {
     let app = test::init_service(
-        App::new().app_data(state.clone())
+        App::new()
+            .app_data(state.clone())
             .route("/api/v1/listings/{id}", web::patch().to(update_listing)),
-    ).await;
+    )
+    .await;
     let req = test::TestRequest::patch()
         .uri(&format!("/api/v1/listings/{listing_id}"))
         .insert_header(("Authorization", format!("Bearer {token}")))
-        .set_json(body).to_request();
+        .set_json(body)
+        .to_request();
     test::call_service(&app, req).await
 }
 
@@ -118,7 +139,9 @@ async fn editing_reserved_listing_returns_409(pool: PgPool) {
     let buyer = seed_user(&pool, school, "b@test.edu").await;
     let cat = seed_category(&pool, "x").await;
     let id = seed_listing(&pool, seller, cat).await;
-    state_machine::reserve_listing(&pool, id, buyer).await.unwrap();
+    state_machine::reserve_listing(&pool, id, buyer)
+        .await
+        .unwrap();
 
     let state = test_state(pool);
     let token = sign_token(&state.jwt_keys, seller, "s@test.edu");
@@ -171,9 +194,12 @@ async fn updating_title_refires_search_vector_trigger(pool: PgPool) {
     let id = seed_listing(&pool, seller, cat).await;
 
     // Read initial search_vector
-    let sv_before: String = sqlx::query_scalar(
-        "SELECT search_vector::text FROM listings WHERE id = $1",
-    ).bind(id).fetch_one(&pool).await.unwrap();
+    let sv_before: String =
+        sqlx::query_scalar("SELECT search_vector::text FROM listings WHERE id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
 
     let state = test_state(pool.clone());
     let token = sign_token(&state.jwt_keys, seller, "s@test.edu");
@@ -181,11 +207,17 @@ async fn updating_title_refires_search_vector_trigger(pool: PgPool) {
     let resp = call_update(&state, id, &body, &token).await;
     assert_eq!(resp.status(), 200);
 
-    let sv_after: String = sqlx::query_scalar(
-        "SELECT search_vector::text FROM listings WHERE id = $1",
-    ).bind(id).fetch_one(&pool).await.unwrap();
+    let sv_after: String =
+        sqlx::query_scalar("SELECT search_vector::text FROM listings WHERE id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
 
-    assert_ne!(sv_before, sv_after, "search_vector must change when title is updated");
+    assert_ne!(
+        sv_before, sv_after,
+        "search_vector must change when title is updated"
+    );
 }
 
 #[sqlx::test]

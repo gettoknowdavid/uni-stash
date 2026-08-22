@@ -119,8 +119,24 @@ async fn search_finds_listings_by_title_term(pool: PgPool) {
     let seller = seed_user(&pool, school, "seller@test.edu").await;
     let cat = seed_category(&pool, "textbooks").await;
 
-    seed_listing_with_text(&pool, seller, cat, "Organic Chemistry", "A comprehensive textbook", Some(45)).await;
-    seed_listing_with_text(&pool, seller, cat, "Calculus I", "Intro to calculus", Some(30)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Organic Chemistry",
+        "A comprehensive textbook",
+        Some(45),
+    )
+    .await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Calculus I",
+        "Intro to calculus",
+        Some(30),
+    )
+    .await;
 
     let state = test_state(pool);
     let resp = call_search(&state, "?q=chemistry").await;
@@ -139,8 +155,24 @@ async fn search_finds_listings_by_description_term(pool: PgPool) {
     let cat = seed_category(&pool, "electronics").await;
 
     // "laptop" only appears in the description, not the title
-    seed_listing_with_text(&pool, seller, cat, "Portable Computer", "A powerful laptop for students", Some(500)).await;
-    seed_listing_with_text(&pool, seller, cat, "Desktop PC", "A powerful desktop for students", Some(300)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Portable Computer",
+        "A powerful laptop for students",
+        Some(500),
+    )
+    .await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Desktop PC",
+        "A powerful desktop for students",
+        Some(300),
+    )
+    .await;
 
     let state = test_state(pool);
     let resp = call_search(&state, "?q=laptop").await;
@@ -148,7 +180,11 @@ async fn search_finds_listings_by_description_term(pool: PgPool) {
 
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 1, "should find only the listing mentioning laptop in description");
+    assert_eq!(
+        listings.len(),
+        1,
+        "should find only the listing mentioning laptop in description"
+    );
     assert_eq!(listings[0]["title"], "Portable Computer");
 }
 
@@ -163,9 +199,25 @@ async fn search_results_ordered_by_relevance(pool: PgPool) {
     let cat = seed_category(&pool, "textbooks").await;
 
     // "physics" only in description — lower weight
-    seed_listing_with_text(&pool, seller, cat, "General Science", "Covers physics and chemistry topics", Some(40)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "General Science",
+        "Covers physics and chemistry topics",
+        Some(40),
+    )
+    .await;
     // "physics" in title — higher weight (A vs B)
-    seed_listing_with_text(&pool, seller, cat, "Physics 101", "Introduction to physics concepts", Some(35)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Physics 101",
+        "Introduction to physics concepts",
+        Some(35),
+    )
+    .await;
 
     let state = test_state(pool);
     let resp = call_search(&state, "?q=physics").await;
@@ -202,14 +254,22 @@ async fn empty_q_falls_back_to_browse(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 2, "empty q should return all active listings");
+    assert_eq!(
+        listings.len(),
+        2,
+        "empty q should return all active listings"
+    );
 
     // Whitespace-only q — same behavior
     let resp = call_search(&state, "?q=%20%20%20").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 2, "whitespace-only q should return all active listings");
+    assert_eq!(
+        listings.len(),
+        2,
+        "whitespace-only q should return all active listings"
+    );
 }
 
 // ===========================================================================
@@ -223,8 +283,24 @@ async fn search_respects_category_filter(pool: PgPool) {
     let cat_books = seed_category(&pool, "textbooks").await;
     let cat_elec = seed_category(&pool, "electronics").await;
 
-    seed_listing_with_text(&pool, seller, cat_books, "Physics Textbook", "A great physics book", Some(45)).await;
-    seed_listing_with_text(&pool, seller, cat_elec, "Physics Simulator", "A physics simulation device", Some(200)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat_books,
+        "Physics Textbook",
+        "A great physics book",
+        Some(45),
+    )
+    .await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat_elec,
+        "Physics Simulator",
+        "A physics simulation device",
+        Some(200),
+    )
+    .await;
 
     let state = test_state(pool);
 
@@ -233,7 +309,11 @@ async fn search_respects_category_filter(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 1, "category filter must narrow search results");
+    assert_eq!(
+        listings.len(),
+        1,
+        "category filter must narrow search results"
+    );
     assert_eq!(listings[0]["title"], "Physics Textbook");
 }
 
@@ -243,8 +323,24 @@ async fn search_respects_price_filter(pool: PgPool) {
     let seller = seed_user(&pool, school, "seller@test.edu").await;
     let cat = seed_category(&pool, "items").await;
 
-    seed_listing_with_text(&pool, seller, cat, "Cheap Calculator", "A basic calculator", Some(10)).await;
-    seed_listing_with_text(&pool, seller, cat, "Fancy Calculator", "A scientific calculator", Some(100)).await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Cheap Calculator",
+        "A basic calculator",
+        Some(10),
+    )
+    .await;
+    seed_listing_with_text(
+        &pool,
+        seller,
+        cat,
+        "Fancy Calculator",
+        "A scientific calculator",
+        Some(100),
+    )
+    .await;
 
     let state = test_state(pool);
 
@@ -310,6 +406,10 @@ async fn search_returns_empty_for_no_match(pool: PgPool) {
 
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 0, "non-matching search must return empty array");
+    assert_eq!(
+        listings.len(),
+        0,
+        "non-matching search must return empty array"
+    );
     assert!(json["next_cursor"].is_null());
 }

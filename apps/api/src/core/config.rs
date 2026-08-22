@@ -20,8 +20,47 @@ pub struct Config {
 }
 
 impl Config {
+    /// Load configuration from environment variables.
+    ///
+    /// Environment-specific dotenv loading:
+    /// - If `ENV` is already set in the process env, loads `.env.{ENV}`
+    ///   (e.g. `.env.prod`, `.env.staging`). Falls back to `.env` if the
+    ///   env-specific file doesn't exist.
+    /// - If `ENV` is *not* set in the process env, loads `.env` first,
+    ///   then re-checks `ENV` — if it resolved to a value like `prod`,
+    ///   loads `.env.prod` on top to overlay environment-specific secrets.
+    ///
+    /// Files loaded later win (dotenvy never overwrites vars already set
+    /// by the process or an earlier file), so the priority order is:
+    ///   process env > `.env.{ENV}` > `.env`.
     pub fn from_env() -> anyhow::Result<Config> {
-        dotenvy::dotenv().ok();
+        // Check if ENV is already set in the process environment
+        // (e.g. by hosting platform dashboard, CI, or shell export).
+        let env_value = var("ENV").ok().filter(|v| !v.trim().is_empty());
+
+        if let Some(ref env) = env_value {
+            // ENV is known — load env-specific file, fall back to generic .env
+            let env_file = format!(".env.{env}");
+            if std::path::Path::new(&env_file).exists() {
+                dotenvy::from_filename(&env_file).ok();
+            } else {
+                dotenvy::dotenv().ok();
+            }
+        } else {
+            // ENV not set yet — load .env first so we can read ENV from it
+            dotenvy::dotenv().ok();
+
+            // Re-check: if .env defined ENV, load the env-specific file on top
+            if let Ok(env) = var("ENV") {
+                if !env.trim().is_empty() {
+                    let env_file = format!(".env.{env}");
+                    if std::path::Path::new(&env_file).exists() {
+                        dotenvy::from_filename(&env_file).ok();
+                    }
+                }
+            }
+        }
+
         Self::from_getter(|key| var(key))
     }
 

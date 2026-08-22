@@ -1,0 +1,9 @@
+$kind: http-request
+name: List Admins
+method: GET
+url: '{{baseUrl}}/api/v1/admin/admins'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminAccessToken}}"

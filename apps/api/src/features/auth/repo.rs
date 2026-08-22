@@ -277,11 +277,6 @@ impl AuthRepo {
         Ok(result.rows_affected())
     }
 
-    /// Delete revoked refresh tokens older than the given number of seconds.
-    ///
-    /// Revoked tokens are kept briefly for the grace-window reuse check
-    /// (CM-3.8) but should be cleaned up eventually to prevent unbounded
-    /// table growth.  Returns the number of rows deleted.
     // ------------------------------------------------------------------
     // OTP management
     // ------------------------------------------------------------------

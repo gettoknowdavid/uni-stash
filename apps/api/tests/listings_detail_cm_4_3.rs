@@ -1,7 +1,7 @@
 use actix_web::{App, test, web};
 use sqlx::PgPool;
 use uni_stash_be::core::{config::Config, db::Db, state::AppState};
-use uni_stash_be::features::listings::handlers::{get_listing_detail};
+use uni_stash_be::features::listings::handlers::get_listing_detail;
 
 const TEST_PRIVATE_PEM: &str = include_str!("fixtures/test_rsa_private.pem");
 const TEST_PUBLIC_PEM: &str = include_str!("fixtures/test_rsa_public.pem");
@@ -47,14 +47,21 @@ async fn seed_user(pool: &PgPool, school_id: i16, email: &str) -> uuid::Uuid {
 }
 
 async fn seed_category(pool: &PgPool, slug: &str) -> i16 {
-    sqlx::query_scalar::<_, i16>("INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id")
-        .bind(slug)
-        .fetch_one(pool)
-        .await
-        .unwrap()
+    sqlx::query_scalar::<_, i16>(
+        "INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id",
+    )
+    .bind(slug)
+    .fetch_one(pool)
+    .await
+    .unwrap()
 }
 
-async fn seed_listing(pool: &PgPool, seller_id: uuid::Uuid, category_id: i16, status: &str) -> uuid::Uuid {
+async fn seed_listing(
+    pool: &PgPool,
+    seller_id: uuid::Uuid,
+    category_id: i16,
+    status: &str,
+) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
         "INSERT INTO listings (seller_id, category_id, title, description, condition, status)
          VALUES ($1, $2, 'Item', 'Desc', 'new', $3) RETURNING id",
@@ -79,7 +86,10 @@ async fn seed_image(pool: &PgPool, listing_id: uuid::Uuid, key: &str, pos: i16) 
     .unwrap()
 }
 
-async fn call_detail(state: &web::Data<AppState>, listing_id: uuid::Uuid) -> actix_web::dev::ServiceResponse {
+async fn call_detail(
+    state: &web::Data<AppState>,
+    listing_id: uuid::Uuid,
+) -> actix_web::dev::ServiceResponse {
     let app = test::init_service(
         App::new()
             .app_data(state.clone())

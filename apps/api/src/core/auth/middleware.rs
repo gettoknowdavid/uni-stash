@@ -4,7 +4,42 @@ use actix_web::{FromRequest, HttpRequest, dev::Payload, web};
 use anyhow::anyhow;
 use uuid::Uuid;
 
-use crate::core::{auth::jwt, error::AppError, state::AppState};
+use crate::core::{auth::admin_jwt, auth::jwt, error::AppError, state::AppState};
+
+// ---------------------------------------------------------------------------
+// AdminLevel enum
+// ---------------------------------------------------------------------------
+
+/// Represents an admin's authorization level. Informational in JWT claims;
+/// every admin-gated action re-reads this from the DB to avoid trusting
+/// stale token data.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum AdminLevel {
+    Super,
+    Standard,
+}
+
+impl std::fmt::Display for AdminLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdminLevel::Super => write!(f, "super"),
+            AdminLevel::Standard => write!(f, "standard"),
+        }
+    }
+}
+
+impl From<String> for AdminLevel {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "super" => AdminLevel::Super,
+            _ => AdminLevel::Standard,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AuthUser extractor — unchanged
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct AuthUser {
@@ -71,51 +106,119 @@ impl FromRequest for AuthUser {
 }
 
 // ---------------------------------------------------------------------------
-// AdminUser extractor — re-reads role from DB, never trusts JWT claims
+// AdminSession extractor — validates admin JWT, re-reads is_active/level
+// from DB on every request
 // ---------------------------------------------------------------------------
 
-/// Wrapper around `AuthUser` that confirms the caller has `role = 'admin'`
-/// by querying the `users` table on every request.
-///
-/// Per TRD §2.5.1: the role check for admin-only endpoints re-reads from the
-/// DB rather than trusting a JWT claim, so a demoted admin loses access
-/// immediately even if their access token hasn't expired yet.
 #[derive(Clone, Debug)]
-pub struct AdminUser {
-    pub inner: AuthUser,
+pub struct AdminSession {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: String,
+    pub level: AdminLevel,
+    pub permissions: serde_json::Value,
+    pub is_active: bool,
 }
 
-impl FromRequest for AdminUser {
+impl AdminSession {
+    /// Check whether this admin has the given permission.
+    ///
+    /// Super admins always return true (short-circuit). Standard admins
+    /// require a matching entry in the `permissions` JSONB object.
+    pub fn can(&self, resource: &str, action: &str) -> bool {
+        if self.level == AdminLevel::Super {
+            return true;
+        }
+        self.permissions
+            .get(resource)
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().any(|a| a.as_str() == Some(action)))
+            .unwrap_or(false)
+    }
+}
+
+impl FromRequest for AdminSession {
+    type Error = AppError;
+    type Future =
+        std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send>>;
+
+    fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
+        let app_state = req.app_data::<web::Data<AppState>>().cloned();
+        let header_value = req
+            .headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+
+        Box::pin(async move {
+            let state = app_state
+                .ok_or_else(|| AppError::Internal(anyhow!("AppState missing from request")))?;
+
+            let header_str = header_value.ok_or_else(|| {
+                AppError::Unauthorized("missing authorization header".to_string())
+            })?;
+
+            if !header_str.starts_with("Bearer ") {
+                return Err(AppError::Unauthorized(
+                    "malformed authorization header".to_string(),
+                ));
+            }
+
+            let token = &header_str[7..];
+            if token.is_empty() {
+                return Err(AppError::Unauthorized("empty bearer token".to_string()));
+            }
+
+            let claims = admin_jwt::verify_admin_access_token(&state.jwt_keys, token)?;
+
+            // Re-read from DB — never trust JWT level/is_active claims for
+            // authorization.
+            let admin = sqlx::query!(
+                r#"SELECT id, email, display_name, level, permissions, is_active
+                   FROM admins WHERE id = $1"#,
+                claims.sub,
+            )
+            .fetch_optional(&state.db)
+            .await
+            .map_err(AppError::from)?
+            .ok_or_else(|| AppError::Unauthorized("admin not found".into()))?;
+
+            if !admin.is_active {
+                return Err(AppError::Unauthorized("admin account is inactive".into()));
+            }
+
+            Ok(AdminSession {
+                id: admin.id,
+                email: admin.email,
+                display_name: admin.display_name,
+                level: AdminLevel::from(admin.level),
+                permissions: admin.permissions,
+                is_active: admin.is_active,
+            })
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SuperAdminSession extractor — wraps AdminSession, requires level == "super"
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Debug)]
+pub struct SuperAdminSession(pub AdminSession);
+
+impl FromRequest for SuperAdminSession {
     type Error = AppError;
     type Future =
         std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send>>;
 
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        // Extract AuthUser (validates JWT) and clone the DB pool before
-        // entering the async block, so we don't hold &HttpRequest across
-        // an await point (HttpRequest is not Sync).
-        let auth_user_fut = AuthUser::from_request(req, payload);
-        let db = req.app_data::<web::Data<AppState>>().map(|s| s.db.clone());
-
+        let admin_fut = AdminSession::from_request(req, payload);
         Box::pin(async move {
-            let auth_user = auth_user_fut.await?;
-            let db = db.ok_or_else(|| AppError::Internal(anyhow!("AppState missing")))?;
-
-            // Re-read role from DB — this is the security-critical step.
-            // Per TRD §2.5.1: role check re-reads from DB rather than
-            // trusting a JWT claim, so a demoted admin loses access
-            // immediately even if their access token hasn't expired.
-            let role = sqlx::query_scalar!("SELECT role FROM users WHERE id = $1", auth_user.id,)
-                .fetch_optional(&db)
-                .await
-                .map_err(AppError::from)?
-                .ok_or_else(|| AppError::NotFound("user not found".into()))?;
-
-            if role != "admin" {
+            let admin = admin_fut.await?;
+            if admin.level != AdminLevel::Super {
                 return Err(AppError::Forbidden);
             }
-
-            Ok(AdminUser { inner: auth_user })
+            Ok(SuperAdminSession(admin))
         })
     }
 }

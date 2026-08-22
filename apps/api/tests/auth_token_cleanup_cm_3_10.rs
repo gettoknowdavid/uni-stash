@@ -135,7 +135,11 @@ async fn cleanup_deletes_expired_tokens(pool: PgPool) {
 
     assert_eq!(deleted, 3, "must delete exactly the 3 expired tokens");
     assert_eq!(count_tokens(&pool).await, 2, "2 valid tokens must remain");
-    assert_eq!(count_expired_tokens(&pool).await, 0, "no expired tokens left");
+    assert_eq!(
+        count_expired_tokens(&pool).await,
+        0,
+        "no expired tokens left"
+    );
 }
 
 // ===========================================================================
@@ -158,7 +162,11 @@ async fn cleanup_deletes_old_revoked_tokens(pool: PgPool) {
     let deleted = repo.cleanup_old_revoked_tokens(86400).await.unwrap(); // 24h
 
     assert_eq!(deleted, 2, "must delete the 2 old revoked tokens");
-    assert_eq!(count_tokens(&pool).await, 2, "recent revoked + valid remain");
+    assert_eq!(
+        count_tokens(&pool).await,
+        2,
+        "recent revoked + valid remain"
+    );
 }
 
 // ===========================================================================

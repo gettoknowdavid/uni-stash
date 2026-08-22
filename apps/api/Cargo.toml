@@ -2,6 +2,7 @@
 name = "uni-stash-be"
 version = "0.1.0"
 edition = "2024"
+default-run = "uni-stash-be"
 
 [dependencies]
 actix-governor = "0.10.0"
@@ -21,14 +22,13 @@ sha2 = "0.11.0"
 sqlx = { version = "0.9.0", features = ["macros", "migrate", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid"] }
 thiserror = "2.0.20"
 time = { version = "0.3.55", features = ["serde", "serde-well-known"] }
-tokio = "1.53.1"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.44"
 tracing-actix-web = "0.7.22"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 uuid = { version = "1.24.1", features = ["serde", "v4"] }
-utoipa = { version = "5", features = ["actix_extras", "time", "uuid"] }
-utoipa-actix-web = "0.1"
+clap = { version = "4", features = ["derive"] }
 validator = { version = "0.21.0", features = ["derive"] }
 
 [dev-dependencies]

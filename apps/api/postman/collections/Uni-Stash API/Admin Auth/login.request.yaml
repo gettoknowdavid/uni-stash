@@ -1,0 +1,30 @@
+$kind: http-request
+name: Admin Login
+method: POST
+url: "{{baseUrl}}/api/v1/admin/auth/login"
+order: 1000
+auth:
+  type: noauth
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "knowdavidmichael@gmail.com",
+      "password": "Prdha9phd?"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+          const body = pm.response.json();
+          // Write to both accessToken (collection-level bearer) and
+          // adminAccessToken so Schools/Admin Management requests all work
+          // after admin login without switching variables.
+          pm.collectionVariables.set("accessToken", body.access_token);
+          pm.collectionVariables.set("refreshToken", body.refresh_token);
+          pm.collectionVariables.set("adminAccessToken", body.access_token);
+          pm.collectionVariables.set("adminRefreshToken", body.refresh_token);
+      }
+    language: text/javascript

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM admin_refresh_tokens WHERE revoked = true AND revoked_at < $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8262c10ea2a7242aaaaa593bf2c236f9c3389726f254db0b193efe93d903902d"
+}

@@ -1,0 +1,27 @@
+$kind: http-request
+name: Admin Refresh Token
+method: POST
+url: '{{baseUrl}}/api/v1/admin/auth/refresh'
+order: 2000
+auth:
+  type: noauth
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "refresh_token": "{{adminRefreshToken}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 200) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("accessToken", body.access_token);
+          pm.collectionVariables.set("refreshToken", body.refresh_token);
+          pm.collectionVariables.set("adminAccessToken", body.access_token);
+          pm.collectionVariables.set("adminRefreshToken", body.refresh_token);
+      }

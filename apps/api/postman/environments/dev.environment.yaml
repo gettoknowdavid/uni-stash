@@ -10,3 +10,12 @@ values:
   - key: refreshToken
     value: ""
     type: secret
+  - key: adminAccessToken
+    value: ""
+    type: secret
+  - key: adminRefreshToken
+    value: ""
+    type: secret
+  - key: adminId
+    value: ""
+    type: secret

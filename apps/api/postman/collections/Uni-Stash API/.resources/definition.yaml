@@ -13,3 +13,5 @@ variables:
   objectKey: ""
   verificationToken: ""
   schoolId: ""
+  adminAccessToken: ""
+  adminRefreshToken: ""
