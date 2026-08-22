@@ -1,18 +1,17 @@
 $kind: http-request
 name: Sign Up
 method: POST
-url: '{{baseUrl}}/api/v1/auth/signup'
+url: "{{baseUrl}}/api/v1/auth/signup"
 order: 1000
 auth:
   type: noauth
 headers:
-  - key: Content-Type
-    value: application/json
+  Content-Type: application/json
 body:
   type: json
   content: |-
     {
-      "email": "student@university.edu",
-      "password": "Password123!",
-      "display_name": "John Doe"
+      "email": "david.michael@stu.cu.edu.ng",
+      "password": "Prdha9phd?",
+      "display_name": "David Michael"
     }
