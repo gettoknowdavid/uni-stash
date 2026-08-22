@@ -1,4 +1,5 @@
 use std::env::{VarError, var};
+use std::fs;
 
 use anyhow::Context;
 
@@ -32,8 +33,8 @@ impl Config {
     {
         Ok(Self {
             database_url: required(&get, "DATABASE_URL")?,
-            jwt_private_key: required(&get, "JWT_PRIVATE_KEY")?,
-            jwt_public_key: required(&get, "JWT_PUBLIC_KEY")?,
+            jwt_private_key: jwt_key(&get, "JWT_PRIVATE_KEY")?,
+            jwt_public_key: jwt_key(&get, "JWT_PUBLIC_KEY")?,
             resend_api_key: required(&get, "RESEND_API_KEY")?,
             resend_base_url: required(&get, "RESEND_BASE_URL")?,
             frontend_base_url: required(&get, "FRONTEND_BASE_URL")?,
@@ -68,6 +69,34 @@ where
         anyhow::bail!("{name} must not be empty");
     }
     Ok(value)
+}
+
+/// Loads a JWT key (private or public) with support for both file-based and
+/// inline PEM content:
+///
+/// - `JWT_PRIVATE_KEY_FILE` / `JWT_PUBLIC_KEY_FILE`: path to a `.pem` file
+/// - `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: inline PEM string (backward compat)
+///
+/// File-based loading takes precedence. On Render, set either the `_FILE` path
+/// (if PEM files are available on disk) or paste the PEM content directly.
+fn jwt_key<F>(get: &F, base_name: &str) -> anyhow::Result<String>
+where
+    F: for<'a> Fn(&'a str) -> Result<String, VarError>,
+{
+    let file_var = format!("{base_name}_FILE");
+
+    // Try file-based loading first
+    if let Ok(path) = get(&file_var) {
+        let path = path.trim();
+        if !path.is_empty() {
+            return fs::read_to_string(path).context(format!(
+                "{file_var} is set to '{path}' but the file could not be read"
+            ));
+        }
+    }
+
+    // Fall back to inline PEM string
+    required(get, base_name)
 }
 
 #[cfg(test)]
@@ -180,5 +209,59 @@ mod tests {
         let vars = with(&full_vars(), "PORT", " 8081 ");
         let config = Config::from_getter(getter(&vars)).unwrap();
         assert_eq!(config.port, 8081);
+    }
+
+    #[test]
+    fn jwt_key_file_loads_from_file() {
+        use std::io::Write;
+
+        // Create a temporary PEM file
+        let tmp_dir = std::env::temp_dir().join("config_test");
+        std::fs::create_dir_all(&tmp_dir).unwrap();
+        let pem_path = tmp_dir.join("test_key.pem");
+        let mut f = std::fs::File::create(&pem_path).unwrap();
+        writeln!(f, "-----BEGIN PUBLIC KEY-----\nfake-key-content\n-----END PUBLIC KEY-----").unwrap();
+
+        // Leak the path string so it has 'static lifetime for the test
+        let path_str = Box::leak(pem_path.to_str().unwrap().to_string().into_boxed_str());
+        let mut vars = full_vars();
+        vars.push(("JWT_PUBLIC_KEY_FILE", path_str));
+        let config = Config::from_getter(getter(&vars)).unwrap();
+        assert!(
+            config.jwt_public_key.contains("fake-key-content"),
+            "should read from file, got: {}",
+            &config.jwt_public_key
+        );
+
+        // Cleanup
+        std::fs::remove_file(&pem_path).ok();
+    }
+
+    #[test]
+    fn jwt_key_falls_back_to_inline_when_no_file() {
+        let vars = full_vars();
+        let config = Config::from_getter(getter(&vars)).unwrap();
+        assert_eq!(config.jwt_private_key, "test-private-key");
+    }
+
+    #[test]
+    fn jwt_key_file_not_found_returns_error() {
+        let mut vars = full_vars();
+        vars.push(("JWT_PRIVATE_KEY_FILE", "/nonexistent/path/key.pem"));
+        let err = Config::from_getter(getter(&vars)).unwrap_err();
+        assert!(
+            err.to_string().contains("JWT_PRIVATE_KEY_FILE"),
+            "error should mention the _FILE var, got: {err:#}"
+        );
+    }
+
+    #[test]
+    fn jwt_key_missing_both_file_and_inline_returns_error() {
+        let vars = without(&full_vars(), "JWT_PRIVATE_KEY");
+        let err = Config::from_getter(getter(&vars)).unwrap_err();
+        assert!(
+            err.to_string().contains("JWT_PRIVATE_KEY"),
+            "error should name the missing var, got: {err:#}"
+        );
     }
 }

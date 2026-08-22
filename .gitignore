@@ -58,6 +58,15 @@ apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
 # run CM-1.5/CM-3.2 unit tests without generating keys (never a real secret).
 !apps/api/tests/fixtures/
 !apps/api/tests/fixtures/*.pem
+
+# Exception: per-environment JWT keypairs in secrets/ directory.
+# Dev & staging keys are safe to commit (non-production); prod key lives
+# only in Render env vars and is not committed.
+!secrets/
+!secrets/**
+!secrets/*.pem
+secrets/
+
 jwt_private_key*
 jwt_public_key*
 r2_credentials*
