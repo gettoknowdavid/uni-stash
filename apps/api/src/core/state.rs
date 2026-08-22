@@ -8,7 +8,10 @@ use crate::{
         error::AppError,
         rate_limit::PerEmailLimiter,
     },
-    features::{auth::repo::AuthRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo},
+    features::{
+        auth::repo::AuthRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo,
+        schools::repo::SchoolsRepo,
+    },
 };
 
 /// PLACEHOLDER for the chat session registry.
@@ -24,6 +27,7 @@ pub struct AppState {
     pub auth_repo: AuthRepo,
     pub listings_repo: ListingsRepo,
     pub images_repo: ImagesRepo,
+    pub schools_repo: SchoolsRepo,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
@@ -37,6 +41,7 @@ impl AppState {
             auth_repo: AuthRepo::new(db.pool.clone()),
             listings_repo: ListingsRepo::new(db.pool.clone()),
             images_repo: ImagesRepo::new(db.pool.clone()),
+            schools_repo: SchoolsRepo::new(db.pool.clone()),
             email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })

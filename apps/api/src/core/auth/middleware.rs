@@ -69,3 +69,53 @@ impl FromRequest for AuthUser {
         }))
     }
 }
+
+// ---------------------------------------------------------------------------
+// AdminUser extractor — re-reads role from DB, never trusts JWT claims
+// ---------------------------------------------------------------------------
+
+/// Wrapper around `AuthUser` that confirms the caller has `role = 'admin'`
+/// by querying the `users` table on every request.
+///
+/// Per TRD §2.5.1: the role check for admin-only endpoints re-reads from the
+/// DB rather than trusting a JWT claim, so a demoted admin loses access
+/// immediately even if their access token hasn't expired yet.
+#[derive(Clone, Debug)]
+pub struct AdminUser {
+    pub inner: AuthUser,
+}
+
+impl FromRequest for AdminUser {
+    type Error = AppError;
+    type Future =
+        std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send>>;
+
+    fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
+        // Extract AuthUser (validates JWT) and clone the DB pool before
+        // entering the async block, so we don't hold &HttpRequest across
+        // an await point (HttpRequest is not Sync).
+        let auth_user_fut = AuthUser::from_request(req, payload);
+        let db = req.app_data::<web::Data<AppState>>().map(|s| s.db.clone());
+
+        Box::pin(async move {
+            let auth_user = auth_user_fut.await?;
+            let db = db.ok_or_else(|| AppError::Internal(anyhow!("AppState missing")))?;
+
+            // Re-read role from DB — this is the security-critical step.
+            // Per TRD §2.5.1: role check re-reads from DB rather than
+            // trusting a JWT claim, so a demoted admin loses access
+            // immediately even if their access token hasn't expired.
+            let role = sqlx::query_scalar!("SELECT role FROM users WHERE id = $1", auth_user.id,)
+                .fetch_optional(&db)
+                .await
+                .map_err(AppError::from)?
+                .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+            if role != "admin" {
+                return Err(AppError::Forbidden);
+            }
+
+            Ok(AdminUser { inner: auth_user })
+        })
+    }
+}
