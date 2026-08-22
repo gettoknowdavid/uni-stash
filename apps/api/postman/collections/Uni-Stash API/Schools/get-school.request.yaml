@@ -1,0 +1,7 @@
+$kind: http-request
+name: Get School
+method: GET
+url: '{{baseUrl}}/api/v1/schools/{{schoolId}}'
+order: 3000
+auth:
+  type: noauth

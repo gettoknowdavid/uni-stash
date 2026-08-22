@@ -10,6 +10,7 @@ use crate::features::auth::models::UserProfile;
 use crate::features::images::dtos::*;
 use crate::features::listings::dtos::*;
 use crate::features::listings::models::{Condition, ListingStatus};
+use crate::features::schools::dtos::*;
 
 // ---------------------------------------------------------------------------
 // Health
@@ -463,6 +464,117 @@ pub async fn delete_image() -> HttpResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Schools
+// ---------------------------------------------------------------------------
+
+/// List all registered partner schools.
+///
+/// Public endpoint — no authentication required.
+/// Pass `q` to search by name or domain.
+#[utoipa::path(
+    get,
+    path = "/api/v1/schools",
+    tag = "schools",
+    params(
+        ("q" = Option<String>, Query, description = "Search by name or domain")
+    ),
+    responses(
+        (status = 200, description = "List of schools", body = ListSchoolsResponse)
+    )
+)]
+pub async fn list_schools() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Get a single school by ID.
+///
+/// Public endpoint — no authentication required.
+#[utoipa::path(
+    get,
+    path = "/api/v1/schools/{id}",
+    tag = "schools",
+    params(
+        ("id" = i16, Path, description = "School ID")
+    ),
+    responses(
+        (status = 200, description = "School details", body = SchoolResponse),
+        (status = 404, description = "School not found", body = ErrorResponse)
+    )
+)]
+pub async fn get_school() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Create a new partner school.
+///
+/// **Admin only.** The domain must be unique — it's used to match
+/// signup email addresses to their school.
+#[utoipa::path(
+    post,
+    path = "/api/v1/schools",
+    tag = "schools",
+    security(("bearer" = [])),
+    request_body = CreateSchoolRequest,
+    responses(
+        (status = 201, description = "School created", body = CreateSchoolResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not an admin user", body = ErrorResponse),
+        (status = 409, description = "Domain already registered", body = ErrorResponse),
+        (status = 422, description = "Validation failed", body = ErrorResponse)
+    )
+)]
+pub async fn create_school() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Update a partner school.
+///
+/// **Admin only.** All fields are optional — only provided fields are updated.
+#[utoipa::path(
+    patch,
+    path = "/api/v1/schools/{id}",
+    tag = "schools",
+    security(("bearer" = [])),
+    params(
+        ("id" = i16, Path, description = "School ID")
+    ),
+    request_body = UpdateSchoolRequest,
+    responses(
+        (status = 200, description = "School updated", body = serde_json::Value),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not an admin user", body = ErrorResponse),
+        (status = 404, description = "School not found", body = ErrorResponse),
+        (status = 409, description = "Domain already registered", body = ErrorResponse),
+        (status = 422, description = "Validation failed", body = ErrorResponse)
+    )
+)]
+pub async fn update_school() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+/// Delete a partner school.
+///
+/// **Admin only.** Fails if any users reference this school.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/schools/{id}",
+    tag = "schools",
+    security(("bearer" = [])),
+    params(
+        ("id" = i16, Path, description = "School ID")
+    ),
+    responses(
+        (status = 204, description = "School deleted"),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not an admin user", body = ErrorResponse),
+        (status = 404, description = "School not found", body = ErrorResponse)
+    )
+)]
+pub async fn delete_school() -> HttpResponse {
+    unreachable!("spec only")
+}
+
+// ---------------------------------------------------------------------------
 // OpenAPI document
 // ---------------------------------------------------------------------------
 
@@ -500,6 +612,12 @@ pub async fn delete_image() -> HttpResponse {
         presign_image,
         confirm_image,
         delete_image,
+        // Schools
+        list_schools,
+        get_school,
+        create_school,
+        update_school,
+        delete_school,
     ),
     components(schemas(
         // Auth
@@ -531,6 +649,12 @@ pub async fn delete_image() -> HttpResponse {
         PresignResponse,
         ConfirmRequest,
         ConfirmResponse,
+        // Schools
+        SchoolResponse,
+        CreateSchoolRequest,
+        CreateSchoolResponse,
+        UpdateSchoolRequest,
+        ListSchoolsResponse,
         // Shared
         Condition,
         ListingStatus,
@@ -542,7 +666,8 @@ pub async fn delete_image() -> HttpResponse {
         (name = "health", description = "Health check"),
         (name = "auth", description = "Authentication and account management"),
         (name = "listings", description = "Listing CRUD, browsing, search, and state machine"),
-        (name = "images", description = "Image upload pipeline (presign, confirm, delete)")
+        (name = "images", description = "Image upload pipeline (presign, confirm, delete)"),
+        (name = "schools", description = "Partner school management (admin-only create/update/delete)")
     )
 )]
 pub struct ApiDoc;

@@ -1,0 +1,5 @@
+$kind: http-request
+name: Delete School
+method: DELETE
+url: '{{baseUrl}}/api/v1/schools/{{schoolId}}'
+order: 6000

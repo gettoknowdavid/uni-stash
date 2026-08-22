@@ -124,7 +124,27 @@
 
 ---
 
-## Epic 7: WebSocket Chat Infrastructure
+## Epic 7: Partner School Management
+
+**Phase:** 2 (Week 3, tail end)
+
+**Goal:** Admin-only CRUD for partner schools whose students can sign up. Schools are the foundation of the email-domain allow-list check in Epic 3.
+
+**Dependencies:** Epic 3 (auth middleware, `AdminUser` extractor).
+
+**Key work:**
+
+- `features/schools/` — `handlers.rs`, `repo.rs`, `dtos.rs`
+- `core/auth/middleware.rs` — `AdminUser` extractor that re-reads `role` from DB (per TRD §2.5.1)
+- `GET /schools` (public, list + search), `GET /schools/{id}` (public)
+- `POST /schools` (admin-only, create), `PATCH /schools/{id}` (admin-only, update), `DELETE /schools/{id}` (admin-only, delete)
+- School deletion blocked by FK if users reference the school
+
+**Expected outcome:** Admin users can manage partner schools via API. The `AdminUser` extractor is available for any future admin-only endpoints (e.g. CM-9.2 reports moderation).
+
+---
+
+## Epic 8: WebSocket Chat Infrastructure
 
 **Phase:** 3 (Week 4)
 
@@ -144,13 +164,13 @@
 
 ---
 
-## Epic 8: Chat Persistence & Message Delivery
+## Epic 9: Chat Persistence & Message Delivery
 
 **Phase:** 3 (Week 4)
 
 **Goal:** Make Postgres the source of truth for messages, with the WebSocket layer as a pure delivery optimization.
 
-**Dependencies:** Epic 7 (actor system must exist to hook persistence into).
+**Dependencies:** Epic 8 (actor system must exist to hook persistence into).
 
 **Key work:**
 
@@ -164,13 +184,13 @@
 
 ---
 
-## Epic 9: Reports & Moderation
+## Epic 10: Reports & Moderation
 
 **Phase:** 3 (Week 4, tail end) or early Phase 5
 
 **Goal:** Minimal moderation surface so flagged content/users can be reviewed.
 
-**Dependencies:** Epic 3 (role-based auth check), Epic 4 (listings to report against).
+**Dependencies:** Epic 3 (role-based auth check), Epic 4 (listings to report against), Epic 7 (AdminUser extractor).
 
 **Key work:**
 
@@ -181,13 +201,13 @@
 
 ---
 
-## Epic 10: Flutter Client — Core Wiring
+## Epic 11: Flutter Client — Core Wiring
 
 **Phase:** 4 (Week 5)
 
 **Goal:** Connect the Flutter app to the REST API with proper state management, mirroring the backend's feature structure.
 
-**Dependencies:** Epics 3–6 (auth, listings, search, images must all be functional against a deployed or local backend).
+**Dependencies:** Epics 3–7 (auth, listings, search, images, schools must all be functional against a deployed or local backend).
 
 **Key work:**
 
@@ -200,13 +220,13 @@
 
 ---
 
-## Epic 11: Flutter Client — Real-Time Chat
+## Epic 12: Flutter Client — Real-Time Chat
 
 **Phase:** 4 (Week 5)
 
 **Goal:** Wire the chat UI to both REST history and the live WebSocket connection.
 
-**Dependencies:** Epic 10 (auth/client foundation), Epics 7–8 (backend chat must be functional).
+**Dependencies:** Epic 11 (auth/client foundation), Epics 8–9 (backend chat must be functional).
 
 **Key work:**
 
@@ -219,13 +239,13 @@
 
 ---
 
-## Epic 12: Hardening, Rate Limiting & Error States
+## Epic 13: Hardening, Rate Limiting & Error States
 
 **Phase:** 5 (Week 6)
 
 **Goal:** Close the gap between "functionally complete" and "production-acceptable."
 
-**Dependencies:** Epics 1–11 (touches nearly every prior feature).
+**Dependencies:** Epics 1–12 (touches nearly every prior feature).
 
 **Key work:**
 
@@ -238,13 +258,13 @@
 
 ---
 
-## Epic 13: Load Testing & Deployment Finalization
+## Epic 14: Load Testing & Deployment Finalization
 
 **Phase:** 5 (Week 6)
 
 **Goal:** Produce real performance numbers and lock in the production deployment pipeline.
 
-**Dependencies:** Epic 12 (system should be hardened before load testing is meaningful).
+**Dependencies:** Epic 13 (system should be hardened before load testing is meaningful).
 
 **Key work:**
 
@@ -266,13 +286,14 @@ Epic 1 (Scaffolding)
                                             │      ├─▶ Epic 5 (Search)
                                             │      └─▶ Epic 6 (Images)
                                             │
-                                            ├─▶ Epic 7 (WS Infra) ──▶ Epic 8 (Chat Persistence)
-                                            └─▶ Epic 9 (Reports)
+                                            ├─▶ Epic 7 (School Management)
+                                            ├─▶ Epic 8 (WS Infra) ──▶ Epic 9 (Chat Persistence)
+                                            └─▶ Epic 10 (Reports)
 
-Epics 3–6 ──▶ Epic 10 (Flutter Core)
-Epics 7–8, Epic 10 ──▶ Epic 11 (Flutter Chat)
+Epics 3–7 ──▶ Epic 11 (Flutter Core)
+Epics 8–9, Epic 11 ──▶ Epic 12 (Flutter Chat)
 
-Epics 1–11 ──▶ Epic 12 (Hardening) ──▶ Epic 13 (Load Test & Deploy)
+Epics 1–12 ──▶ Epic 13 (Hardening) ──▶ Epic 14 (Load Test & Deploy)
 ```
 
-A couple of notes worth flagging as you plan sprints: Epic 3 is the real critical-path bottleneck — nearly everything downstream needs working auth, so it's worth treating any slip there as a whole-schedule slip, not a one-week slip. And Epic 9 (Reports) is genuinely low-risk to defer into Phase 5 if Week 4 runs long, since nothing else depends on it.
+A couple of notes worth flagging as you plan sprints: Epic 3 is the real critical-path bottleneck — nearly everything downstream needs working auth, so it's worth treating any slip there as a whole-schedule slip, not a one-week slip. And Epic 10 (Reports) is genuinely low-risk to defer into Phase 5 if Week 4 runs long, since nothing else depends on it.

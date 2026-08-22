@@ -164,6 +164,16 @@ Domain allow-list check happens _after_ `.validate()` succeeds, in the handler, 
 | POST   | `/images/confirm` | Register an uploaded image against a listing | Body: `{ listing_id, object_key }`. Inserts into `images` table after a HEAD check against R2 confirms the object exists and is within size limits.                                                                                                                            |
 | DELETE | `/images/{id}`    | Remove an image                              | Owner-only.                                                                                                                                                                                                                                                                    |
 
+### 2.4a `/schools`
+
+| Method | Path              | Purpose                        | Notes                                                                                                                                                                      |
+| ------ | ----------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/schools`        | List all partner schools       | Public. Optional `?q=` search by name or domain (case-insensitive).                                                                                                         |
+| GET    | `/schools/{id}`   | Get a single school            | Public.                                                                                                                                                                    |
+| POST   | `/schools`        | Register a new partner school  | **Admin only.** Body: `{ name, domain }`. Domain must be unique — used for signup email matching. Returns `409` on duplicate domain.                                        |
+| PATCH  | `/schools/{id}`   | Update a school                | **Admin only.** Partial update (only provided fields change). Returns `409` if new domain conflicts.                                                                       |
+| DELETE | `/schools/{id}`   | Remove a partner school        | **Admin only.** Fails with `400` if users reference this school (FK violation). Admin role is re-checked from DB per §2.5.1 via the `AdminUser` extractor.                  |
+
 ### 2.5 `/chats`
 
 | Method | Path                             | Purpose                                        | Notes                                                                                                                                                                                                       |
@@ -181,7 +191,7 @@ The refresh-token table and rotation-on-reuse behavior in §2.2/§3 are the back
 
 - Lifetime: **10–15 minutes**. Short enough that a leaked access token (e.g. exfiltrated from device storage, logged accidentally, or intercepted) has a narrow window of use, without forcing re-login on every request.
 - Signed with **RS256** (asymmetric), not HS256. The backend holds the private key; only the public key would ever need to be shared if any other service had to verify tokens independently. This also means a key-rotation event doesn't require redistributing a shared secret to every verifier.
-- Claims kept minimal: `sub` (user_id), `exp`, `iat`, `purpose: "access"`, `email_verified`. No role/permission data that would go stale before the token expires — the `role` check for admin-only endpoints (§2.3 reports moderation) re-reads from the DB rather than trusting a JWT claim, so a demoted admin's already-issued tokens don't retain elevated access for their remaining 10-minute window in a way that matters (moderation actions are re-checked server-side regardless).
+- Claims kept minimal: `sub` (user_id), `exp`, `iat`, `purpose: "access"`, `email_verified`. No role/permission data that would go stale before the token expires — the `role` check for admin-only endpoints (§2.4a schools, §2.5.2 reports moderation) re-reads from the DB rather than trusting a JWT claim, so a demoted admin's already-issued tokens don't retain elevated access for their remaining 10-minute window in a way that matters (moderation actions are re-checked server-side regardless).
 - Verified on every request via an Actix extractor (`core/auth/middleware.rs`) — signature, expiry, and `purpose` claim all checked; a `purpose: "email_verify"` token presented as an access token is rejected even though it's signed with the same key.
 
 **Refresh tokens (opaque, DB-backed, rotating):**

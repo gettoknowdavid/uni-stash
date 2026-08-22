@@ -5,10 +5,11 @@ auth:
   credentials:
     token: "{{accessToken}}"
 variables:
-  baseUrl: http://localhost:3000
+  baseUrl: http://localhost:8080
   accessToken: ""
   refreshToken: ""
   listingId: ""
   imageId: ""
   objectKey: ""
   verificationToken: ""
+  schoolId: ""

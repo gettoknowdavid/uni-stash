@@ -1,0 +1,7 @@
+$kind: http-request
+name: Search Schools
+method: GET
+url: '{{baseUrl}}/api/v1/schools?q=university'
+order: 2000
+auth:
+  type: noauth

@@ -1,0 +1,23 @@
+$kind: http-request
+name: Create School
+method: POST
+url: '{{baseUrl}}/api/v1/schools'
+order: 4000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "University of Port Harcourt",
+      "domain": "uniport.edu.ng"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("schoolId", body.id);
+      }
