@@ -39,6 +39,19 @@ pub struct VerifyOtpRequest {
     pub otp_type: String,
 }
 
+#[derive(serde::Serialize)]
+pub struct VerifyOtpResponse {
+    pub verified: bool,
+    /// Tokens are only included for email_verify (user just signed up).
+    /// For password_reset, the user must login with their new password.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_in: Option<i64>,
+}
+
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct LoginRequest {
     #[validate(email)]

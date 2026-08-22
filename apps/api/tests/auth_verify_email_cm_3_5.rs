@@ -32,8 +32,11 @@ fn test_config() -> Config {
         database_url: "postgres://localhost:5432/uni_stash".into(),
         jwt_private_key: TEST_PRIVATE_PEM.into(),
         jwt_public_key: TEST_PUBLIC_PEM.into(),
-        resend_api_key: "".into(),
-        resend_base_url: "http://127.0.0.1:1".into(),
+        smtp_host: "smtp.example.com".into(),
+        smtp_port: 587,
+        smtp_user: "test@example.com".into(),
+        smtp_password: "test_password".into(),
+        smtp_from: "Test <test@example.com>".into(),
         port: 8080,
         env: "test".into(),
         r2_bucket: "".into(),
@@ -117,7 +120,7 @@ async fn call_verify_otp(
 // ===========================================================================
 
 #[sqlx::test]
-async fn valid_otp_returns_200_and_sets_email_verified(pool: PgPool) {
+async fn valid_otp_returns_200_with_tokens_and_sets_email_verified(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
     let user_id = insert_user(&pool, school_id, "alice@test.edu", false).await;
 
@@ -135,13 +138,55 @@ async fn valid_otp_returns_200_and_sets_email_verified(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(json["verified"], true);
-    assert_eq!(json["type"], "email_verify");
+
+    // Tokens must be included so the user is immediately authenticated
+    // without a redundant login.
+    let access_token = json["access_token"].as_str().expect("access_token");
+    assert!(!access_token.is_empty(), "access_token must not be empty");
+    let refresh_token = json["refresh_token"].as_str().expect("refresh_token");
+    assert_eq!(
+        refresh_token.len(),
+        64,
+        "refresh_token must be 64 hex chars"
+    );
+    assert_eq!(json["expires_in"], 900);
 
     // Verify the DB was updated.
     assert!(
         user_email_verified(&pool, &user_id).await,
         "email_verified must be true in DB after successful verification"
     );
+}
+
+// Verify that the issued access token is valid and can access /me.
+#[sqlx::test]
+async fn verify_email_issued_token_works_for_me_endpoint(pool: PgPool) {
+    let school_id = seed_school(&pool, "test.edu").await;
+    let user_id = insert_user(&pool, school_id, "alice@test.edu", false).await;
+
+    let state = test_state(pool.clone());
+    let otp_code = generate_otp(&pool, user_id, "email_verify").await;
+
+    let resp = call_verify_otp(&state, &otp_code, "email_verify").await;
+    assert_eq!(resp.status(), 200);
+    let json: serde_json::Value = test::read_body_json(resp).await;
+    let access_token = json["access_token"].as_str().unwrap();
+
+    // Use the token to call /me — must return the user's profile.
+    let me_app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/me",
+        web::get().to(uni_stash_be::features::auth::handlers::me),
+    ))
+    .await;
+    let me_req = test::TestRequest::get()
+        .uri("/api/v1/auth/me")
+        .insert_header(("Authorization", format!("Bearer {access_token}")))
+        .to_request();
+    let me_resp = test::call_service(&me_app, me_req).await;
+    assert_eq!(me_resp.status(), 200);
+    let me_json: serde_json::Value = test::read_body_json(me_resp).await;
+    assert_eq!(me_json["email"], "alice@test.edu");
+    assert_eq!(me_json["email_verified"], true);
 }
 
 // ===========================================================================

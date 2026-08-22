@@ -10,7 +10,7 @@ use crate::core::state::AppState;
 use crate::features::auth::dtos::{
     ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginResponse, LogoutRequest,
     RefreshRequest, RefreshResponse, ResetPasswordRequest, SignUpRequest, SignUpResponse,
-    VerifyOtpRequest,
+    VerifyOtpRequest, VerifyOtpResponse,
 };
 
 // ---------------------------------------------------------------------------
@@ -44,10 +44,10 @@ pub async fn signup(
     // Generate OTP and send via email (replaces JWT token flow)
     let (otp_code, _otp_id) = state.auth_repo.insert_otp(user.id, "email_verify").await?;
 
-    // Best-effort email — if Resend fails, the user row exists and they
+    // Best-effort email — if SMTP fails, the user row exists and they
     // can use POST /auth/resend-verification to retry.
     if let Err(e) = state
-        .resend
+        .smtp
         .send_otp_email(&user.email, &otp_code, "email_verify")
         .await
     {
@@ -82,14 +82,40 @@ pub async fn verify_otp(
         .await?;
 
     // If this was an email verification OTP, mark the user as verified
+    // and issue tokens so the user can start using the app immediately
+    // without a redundant login.
     if body.otp_type == "email_verify" {
         state.auth_repo.mark_email_verified(&user_id).await?;
+
+        let user = state
+            .auth_repo
+            .find_user_by_id(&user_id)
+            .await?
+            .ok_or(AppError::NotFound("user not found".into()))?;
+
+        let access_token = jwt::sign_access_token(&state.jwt_keys, &user)?;
+        let family_id = uuid::Uuid::new_v4();
+        let (refresh_token, _id) = state
+            .auth_repo
+            .issue_refresh_token(&state.db, user.id, family_id)
+            .await?;
+
+        return Ok(HttpResponse::Ok().json(VerifyOtpResponse {
+            verified: true,
+            access_token: Some(access_token),
+            refresh_token: Some(refresh_token),
+            expires_in: Some(900),
+        }));
     }
 
-    Ok(HttpResponse::Ok().json(json!({
-        "verified": true,
-        "type": body.otp_type,
-    })))
+    // password_reset — just confirm verification, no tokens (user must login
+    // with their new password via the separate reset-password endpoint).
+    Ok(HttpResponse::Ok().json(VerifyOtpResponse {
+        verified: true,
+        access_token: None,
+        refresh_token: None,
+        expires_in: None,
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +146,7 @@ pub async fn resend_verification(
     let (otp_code, _otp_id) = state.auth_repo.insert_otp(user.id, "email_verify").await?;
 
     if let Err(e) = state
-        .resend
+        .smtp
         .send_otp_email(&user.email, &otp_code, "email_verify")
         .await
     {
@@ -159,7 +185,7 @@ pub async fn forgot_password(
             .await?;
 
         if let Err(e) = state
-            .resend
+            .smtp
             .send_otp_email(&user.email, &otp_code, "password_reset")
             .await
         {

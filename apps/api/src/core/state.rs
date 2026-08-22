@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     core::{
-        clients::{JwtKeys, R2Client, ResendClient},
+        clients::{JwtKeys, R2Client, SmtpClient},
         config::Config,
         db::Db,
         error::AppError,
@@ -22,7 +22,7 @@ pub struct AppState {
     pub db: sqlx::PgPool,
     pub jwt_keys: JwtKeys,
     pub r2_client: R2Client,
-    pub resend: ResendClient,
+    pub smtp: SmtpClient,
     pub ws_registry: WsRegistry,
     pub auth_repo: AuthRepo,
     pub admin_auth_repo: AdminAuthRepo,
@@ -39,7 +39,7 @@ impl AppState {
         Ok(Self {
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
             r2_client: R2Client::from_config(config),
-            resend: ResendClient::new(config)?,
+            smtp: SmtpClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(pool.clone()),
             admin_auth_repo: AdminAuthRepo::new(pool.clone()),
@@ -69,8 +69,11 @@ mod tests {
             database_url: "postgres://localhost:5432/uni_stash".into(),
             jwt_private_key: TEST_PRIVATE_PEM.into(),
             jwt_public_key: TEST_PUBLIC_PEM.into(),
-            resend_api_key: "https://api.resend.com".into(),
-            resend_base_url: "https://api.resend.com".into(),
+            smtp_host: "smtp.example.com".into(),
+            smtp_port: 587,
+            smtp_user: "test@example.com".into(),
+            smtp_password: "test_password".into(),
+            smtp_from: "Test <test@example.com>".into(),
             port: 8080,
             env: "test".into(),
             r2_bucket: "".into(),
@@ -109,7 +112,7 @@ mod tests {
             &copy.jwt_keys.decoding
         ));
         assert!(Arc::ptr_eq(&state.r2_client.inner, &copy.r2_client.inner));
-        // ResendClient clone is tested in clients::resend::tests.
+        // SmtpClient clone is tested in clients::smtp::tests.
         assert!(Arc::ptr_eq(&state.ws_registry, &copy.ws_registry));
         // db is PgPool — Arc-backed by sqlx, cheap by construction.
     }

@@ -5,8 +5,8 @@
 
 mod jwt;
 mod r2;
-mod resend;
+mod smtp;
 
 pub use jwt::JwtKeys;
 pub use r2::R2Client;
-pub use resend::ResendClient;
+pub use smtp::SmtpClient;

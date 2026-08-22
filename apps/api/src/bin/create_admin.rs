@@ -4,7 +4,7 @@ use std::env;
 /// Create or update an admin account.
 ///
 /// Only requires DATABASE_URL in the environment — does not need JWT keys,
-/// Resend API keys, or any other application config.
+/// SMTP config, or any other application config.
 #[derive(Parser)]
 #[command(name = "create_admin", about = "Create or update an admin account")]
 struct Cli {
