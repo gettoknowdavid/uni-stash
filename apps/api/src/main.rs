@@ -45,6 +45,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(configure_health)
             .configure(features::auth::configure)
             .configure(features::listings::configure)
+            .configure(features::images::configure)
     })
     // 0.0.0.0, not 127.0.0.1 — Render's proxy connects from outside the
     // container's loopback interface. Port comes from Config (CM-1.2),

@@ -8,7 +8,7 @@ use crate::{
         error::AppError,
         rate_limit::PerEmailLimiter,
     },
-    features::{auth::repo::AuthRepo, listings::repo::ListingsRepo},
+    features::{auth::repo::AuthRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo},
 };
 
 /// PLACEHOLDER for the chat session registry.
@@ -23,6 +23,7 @@ pub struct AppState {
     pub ws_registry: WsRegistry,
     pub auth_repo: AuthRepo,
     pub listings_repo: ListingsRepo,
+    pub images_repo: ImagesRepo,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
@@ -35,6 +36,7 @@ impl AppState {
             ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(db.pool.clone()),
             listings_repo: ListingsRepo::new(db.pool.clone()),
+            images_repo: ImagesRepo::new(db.pool.clone()),
             email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })
