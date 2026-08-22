@@ -1,6 +1,6 @@
--- 0002_otps.sql
+-- 0004_otps.sql
 --
--- Introduces the OTP (One-Time Password) table for:
+-- OTP (One-Time Password) table for:
 --   - Email verification (replaces JWT-based verify-email tokens)
 --   - Password reset (new feature)
 --
