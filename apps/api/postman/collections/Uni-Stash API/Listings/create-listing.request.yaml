@@ -1,0 +1,25 @@
+$kind: http-request
+name: Create Listing
+method: POST
+url: '{{baseUrl}}/api/v1/listings'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Calculus Textbook",
+      "description": "Barely used, great condition",
+      "price": 2500,
+      "category_id": 1
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("listingId", body.id);
+      }

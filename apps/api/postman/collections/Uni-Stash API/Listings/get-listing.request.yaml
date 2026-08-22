@@ -1,0 +1,7 @@
+$kind: http-request
+name: Get Listing
+method: GET
+url: '{{baseUrl}}/api/v1/listings/{{listingId}}'
+order: 3000
+auth:
+  type: noauth

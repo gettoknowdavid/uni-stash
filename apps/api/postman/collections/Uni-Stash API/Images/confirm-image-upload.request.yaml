@@ -1,0 +1,15 @@
+$kind: http-request
+name: Confirm Image Upload
+method: POST
+url: '{{baseUrl}}/api/v1/images/confirm'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "object_key": "{{objectKey}}",
+      "listing_id": "{{listingId}}"
+    }

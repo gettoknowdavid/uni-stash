@@ -1,0 +1,5 @@
+$kind: http-request
+name: Delete Listing
+method: DELETE
+url: '{{baseUrl}}/api/v1/listings/{{listingId}}'
+order: 5000

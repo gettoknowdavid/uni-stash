@@ -1,0 +1,14 @@
+$kind: collection
+name: Uni-Stash API
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+variables:
+  baseUrl: http://localhost:3000
+  accessToken: ""
+  refreshToken: ""
+  listingId: ""
+  imageId: ""
+  objectKey: ""
+  verificationToken: ""

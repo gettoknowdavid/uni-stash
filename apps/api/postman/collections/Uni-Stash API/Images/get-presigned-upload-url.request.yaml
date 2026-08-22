@@ -1,0 +1,15 @@
+$kind: http-request
+name: Get Presigned Upload URL
+method: POST
+url: '{{baseUrl}}/api/v1/images/presign'
+order: 1000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listing_id": "{{listingId}}",
+      "content_type": "image/jpeg"
+    }
