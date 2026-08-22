@@ -86,10 +86,8 @@ pub fn spawn(pool: PgPool) {
                 .find_stale_reservation_ids(STALE_RESERVATION_HOURS)
                 .await?;
             for listing_id in stale_ids {
-                match crate::features::listings::state_machine::unreserve_system(
-                    &pool, listing_id,
-                )
-                .await
+                match crate::features::listings::state_machine::unreserve_system(&pool, listing_id)
+                    .await
                 {
                     Ok(_) => {
                         tracing::info!(listing_id = %listing_id, "auto-unreserved stale listing");

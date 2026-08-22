@@ -9,7 +9,7 @@ use validator::Validate;
 /// CORS configuration and the client's image picker.
 const ALLOWED_CONTENT_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp"];
 
-#[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct PresignRequest {
     /// The listing this image belongs to.
     pub listing_id: uuid::Uuid,
@@ -28,7 +28,7 @@ fn validate_content_type(ct: &str) -> Result<(), validator::ValidationError> {
     }
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
+#[derive(serde::Serialize)]
 pub struct PresignResponse {
     /// The presigned PUT URL the client should upload to directly.
     pub upload_url: String,
@@ -42,14 +42,14 @@ pub struct PresignResponse {
 // CM-6.2 — POST /images/confirm
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, utoipa::ToSchema)]
+#[derive(Debug, Deserialize)]
 pub struct ConfirmRequest {
     pub listing_id: uuid::Uuid,
     /// The object key returned by the presign endpoint.
     pub object_key: String,
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
+#[derive(serde::Serialize)]
 pub struct ConfirmResponse {
     pub id: uuid::Uuid,
     pub listing_id: uuid::Uuid,

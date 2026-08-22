@@ -1,0 +1,9 @@
+$kind: http-request
+name: Admin Get Current User
+method: GET
+url: '{{baseUrl}}/api/v1/admin/auth/me'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminAccessToken}}"

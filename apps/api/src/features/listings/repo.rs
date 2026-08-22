@@ -130,9 +130,7 @@ impl ListingsRepo {
             // CM-5.1 AC 2 — Order by ts_rank DESC for relevance.
             // ts_rank normalizes by document length, so shorter documents
             // don't unfairly rank higher.
-            query.push(
-                " ORDER BY ts_rank(l.search_vector, plainto_tsquery('english', ",
-            );
+            query.push(" ORDER BY ts_rank(l.search_vector, plainto_tsquery('english', ");
             // Re-bind the search query for the ORDER BY expression.
             // Postgres will recognize this as the same parameter, but we need
             // to re-push it because QueryBuilder generates positional params.
@@ -265,9 +263,7 @@ impl ListingsRepo {
         }
         if row.status != "active" {
             let _ = tx.rollback();
-            return Err(AppError::Conflict(
-                "listing is not active".into(),
-            ));
+            return Err(AppError::Conflict("listing is not active".into()));
         }
 
         // Build dynamic UPDATE — only SET columns present in patch
@@ -281,7 +277,9 @@ impl ListingsRepo {
             has_fields = true;
         }
         if let Some(ref description) = patch.description {
-            query.push(", description = ").push_bind(description.clone());
+            query
+                .push(", description = ")
+                .push_bind(description.clone());
             has_fields = true;
         }
         if let Some(category_id) = patch.category_id {
@@ -300,7 +298,9 @@ impl ListingsRepo {
             has_fields = true;
         }
         if let Some(ref condition) = patch.condition {
-            query.push(", condition = ").push_bind(condition.to_string());
+            query
+                .push(", condition = ")
+                .push_bind(condition.to_string());
             has_fields = true;
         }
 

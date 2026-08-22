@@ -53,6 +53,10 @@ impl ResendClient {
                 "Reset your UniStash password",
                 "Use the code below to reset your password:",
             ),
+            "admin_password_reset" => (
+                "Reset your UniStash admin password",
+                "Use the code below to reset your admin password:",
+            ),
             _ => ("Your UniStash verification code", "Use the code below:"),
         };
 

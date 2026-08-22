@@ -84,15 +84,14 @@ fn login_body(email: &str, password: &str) -> serde_json::Value {
     })
 }
 
-async fn call_login(state: &web::Data<AppState>, body: &serde_json::Value) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/login",
-                web::post().to(uni_stash_be::features::auth::handlers::login),
-            ),
-    )
+async fn call_login(
+    state: &web::Data<AppState>,
+    body: &serde_json::Value,
+) -> actix_web::dev::ServiceResponse {
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/login",
+        web::post().to(uni_stash_be::features::auth::handlers::login),
+    ))
     .await;
 
     let req = test::TestRequest::post()
@@ -110,7 +109,14 @@ async fn call_login(state: &web::Data<AppState>, body: &serde_json::Value) -> ac
 #[sqlx::test]
 async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "alice@test.edu", "correct horse battery staple", true).await;
+    insert_user(
+        &pool,
+        school_id,
+        "alice@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
 
     let state = test_state(pool.clone());
     let body = login_body("alice@test.edu", "correct horse battery staple");
@@ -120,12 +126,20 @@ async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
 
     // access_token must be a non-empty string (JWT).
-    let access_token = json["access_token"].as_str().expect("access_token must be a string");
+    let access_token = json["access_token"]
+        .as_str()
+        .expect("access_token must be a string");
     assert!(!access_token.is_empty(), "access_token must not be empty");
 
     // refresh_token must be a 64-char hex string.
-    let refresh_token = json["refresh_token"].as_str().expect("refresh_token must be a string");
-    assert_eq!(refresh_token.len(), 64, "refresh_token must be 64 hex chars");
+    let refresh_token = json["refresh_token"]
+        .as_str()
+        .expect("refresh_token must be a string");
+    assert_eq!(
+        refresh_token.len(),
+        64,
+        "refresh_token must be 64 hex chars"
+    );
     assert!(
         refresh_token.chars().all(|c| c.is_ascii_hexdigit()),
         "refresh_token must be hex: {refresh_token}"
@@ -142,7 +156,14 @@ async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
 #[sqlx::test]
 async fn wrong_password_returns_401(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "bob@test.edu", "correct horse battery staple", true).await;
+    insert_user(
+        &pool,
+        school_id,
+        "bob@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
 
     let state = test_state(pool.clone());
     let body = login_body("bob@test.edu", "wrong password entirely");
@@ -160,7 +181,14 @@ async fn wrong_password_returns_401(pool: PgPool) {
 #[sqlx::test]
 async fn nonexistent_email_returns_401_identical_to_wrong_password(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "bob@test.edu", "correct horse battery staple", true).await;
+    insert_user(
+        &pool,
+        school_id,
+        "bob@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
 
     let state = test_state(pool.clone());
 
@@ -178,7 +206,10 @@ async fn nonexistent_email_returns_401_identical_to_wrong_password(pool: PgPool)
 
     // Both must be 401 with identical bodies — no user-enumeration leak.
     assert_eq!(status1, status2, "status codes must match");
-    assert_eq!(json1, json2, "response bodies must be identical to prevent user enumeration");
+    assert_eq!(
+        json1, json2,
+        "response bodies must be identical to prevent user enumeration"
+    );
 }
 
 // ===========================================================================
@@ -188,7 +219,14 @@ async fn nonexistent_email_returns_401_identical_to_wrong_password(pool: PgPool)
 #[sqlx::test]
 async fn unverified_email_returns_403_email_not_verified(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "carol@test.edu", "correct horse battery staple", false).await;
+    insert_user(
+        &pool,
+        school_id,
+        "carol@test.edu",
+        "correct horse battery staple",
+        false,
+    )
+    .await;
 
     let state = test_state(pool.clone());
     let body = login_body("carol@test.edu", "correct horse battery staple");
@@ -213,13 +251,23 @@ async fn unverified_email_returns_403_email_not_verified(pool: PgPool) {
 #[sqlx::test]
 async fn per_email_rate_limit_rejects_after_threshold(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "rate@test.edu", "correct horse battery staple", true).await;
+    insert_user(
+        &pool,
+        school_id,
+        "rate@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
 
     let state = test_state(pool.clone());
 
     // Exhaust the 30-request window for this email.
     for _ in 0..30 {
-        state.email_limiter.check_and_record("rate@test.edu").unwrap();
+        state
+            .email_limiter
+            .check_and_record("rate@test.edu")
+            .unwrap();
     }
 
     // The 31st request should be rejected.
@@ -238,14 +286,24 @@ async fn per_email_rate_limit_rejects_after_threshold(pool: PgPool) {
 #[sqlx::test]
 async fn per_email_rate_limit_persists_across_different_ips(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    insert_user(&pool, school_id, "rot@test.edu", "correct horse battery staple", true).await;
+    insert_user(
+        &pool,
+        school_id,
+        "rot@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
 
     let state = test_state(pool.clone());
 
     // Simulate requests from different IPs for the same email.
     // The per-email limiter is shared across all requests (same AppState).
     for _ in 0..30 {
-        state.email_limiter.check_and_record("rot@test.edu").unwrap();
+        state
+            .email_limiter
+            .check_and_record("rot@test.edu")
+            .unwrap();
     }
 
     // Even if the IP changed, per-email limiter still rejects.

@@ -126,24 +126,24 @@ async fn insert_expired_refresh_token(pool: &PgPool, user_id: Uuid, family_id: U
 }
 
 async fn find_token_by_id(pool: &PgPool, token_id: Uuid) -> RefreshToken {
-    sqlx::query_as!(RefreshToken, "SELECT * FROM refresh_tokens WHERE id = $1", token_id)
-        .fetch_one(pool)
-        .await
-        .expect("find token")
+    sqlx::query_as!(
+        RefreshToken,
+        "SELECT * FROM refresh_tokens WHERE id = $1",
+        token_id
+    )
+    .fetch_one(pool)
+    .await
+    .expect("find token")
 }
 
 async fn call_refresh(
     state: &web::Data<AppState>,
     refresh_token: &str,
 ) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/refresh",
-                web::post().to(uni_stash_be::features::auth::handlers::refresh),
-            ),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/refresh",
+        web::post().to(uni_stash_be::features::auth::handlers::refresh),
+    ))
     .await;
 
     let req = test::TestRequest::post()
@@ -161,7 +161,14 @@ async fn call_refresh(
 #[sqlx::test]
 async fn valid_refresh_token_returns_200_with_new_pair(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "alice@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "alice@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, _id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 
@@ -191,7 +198,14 @@ async fn valid_refresh_token_returns_200_with_new_pair(pool: PgPool) {
 #[sqlx::test]
 async fn old_token_is_revoked_after_rotation(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "bob@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "bob@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, old_id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 
@@ -211,7 +225,14 @@ async fn old_token_is_revoked_after_rotation(pool: PgPool) {
 #[sqlx::test]
 async fn old_token_superseded_by_points_to_new(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "carol@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "carol@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, old_id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 
@@ -228,8 +249,14 @@ async fn old_token_superseded_by_points_to_new(pool: PgPool) {
     // The new token must exist and be in the same family.
     let new_id = old_token.superseded_by.unwrap();
     let new_token = find_token_by_id(&pool, new_id).await;
-    assert_eq!(new_token.family_id, family_id, "new token must be in same family");
-    assert_eq!(new_token.user_id, user_id, "new token must belong to same user");
+    assert_eq!(
+        new_token.family_id, family_id,
+        "new token must be in same family"
+    );
+    assert_eq!(
+        new_token.user_id, user_id,
+        "new token must belong to same user"
+    );
     assert!(!new_token.revoked, "new token must not be revoked");
 }
 
@@ -240,7 +267,14 @@ async fn old_token_superseded_by_points_to_new(pool: PgPool) {
 #[sqlx::test]
 async fn expired_refresh_token_returns_401(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "dave@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "dave@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let plain = insert_expired_refresh_token(&pool, user_id, family_id).await;
 
@@ -259,7 +293,14 @@ async fn expired_refresh_token_returns_401(pool: PgPool) {
 #[sqlx::test]
 async fn revoked_refresh_token_returns_401_reuse_detected(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "eve@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "eve@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, _id) = insert_refresh_token(&pool, user_id, family_id, true).await; // pre-revoked
 
@@ -294,7 +335,14 @@ async fn unknown_refresh_token_returns_401(pool: PgPool) {
 #[sqlx::test]
 async fn new_refresh_token_can_be_rotated_again(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "frank@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "frank@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, _old_id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 
@@ -325,7 +373,14 @@ async fn new_refresh_token_can_be_rotated_again(pool: PgPool) {
 #[sqlx::test]
 async fn rotation_preserves_family_id(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "grace@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "grace@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, _old_id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 
@@ -334,13 +389,12 @@ async fn rotation_preserves_family_id(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     // Verify all tokens in the DB for this user share the same family_id.
-    let families: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .fetch_all(&pool)
-    .await
-    .expect("query families");
+    let families: Vec<Uuid> =
+        sqlx::query_scalar("SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(&pool)
+            .await
+            .expect("query families");
 
     assert_eq!(families.len(), 1, "all tokens must share one family");
     assert_eq!(families[0], family_id);
@@ -359,14 +413,10 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
     let state = test_state(pool.clone());
 
     // Step 1: Call the login handler to get the initial refresh token.
-    let login_app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route(
-                "/api/v1/auth/login",
-                web::post().to(uni_stash_be::features::auth::handlers::login),
-            ),
-    )
+    let login_app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/login",
+        web::post().to(uni_stash_be::features::auth::handlers::login),
+    ))
     .await;
 
     let login_req = test::TestRequest::post()
@@ -402,12 +452,18 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
 
     let new_refresh = json["refresh_token"].as_str().expect("new refresh_token");
-    assert_ne!(new_refresh, issued_refresh, "new token must differ from old");
+    assert_ne!(
+        new_refresh, issued_refresh,
+        "new token must differ from old"
+    );
     assert_eq!(json["expires_in"], 900);
 
     // Step 3: Verify old row is revoked and superseded_by points to new.
     let old_after = find_token_by_id(&pool, old_row_id).await;
-    assert!(old_after.revoked, "old token must be revoked after rotation");
+    assert!(
+        old_after.revoked,
+        "old token must be revoked after rotation"
+    );
     assert!(old_after.revoked_at.is_some(), "revoked_at must be set");
     let new_id = old_after.superseded_by.expect("superseded_by must be set");
 
@@ -425,7 +481,14 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
 #[sqlx::test]
 async fn new_token_expires_at_is_now_plus_ttl(pool: PgPool) {
     let school_id = seed_school(&pool, "test.edu").await;
-    let user_id = insert_user(&pool, school_id, "ivan@test.edu", "correct horse battery staple", true).await;
+    let user_id = insert_user(
+        &pool,
+        school_id,
+        "ivan@test.edu",
+        "correct horse battery staple",
+        true,
+    )
+    .await;
     let family_id = Uuid::new_v4();
     let (plain, old_id) = insert_refresh_token(&pool, user_id, family_id, false).await;
 

@@ -9,8 +9,8 @@ use crate::{
         rate_limit::PerEmailLimiter,
     },
     features::{
-        auth::repo::AuthRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo,
-        schools::repo::SchoolsRepo,
+        admin_auth::AdminAuthRepo, admin_management::AdminManagementRepo, auth::repo::AuthRepo,
+        images::repo::ImagesRepo, listings::repo::ListingsRepo, schools::repo::SchoolsRepo,
     },
 };
 
@@ -25,6 +25,8 @@ pub struct AppState {
     pub resend: ResendClient,
     pub ws_registry: WsRegistry,
     pub auth_repo: AuthRepo,
+    pub admin_auth_repo: AdminAuthRepo,
+    pub admin_management_repo: AdminManagementRepo,
     pub listings_repo: ListingsRepo,
     pub images_repo: ImagesRepo,
     pub schools_repo: SchoolsRepo,
@@ -33,15 +35,18 @@ pub struct AppState {
 }
 impl AppState {
     pub fn new(config: &Config, db: Db) -> anyhow::Result<Self, AppError> {
+        let pool = db.pool.clone();
         Ok(Self {
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
             r2_client: R2Client::from_config(config),
             resend: ResendClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
-            auth_repo: AuthRepo::new(db.pool.clone()),
-            listings_repo: ListingsRepo::new(db.pool.clone()),
-            images_repo: ImagesRepo::new(db.pool.clone()),
-            schools_repo: SchoolsRepo::new(db.pool.clone()),
+            auth_repo: AuthRepo::new(pool.clone()),
+            admin_auth_repo: AdminAuthRepo::new(pool.clone()),
+            admin_management_repo: AdminManagementRepo::new(pool.clone()),
+            listings_repo: ListingsRepo::new(pool.clone()),
+            images_repo: ImagesRepo::new(pool.clone()),
+            schools_repo: SchoolsRepo::new(pool.clone()),
             email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })

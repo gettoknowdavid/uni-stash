@@ -48,14 +48,18 @@ mod tests {
     #[test]
     fn encode_then_decode_round_trips() {
         let id = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap();
-        let ts = time::OffsetDateTime::from_unix_timestamp_nanos(1_700_000_000_000_000_000).unwrap();
+        let ts =
+            time::OffsetDateTime::from_unix_timestamp_nanos(1_700_000_000_000_000_000).unwrap();
         let cursor = ListingCursor { created_at: ts, id };
 
         let encoded = encode_cursor(&cursor);
         let decoded = decode_cursor(&encoded).unwrap();
 
         assert_eq!(decoded.id, id);
-        assert_eq!(decoded.created_at.unix_timestamp_nanos(), ts.unix_timestamp_nanos());
+        assert_eq!(
+            decoded.created_at.unix_timestamp_nanos(),
+            ts.unix_timestamp_nanos()
+        );
     }
 
     #[test]

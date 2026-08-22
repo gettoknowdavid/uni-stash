@@ -38,7 +38,7 @@ pub struct RefreshToken {
 /// fields the client needs for profile display.  `role` is fetched fresh from
 /// the DB (not from JWT claims) to avoid trusting a potentially stale token
 /// for authorization-adjacent data.
-#[derive(serde::Serialize, sqlx::FromRow, utoipa::ToSchema)]
+#[derive(serde::Serialize, sqlx::FromRow)]
 pub struct UserProfile {
     pub id: uuid::Uuid,
     pub email: String,

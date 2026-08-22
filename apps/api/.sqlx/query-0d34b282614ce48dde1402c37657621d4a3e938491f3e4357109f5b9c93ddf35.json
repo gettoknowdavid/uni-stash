@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE admin_refresh_tokens SET revoked = true, revoked_at = now()\n             WHERE admin_id = $1 AND revoked = false",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0d34b282614ce48dde1402c37657621d4a3e938491f3e4357109f5b9c93ddf35"
+}

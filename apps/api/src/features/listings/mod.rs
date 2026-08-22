@@ -28,7 +28,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 .route("/{id}/reserve", web::post().to(handlers::reserve_listing))
                 // CM-4.7 — Mark sold / Unreserve
                 .route("/{id}/mark-sold", web::post().to(handlers::mark_sold))
-                .route("/{id}/unreserve", web::post().to(handlers::unreserve_listing));
+                .route(
+                    "/{id}/unreserve",
+                    web::post().to(handlers::unreserve_listing),
+                );
         },
     );
 }

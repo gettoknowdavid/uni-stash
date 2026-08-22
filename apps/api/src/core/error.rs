@@ -13,16 +13,13 @@ struct ErrorDetail<'a> {
     fields: Option<&'a [FieldError]>,
 }
 
-/// OpenAPI-compatible error response shape. Used in `#[utoipa::path]`
-/// annotations since `AppError` itself can't derive `ToSchema` (it
-/// contains `anyhow::Error`).
-#[derive(serde::Serialize, utoipa::ToSchema)]
+/// Error response shape.
+#[derive(serde::Serialize)]
 pub struct ErrorResponse {
-    /// Machine-readable error code
     pub error: ErrorResponseBody,
 }
 
-#[derive(serde::Serialize, utoipa::ToSchema)]
+#[derive(serde::Serialize)]
 pub struct ErrorResponseBody {
     pub code: String,
     pub message: String,
@@ -47,11 +44,9 @@ pub struct ErrorResponseBody {
 ///   }
 /// }
 /// ```
-#[derive(Clone, Debug, serde::Serialize, utoipa::ToSchema)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct FieldError {
-    #[schema(example = "email")]
     pub field: String,
-    #[schema(example = "Must be a valid email")]
     pub message: String,
 }
 

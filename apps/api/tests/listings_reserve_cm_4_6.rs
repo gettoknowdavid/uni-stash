@@ -13,9 +13,12 @@ fn test_config() -> Config {
         jwt_public_key: TEST_PUBLIC_PEM.into(),
         resend_api_key: "".into(),
         resend_base_url: "http://127.0.0.1:1".into(),
-        port: 8080, env: "test".into(),
-        r2_bucket: "".into(), r2_access_key_id: "".into(),
-        r2_secret_access_key: "".into(), r2_endpoint: "".into(),
+        port: 8080,
+        env: "test".into(),
+        r2_bucket: "".into(),
+        r2_access_key_id: "".into(),
+        r2_secret_access_key: "".into(),
+        r2_endpoint: "".into(),
         frontend_base_url: "https://uni-stash.com".into(),
     }
 }
@@ -27,7 +30,9 @@ fn test_state(pool: PgPool) -> web::Data<AppState> {
 
 async fn seed_school(p: &PgPool) -> i16 {
     sqlx::query_scalar("INSERT INTO schools (name, domain) VALUES ('T', 't.edu') RETURNING id")
-        .fetch_one(p).await.unwrap()
+        .fetch_one(p)
+        .await
+        .unwrap()
 }
 async fn seed_user(p: &PgPool, s: i16, e: &str) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
@@ -35,31 +40,52 @@ async fn seed_user(p: &PgPool, s: i16, e: &str) -> uuid::Uuid {
     ).bind(s).bind(e).fetch_one(p).await.unwrap()
 }
 async fn seed_category(p: &PgPool, slug: &str) -> i16 {
-    sqlx::query_scalar::<_, i16>("INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id")
-        .bind(slug).fetch_one(p).await.unwrap()
+    sqlx::query_scalar::<_, i16>(
+        "INSERT INTO categories (slug, label) VALUES ($1, $1) RETURNING id",
+    )
+    .bind(slug)
+    .fetch_one(p)
+    .await
+    .unwrap()
 }
 async fn seed_listing(p: &PgPool, seller: uuid::Uuid, cat: i16, status: &str) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
         "INSERT INTO listings (seller_id, category_id, title, description, condition, status)
          VALUES ($1, $2, 'Item', '', 'new', $3) RETURNING id",
-    ).bind(seller).bind(cat).bind(status).fetch_one(p).await.unwrap()
+    )
+    .bind(seller)
+    .bind(cat)
+    .bind(status)
+    .fetch_one(p)
+    .await
+    .unwrap()
 }
 
 fn sign_token(keys: &uni_stash_be::core::clients::JwtKeys, uid: uuid::Uuid, email: &str) -> String {
     let user = uni_stash_be::features::auth::models::User {
-        id: uid, school_id: 1, email: email.into(), display_name: "U".into(),
-        email_verified: true, role: "student".into(),
-        created_at: time::OffsetDateTime::now_utc(), updated_at: time::OffsetDateTime::now_utc(),
+        id: uid,
+        school_id: 1,
+        email: email.into(),
+        display_name: "U".into(),
+        email_verified: true,
+        role: "student".into(),
+        created_at: time::OffsetDateTime::now_utc(),
+        updated_at: time::OffsetDateTime::now_utc(),
         password_hash: String::new(),
     };
     jwt::sign_access_token(keys, &user).unwrap()
 }
 
-async fn call_reserve(state: &web::Data<AppState>, id: uuid::Uuid, token: &str) -> actix_web::dev::ServiceResponse {
-    let app = test::init_service(
-        App::new().app_data(state.clone())
-            .route("/api/v1/listings/{id}/reserve", web::post().to(reserve_listing)),
-    ).await;
+async fn call_reserve(
+    state: &web::Data<AppState>,
+    id: uuid::Uuid,
+    token: &str,
+) -> actix_web::dev::ServiceResponse {
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/listings/{id}/reserve",
+        web::post().to(reserve_listing),
+    ))
+    .await;
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/listings/{id}/reserve"))
         .insert_header(("Authorization", format!("Bearer {token}")))
@@ -75,7 +101,10 @@ struct ListingState {
 
 async fn get_listing_state(pool: &PgPool, id: uuid::Uuid) -> ListingState {
     sqlx::query_as::<_, ListingState>("SELECT status, reserved_by FROM listings WHERE id = $1")
-        .bind(id).fetch_one(pool).await.unwrap()
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
 
 // ===========================================================================
