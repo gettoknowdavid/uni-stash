@@ -57,33 +57,92 @@ impl ListingsRepo {
     ) -> Result<(Vec<ListingSummary>, Option<String>), AppError> {
         let limit = filters.limit.min(50);
 
-        let mut query: QueryBuilder<sqlx::Postgres> = QueryBuilder::new(
-            "SELECT id, title, price, condition, status, created_at
-             FROM listings
-             WHERE status = ",
-        );
+        let is_search = filters.search_query.is_some();
+
+        let mut query: QueryBuilder<sqlx::Postgres> = if is_search {
+            // CM-5.1 — Full-text search: select with rank for display,
+            // but only return the same columns as the non-search path.
+            QueryBuilder::new(
+                "SELECT l.id, l.title, l.price, l.condition, l.status, l.created_at
+                 FROM listings l
+                 WHERE l.status = ",
+            )
+        } else {
+            QueryBuilder::new(
+                "SELECT id, title, price, condition, status, created_at
+                 FROM listings
+                 WHERE status = ",
+            )
+        };
+
         query.push_bind(filters.status.to_string());
 
+        // CM-5.1 — When a search query is present, filter by tsvector match
+        // and order by relevance rank. plainto_tsquery handles stemming and
+        // stop-word removal for the 'english' dictionary.
+        if let Some(ref q) = filters.search_query {
+            query.push(" AND l.search_vector @@ plainto_tsquery('english', ");
+            query.push_bind(q.clone());
+            query.push(")");
+        }
+
         if let Some(category) = filters.category {
-            query.push(" AND category_id = ").push_bind(category);
+            if is_search {
+                query.push(" AND l.category_id = ");
+            } else {
+                query.push(" AND category_id = ");
+            }
+            query.push_bind(category);
         }
         if let Some(min_price) = filters.min_price {
-            query.push(" AND price >= ").push_bind(min_price);
+            if is_search {
+                query.push(" AND l.price >= ");
+            } else {
+                query.push(" AND price >= ");
+            }
+            query.push_bind(min_price);
         }
         if let Some(max_price) = filters.max_price {
-            query.push(" AND price <= ").push_bind(max_price);
+            if is_search {
+                query.push(" AND l.price <= ");
+            } else {
+                query.push(" AND price <= ");
+            }
+            query.push_bind(max_price);
         }
 
-        if let Some(ref cursor) = filters.cursor {
-            query
-                .push(" AND (created_at, id) < (")
-                .push_bind(cursor.created_at)
-                .push(", ")
-                .push_bind(cursor.id)
-                .push(")");
+        // Cursor pagination: only for non-search browse.
+        // Search results are rank-ordered, so a (created_at, id) cursor
+        // would produce incorrect pages. For MVP, search results use simple
+        // limit-only pagination (no cursor, no next_cursor).
+        if !is_search {
+            if let Some(ref cursor) = filters.cursor {
+                query
+                    .push(" AND (created_at, id) < (")
+                    .push_bind(cursor.created_at)
+                    .push(", ")
+                    .push_bind(cursor.id)
+                    .push(")");
+            }
         }
 
-        query.push(" ORDER BY created_at DESC, id DESC LIMIT ");
+        if is_search {
+            // CM-5.1 AC 2 — Order by ts_rank DESC for relevance.
+            // ts_rank normalizes by document length, so shorter documents
+            // don't unfairly rank higher.
+            query.push(
+                " ORDER BY ts_rank(l.search_vector, plainto_tsquery('english', ",
+            );
+            // Re-bind the search query for the ORDER BY expression.
+            // Postgres will recognize this as the same parameter, but we need
+            // to re-push it because QueryBuilder generates positional params.
+            query.push_bind(filters.search_query.clone().unwrap());
+            query.push(")) DESC, l.created_at DESC");
+        } else {
+            query.push(" ORDER BY created_at DESC, id DESC");
+        }
+
+        query.push(" LIMIT ");
         query.push_bind(limit + 1);
 
         let rows: Vec<ListingSummary> = query.build_query_as().fetch_all(&self.db).await?;
@@ -95,7 +154,10 @@ impl ListingsRepo {
             rows
         };
 
-        let next_cursor = if has_more {
+        // Search results don't use cursor pagination.
+        let next_cursor = if is_search {
+            None
+        } else if has_more {
             let last = listings.last().expect("has_more implies non-empty");
             Some(encode_cursor(
                 &crate::features::listings::cursor::ListingCursor {

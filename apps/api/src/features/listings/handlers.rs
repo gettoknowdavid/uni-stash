@@ -58,9 +58,27 @@ pub async fn list_listings(
     };
 
     let limit = query.limit.unwrap_or(20).min(50).max(1);
-    let cursor = query.cursor.as_deref().map(decode_cursor).transpose()?;
+
+    // CM-5.1: full-text search query — treat whitespace-only as absent.
+    let search_query = query.q.as_ref().and_then(|q| {
+        let trimmed = q.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+
+    // Cursor pagination is only valid for non-search browse (recency-ordered).
+    // When searching by rank, cursor is ignored — results are page-limited only.
+    let cursor = if search_query.is_none() {
+        query.cursor.as_deref().map(decode_cursor).transpose()?
+    } else {
+        None
+    };
 
     let filters = ListingFilters {
+        search_query,
         category: query.category,
         min_price: query.min_price,
         max_price: query.max_price,
