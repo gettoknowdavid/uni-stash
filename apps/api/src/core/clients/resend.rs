@@ -8,7 +8,6 @@ struct ResendClientInner {
     http: reqwest::Client,
     api_key: String,
     base_url: String,
-    frontend_base_url: String,
 }
 
 /// Sends transactional email via Resend's REST API.
@@ -29,45 +28,43 @@ impl ResendClient {
             http,
             api_key: config.resend_api_key.clone(),
             base_url: config.resend_base_url.clone(),
-            frontend_base_url: config.frontend_base_url.clone(),
         })))
     }
 
-    /// Sends a verification email with a magic link.
+    /// Sends an OTP email for the given purpose.
     ///
-    /// # Rollback vs. retry decision
+    /// `purpose` determines the subject and body:
+    /// - `"email_verify"` — "Verify your UniStash email"
+    /// - `"password_reset"` — "Reset your UniStash password"
     ///
-    /// We do **not** roll back the user row on Resend failure. Instead:
-    /// - The user exists with `email_verified = false`.
-    /// - A future `POST /api/v1/auth/resend-verification` endpoint (not in
-    ///   this ticket's scope) will let the client re-trigger the email.
-    /// - Rolling back requires a transaction that spans an external HTTP
-    ///   call, which is fragile and introduces distributed-transaction
-    ///   semantics. Leaving the row and surfacing a 500 lets the client
-    ///   retry signup (which hits the Conflict path for the duplicate email)
-    ///   or lets a dedicated resend-email endpoint handle it.
-    pub async fn send_verification_email(
+    /// The OTP code is included as a 6-digit number the user types into the app.
+    pub async fn send_otp_email(
         &self,
         to_email: &str,
-        verify_token: &str,
+        otp_code: &str,
+        purpose: &str,
     ) -> Result<(), AppError> {
-        let verification_url = format!(
-            "{}/verify-email?token={}",
-            self.0.frontend_base_url.trim_end_matches('/'),
-            verify_token,
-        );
+        let (subject, heading) = match purpose {
+            "email_verify" => (
+                "Verify your UniStash email",
+                "Use the code below to verify your email address:",
+            ),
+            "password_reset" => (
+                "Reset your UniStash password",
+                "Use the code below to reset your password:",
+            ),
+            _ => ("Your UniStash verification code", "Use the code below:"),
+        };
 
         let html = format!(
-            "<p>Click the link below to verify your email address:</p>\n\n\n<p><a href=\"{verification_url}\">Verify email</a></p>\n\n\n<p>This link expires in 24 hours.</p>"
+            "<p>{heading}</p>\n<p style=\"font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;margin:24px 0;padding:16px;background:#f5f5f5;border-radius:8px;font-family:monospace;\">{otp_code}</p>\n<p>This code expires in 10 minutes.</p>"
         );
-        let text = format!(
-            "Verify your email by visiting this link:\n\n{verification_url}\n\nThis link expires in 24 hours."
-        );
+        let text = format!("{heading}\n\n{otp_code}\n\nThis code expires in 10 minutes.");
 
         let body = serde_json::json!({
             "from": "UniStash <onboarding@resend.dev>",
             "to": [to_email],
-            "subject": "Verify your UniStash email",
+            "subject": subject,
             "html": html,
             "text": text,
         });
@@ -83,7 +80,7 @@ impl ResendClient {
             .await
             .map_err(|e| {
                 tracing::error!(error = %e, to = to_email, "Resend request failed");
-                AppError::Internal(anyhow::anyhow!("failed to send verification email: {e}"))
+                AppError::Internal(anyhow::anyhow!("failed to send OTP email: {e}"))
             })?;
 
         if !response.status().is_success() {
@@ -93,14 +90,15 @@ impl ResendClient {
                 status = %status,
                 body = %text,
                 to = to_email,
+                purpose = purpose,
                 "Resend returned non-2xx"
             );
             return Err(AppError::Internal(anyhow::anyhow!(
-                "verification email failed: HTTP {status}"
+                "OTP email failed: HTTP {status}"
             )));
         }
 
-        tracing::info!(to = to_email, "Verification email sent");
+        tracing::info!(to = to_email, purpose = purpose, "OTP email sent");
         Ok(())
     }
 }
@@ -116,12 +114,11 @@ mod tests {
             http,
             api_key: "re_test_key".into(),
             base_url: base_url.into(),
-            frontend_base_url: "https://uni-stash.com".into(),
         }))
     }
 
     #[actix_rt::test]
-    async fn send_verification_email_success() {
+    async fn send_otp_email_success() {
         let mock = wiremock::MockServer::start().await;
 
         wiremock::Mock::given(wiremock::matchers::method("POST"))
@@ -140,14 +137,14 @@ mod tests {
 
         let client = resend_client(&mock.uri());
         let result = client
-            .send_verification_email("alice@example.com", "tok_abc123")
+            .send_otp_email("alice@example.com", "123456", "email_verify")
             .await;
 
         assert!(result.is_ok());
     }
 
     #[actix_rt::test]
-    async fn send_verification_email_non_2xx_returns_error() {
+    async fn send_otp_email_non_2xx_returns_error() {
         let mock = wiremock::MockServer::start().await;
 
         wiremock::Mock::given(wiremock::matchers::method("POST"))
@@ -163,7 +160,7 @@ mod tests {
 
         let client = resend_client(&mock.uri());
         let result = client
-            .send_verification_email("bad@example.com", "tok_abc123")
+            .send_otp_email("bad@example.com", "123456", "email_verify")
             .await;
 
         let err = result.unwrap_err();
@@ -171,7 +168,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn send_verification_email_includes_correct_url() {
+    async fn send_otp_email_includes_code_in_body() {
         let mock = wiremock::MockServer::start().await;
 
         wiremock::Mock::given(wiremock::matchers::method("POST"))
@@ -186,30 +183,60 @@ mod tests {
 
         let client = resend_client(&mock.uri());
         client
-            .send_verification_email("bob@test.com", "tok_xyz789")
+            .send_otp_email("bob@test.com", "847291", "email_verify")
             .await
             .unwrap();
 
-        // The mock was mounted with expect(1) — if it wasn't called, the test
-        // would fail. But let's also verify the body contains the right URL.
         let requests = mock.received_requests().await.unwrap();
         assert_eq!(requests.len(), 1);
 
         let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
         let html = body["html"].as_str().unwrap();
-        // Trailing slash on frontend_base_url should be trimmed.
         assert!(
-            html.contains("https://uni-stash.com/verify-email?token=tok_xyz789"),
-            "HTML should contain the verification URL, got: {html}"
+            html.contains("847291"),
+            "HTML should contain the OTP code, got: {html}"
+        );
+        let subject = body["subject"].as_str().unwrap();
+        assert!(
+            subject.contains("Verify"),
+            "subject should mention verify for email_verify purpose"
         );
     }
 
     #[actix_rt::test]
-    async fn send_verification_email_connection_refused() {
-        // Port 1 is closed on every platform — simulates Resend being down.
+    async fn send_otp_email_password_reset_uses_different_subject() {
+        let mock = wiremock::MockServer::start().await;
+
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/emails"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"id": "test-email-id"})),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let client = resend_client(&mock.uri());
+        client
+            .send_otp_email("bob@test.com", "111111", "password_reset")
+            .await
+            .unwrap();
+
+        let requests = mock.received_requests().await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        let subject = body["subject"].as_str().unwrap();
+        assert!(
+            subject.contains("Reset"),
+            "subject should mention reset for password_reset purpose"
+        );
+    }
+
+    #[actix_rt::test]
+    async fn send_otp_email_connection_refused() {
         let client = resend_client("http://127.0.0.1:1");
         let result = client
-            .send_verification_email("alice@example.com", "tok_abc123")
+            .send_otp_email("alice@example.com", "123456", "email_verify")
             .await;
 
         let err = result.unwrap_err();
