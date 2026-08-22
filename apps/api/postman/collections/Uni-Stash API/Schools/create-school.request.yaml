@@ -4,20 +4,19 @@ method: POST
 url: "{{baseUrl}}/api/v1/schools"
 order: 4000
 headers:
-  - key: Content-Type
-    value: application/json
+  Content-Type: application/json
 body:
   type: json
   content: |-
     {
-      "name": "University of Port Harcourt",
-      "domain": "uniport.edu.ng"
+      "name": "Covenant University",
+      "domain": "stu.cu.edu.ng"
     }
 scripts:
   - type: afterResponse
-    language: text/javascript
     code: |-
       if (pm.response.code === 201) {
           const body = pm.response.json();
           pm.collectionVariables.set("schoolId", body.id);
       }
+    language: text/javascript
