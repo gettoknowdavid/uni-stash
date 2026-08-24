@@ -1,5 +1,7 @@
 # UniStash
 
+[![style: very good analysis](https://img.shields.io/badge/style-very_good_analysis-B22C89.svg)](https://pub.dev/packages/very_good_analysis)
+
 A campus marketplace app for verified students to buy, sell, and barter items — think a trusted, school-only version of a classifieds app, with real-time chat and safe listing reservations.
 
 Students sign up with a verified school email, list items for sale or trade, browse and search what's available, and message sellers directly. Listings move through a safe `active → reserved → sold` flow so two buyers can't accidentally claim the same item.
