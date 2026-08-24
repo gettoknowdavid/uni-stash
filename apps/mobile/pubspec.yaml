@@ -9,12 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: any
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  very_good_analysis: ^10.3.0
 
 flutter:
   uses-material-design: true
