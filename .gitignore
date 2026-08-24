@@ -41,8 +41,12 @@ apps/mobile/android/**/GeneratedPluginRegistrant.java
 apps/mobile/**/generated_plugin_registrant.dart
 apps/mobile/*.iml
 apps/mobile/coverage/
-apps/mobile/*.g.dart
-apps/mobile/*.freezed.dart
+
+# Generated files (build_runner, freezed, envied, mockito, etc.)
+apps/mobile/**/*.g.dart
+apps/mobile/**/*.freezed.dart
+apps/mobile/**/*.mocks.dart
+apps/mobile/**/*.config.dart
 
 # Flutter secure config / keys (never commit signing keys or API keys)
 apps/mobile/android/key.properties

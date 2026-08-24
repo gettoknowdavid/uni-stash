@@ -1,0 +1,8 @@
+# build.yaml
+targets:
+  $default:
+    sources:
+      - $package$
+      - lib/**
+      - .env*
+      - .env/**
