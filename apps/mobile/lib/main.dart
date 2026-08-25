@@ -1,6 +1,8 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:forui/forui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:uni_stash_mobile/core/auth/auth_store.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/router/us_router.dart';
 import 'package:uni_stash_mobile/core/theme/theme.dart';
@@ -8,11 +10,10 @@ import 'package:uni_stash_mobile/core/theme/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Register all dependencies (Logger, Dio, ApiClient, etc.)
   configureDependencies();
-
-  // Wait for async singletons (Dio reads secure storage, etc.)
   await GetIt.I.allReady();
+
+  await bootstrapAuth(di<FlutterSecureStorage>());
 
   runApp(const MainApp());
 }

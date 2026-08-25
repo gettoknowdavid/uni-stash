@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uni_stash_mobile/core/auth/auth_state.dart';
+import 'package:uni_stash_mobile/core/auth/_auth.dart';
 import 'package:uni_stash_mobile/core/router/us_routes.dart';
 
 String? usRedirect(BuildContext context, GoRouterState state) {
@@ -10,8 +10,10 @@ String? usRedirect(BuildContext context, GoRouterState state) {
     UsRoutes.signup,
     UsRoutes.verify,
   ].contains(state.matchedLocation);
+
   if (status == .loading) return null;
   if (status == .unauthenticated && !isAuthRoute) return UsRoutes.login;
   if (status == .authenticated && isAuthRoute) return UsRoutes.home;
+
   return null;
 }
