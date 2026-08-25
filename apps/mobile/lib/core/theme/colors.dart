@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-
 import 'package:forui/forui.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// UniStash light color scheme.
 ///
@@ -15,29 +14,23 @@ final FColors usLightColors = FColors(
   // ── Backgrounds ──────────────────────────────────────────────────────────
   background: const Color(0xFFFFFFFF), // bg/primary
   foreground: const Color(0xFF15140F), // text/primary
-
   // ── Primary (orange accent) ──────────────────────────────────────────────
   primary: const Color(0xFFFF5B1F), // action/primary
   primaryForeground: const Color(0xFFFFFFFF), // text/inverse
-
   // ── Secondary ────────────────────────────────────────────────────────────
   secondary: const Color(0xFFFAF9F5), // bg/secondary
   secondaryForeground: const Color(0xFF15140F), // text/primary
-
   // ── Muted ────────────────────────────────────────────────────────────────
   muted: const Color(0xFFF7F6F2), // bg/tertiary
   mutedForeground: const Color(0xFF6B7280), // text/tertiary
-
   // ── Destructive / Error ──────────────────────────────────────────────────
   destructive: const Color(0xFFBA1A1A), // status/error
   destructiveForeground: const Color(0xFFFFFFFF), // text/inverse
   error: const Color(0xFFBA1A1A), // status/error
   errorForeground: const Color(0xFFFFFFFF), // text/inverse
-
   // ── Surface / Border ─────────────────────────────────────────────────────
   card: const Color(0xFFFFFFFF), // surface/card
   border: const Color(0xFFE3E2DF), // border/default
-
   // UsColors extends ThemeExtension<UsColors> but the analyzer cannot
   // prove assignability to ThemeExtension<dynamic> due to the self-referential
   // constraint on ThemeExtension<T>.
@@ -162,17 +155,17 @@ class UsColors extends ThemeExtension<UsColors> {
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       surfaceInput: Color.lerp(surfaceInput, other.surfaceInput, t)!,
       surfaceOverlay: Color.lerp(surfaceOverlay, other.surfaceOverlay, t)!,
-      actionPrimaryHover:
-          Color.lerp(actionPrimaryHover, other.actionPrimaryHover, t)!,
-      actionSecondary:
-          Color.lerp(actionSecondary, other.actionSecondary, t)!,
+      actionPrimaryHover: Color.lerp(
+        actionPrimaryHover,
+        other.actionPrimaryHover,
+        t,
+      )!,
+      actionSecondary: Color.lerp(actionSecondary, other.actionSecondary, t)!,
       statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,
-      statusSuccessBg:
-          Color.lerp(statusSuccessBg, other.statusSuccessBg, t)!,
+      statusSuccessBg: Color.lerp(statusSuccessBg, other.statusSuccessBg, t)!,
       statusErrorBg: Color.lerp(statusErrorBg, other.statusErrorBg, t)!,
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
-      statusWarningBg:
-          Color.lerp(statusWarningBg, other.statusWarningBg, t)!,
+      statusWarningBg: Color.lerp(statusWarningBg, other.statusWarningBg, t)!,
       statusInfo: Color.lerp(statusInfo, other.statusInfo, t)!,
       iconPrimary: Color.lerp(iconPrimary, other.iconPrimary, t)!,
       iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
@@ -205,22 +198,22 @@ class UsColors extends ThemeExtension<UsColors> {
 
   @override
   int get hashCode => Object.hash(
-        textSecondary,
-        textLink,
-        borderSubtle,
-        borderStrong,
-        surfaceInput,
-        surfaceOverlay,
-        actionPrimaryHover,
-        actionSecondary,
-        statusSuccess,
-        statusSuccessBg,
-        statusErrorBg,
-        statusWarning,
-        statusWarningBg,
-        statusInfo,
-        iconPrimary,
-        iconSecondary,
-        iconAccent,
-      );
+    textSecondary,
+    textLink,
+    borderSubtle,
+    borderStrong,
+    surfaceInput,
+    surfaceOverlay,
+    actionPrimaryHover,
+    actionSecondary,
+    statusSuccess,
+    statusSuccessBg,
+    statusErrorBg,
+    statusWarning,
+    statusWarningBg,
+    statusInfo,
+    iconPrimary,
+    iconSecondary,
+    iconAccent,
+  );
 }
