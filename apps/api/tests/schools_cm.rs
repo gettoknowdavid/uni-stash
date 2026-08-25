@@ -1,20 +1,15 @@
 use actix_web::{App, test, web};
 use sqlx::{PgPool, Row};
-use uni_stash_be::core::auth::jwt;
+use uni_stash_be::core::auth::admin_jwt;
 use uni_stash_be::core::config::Config;
 use uni_stash_be::core::db::Db;
 use uni_stash_be::core::state::AppState;
-use uni_stash_be::features::auth::models::User;
 use uni_stash_be::features::schools::handlers::{
     create_school, delete_school, get_school, list_schools, update_school,
 };
 
 const TEST_PRIVATE_PEM: &str = include_str!("fixtures/test_rsa_private.pem");
 const TEST_PUBLIC_PEM: &str = include_str!("fixtures/test_rsa_public.pem");
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 fn test_config() -> Config {
     Config {
@@ -41,51 +36,32 @@ fn test_state(pool: PgPool) -> web::Data<AppState> {
     web::Data::new(AppState::new(&test_config(), db).expect("AppState"))
 }
 
-/// Seed a user with the given role and return their ID.
-async fn seed_user_with_role(pool: &PgPool, email: &str, role: &str) -> uuid::Uuid {
-    // First ensure a school exists for the FK
-    let _ = sqlx::query(
-        "INSERT INTO schools (name, domain) VALUES ('Test University', 'test.edu')
-         ON CONFLICT (domain) DO NOTHING",
-    )
-    .execute(pool)
-    .await
-    .expect("seed school");
-
+async fn seed_admin(
+    pool: &PgPool,
+    email: &str,
+    level: &str,
+    permissions: serde_json::Value,
+) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
-        "INSERT INTO users (school_id, email, password_hash, display_name, role)
-         VALUES (1, $1, 'hash', 'Test User', $2)
-         ON CONFLICT (email) DO UPDATE SET role = $2
+        "INSERT INTO admins (email, password_hash, display_name, level, permissions)
+         VALUES ($1, 'hash', 'Test Admin', $2, $3)
+         ON CONFLICT (email) DO UPDATE SET level = $2, permissions = $3
          RETURNING id",
     )
     .bind(email)
-    .bind(role)
+    .bind(level)
+    .bind(permissions)
     .fetch_one(pool)
     .await
-    .expect("seed user")
+    .expect("seed admin")
 }
 
-fn sign_access_token_for_user(user: &User) -> String {
+fn sign_admin_token(admin_id: uuid::Uuid, level: &str) -> String {
     let keys = uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM)
         .expect("jwt keys");
-    jwt::sign_access_token(&keys, user).expect("sign access token")
+    admin_jwt::sign_admin_access_token(&keys, admin_id, level).expect("sign admin token")
 }
 
-fn make_user_model(id: uuid::Uuid, email: &str, role: &str) -> User {
-    User {
-        id,
-        school_id: 1,
-        email: email.to_string(),
-        password_hash: String::new(),
-        display_name: "Test User".to_string(),
-        email_verified: true,
-        role: role.to_string(),
-        created_at: time::OffsetDateTime::now_utc(),
-        updated_at: time::OffsetDateTime::now_utc(),
-    }
-}
-
-/// Helper: build an Actix test app with all school routes wired.
 fn school_app(
     state: web::Data<AppState>,
 ) -> actix_web::App<
@@ -112,7 +88,6 @@ fn school_app(
 
 #[sqlx::test]
 async fn list_schools_returns_all_schools(pool: PgPool) {
-    // Seed some schools directly via SQL
     sqlx::query("INSERT INTO schools (name, domain) VALUES ('Uni A', 'a.edu'), ('Uni B', 'b.edu')")
         .execute(&pool)
         .await
@@ -129,7 +104,6 @@ async fn list_schools_returns_all_schools(pool: PgPool) {
     let schools = json["schools"].as_array().unwrap();
     assert!(schools.len() >= 2, "should return at least 2 schools");
 
-    // Should be ordered by name ASC
     let names: Vec<&str> = schools
         .iter()
         .map(|s| s["name"].as_str().unwrap())
@@ -198,9 +172,8 @@ async fn get_school_not_found_returns_404(pool: PgPool) {
 
 #[sqlx::test]
 async fn admin_can_create_school(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
@@ -227,9 +200,8 @@ async fn admin_can_create_school(pool: PgPool) {
 
 #[sqlx::test]
 async fn non_admin_cannot_create_school_returns_403(pool: PgPool) {
-    let student_id = seed_user_with_role(&pool, "student@test.edu", "student").await;
-    let student_user = make_user_model(student_id, "student@test.edu", "student");
-    let token = sign_access_token_for_user(&student_user);
+    let admin_id = seed_admin(&pool, "student@test.edu", "standard", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "standard");
 
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
@@ -268,11 +240,9 @@ async fn unauthenticated_cannot_create_school_returns_401(pool: PgPool) {
 
 #[sqlx::test]
 async fn create_school_duplicate_domain_returns_409(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
-    // Seed an existing school with the same domain
     sqlx::query("INSERT INTO schools (name, domain) VALUES ('Existing', 'dup.edu')")
         .execute(&pool)
         .await
@@ -301,14 +271,12 @@ async fn create_school_duplicate_domain_returns_409(pool: PgPool) {
 
 #[sqlx::test]
 async fn create_school_validation_error_returns_422(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
 
-    // Name too short (min 2 chars)
     let body = serde_json::json!({
         "name": "X",
         "domain": "valid.edu",
@@ -329,9 +297,8 @@ async fn create_school_validation_error_returns_422(pool: PgPool) {
 
 #[sqlx::test]
 async fn admin_can_update_school_name(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let result = sqlx::query(
         "INSERT INTO schools (name, domain) VALUES ('Old Name', 'old.edu') RETURNING id",
@@ -366,9 +333,8 @@ async fn admin_can_update_school_name(pool: PgPool) {
 
 #[sqlx::test]
 async fn admin_can_update_school_domain(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let result =
         sqlx::query("INSERT INTO schools (name, domain) VALUES ('My Uni', 'old.edu') RETURNING id")
@@ -399,9 +365,8 @@ async fn admin_can_update_school_domain(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_school_no_fields_returns_400(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let result =
         sqlx::query("INSERT INTO schools (name, domain) VALUES ('Uni', 'uni.edu') RETURNING id")
@@ -426,9 +391,8 @@ async fn update_school_no_fields_returns_400(pool: PgPool) {
 
 #[sqlx::test]
 async fn non_admin_cannot_update_school_returns_403(pool: PgPool) {
-    let student_id = seed_user_with_role(&pool, "student@test.edu", "student").await;
-    let student_user = make_user_model(student_id, "student@test.edu", "student");
-    let token = sign_access_token_for_user(&student_user);
+    let admin_id = seed_admin(&pool, "student@test.edu", "standard", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "standard");
 
     let result =
         sqlx::query("INSERT INTO schools (name, domain) VALUES ('Uni', 'uni.edu') RETURNING id")
@@ -455,9 +419,8 @@ async fn non_admin_cannot_update_school_returns_403(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_school_not_found_returns_404(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
@@ -477,11 +440,9 @@ async fn update_school_not_found_returns_404(pool: PgPool) {
 
 #[sqlx::test]
 async fn update_school_duplicate_domain_returns_409(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
-    // Create two schools
     sqlx::query("INSERT INTO schools (name, domain) VALUES ('Uni A', 'a.edu')")
         .execute(&pool)
         .await
@@ -496,7 +457,6 @@ async fn update_school_duplicate_domain_returns_409(pool: PgPool) {
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
 
-    // Try to change school B's domain to school A's domain
     let body = serde_json::json!({
         "domain": "a.edu",
     });
@@ -516,9 +476,8 @@ async fn update_school_duplicate_domain_returns_409(pool: PgPool) {
 
 #[sqlx::test]
 async fn admin_can_delete_school(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let result = sqlx::query(
         "INSERT INTO schools (name, domain) VALUES ('Delete Me', 'del.edu') RETURNING id",
@@ -538,7 +497,6 @@ async fn admin_can_delete_school(pool: PgPool) {
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), 204, "successful delete should return 204");
 
-    // Confirm it's gone
     let req2 = test::TestRequest::get()
         .uri(&format!("/api/v1/schools/{school_id}"))
         .to_request();
@@ -548,9 +506,8 @@ async fn admin_can_delete_school(pool: PgPool) {
 
 #[sqlx::test]
 async fn non_admin_cannot_delete_school_returns_403(pool: PgPool) {
-    let student_id = seed_user_with_role(&pool, "student@test.edu", "student").await;
-    let student_user = make_user_model(student_id, "student@test.edu", "student");
-    let token = sign_access_token_for_user(&student_user);
+    let admin_id = seed_admin(&pool, "student@test.edu", "standard", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "standard");
 
     let result =
         sqlx::query("INSERT INTO schools (name, domain) VALUES ('Uni', 'uni.edu') RETURNING id")
@@ -572,9 +529,8 @@ async fn non_admin_cannot_delete_school_returns_403(pool: PgPool) {
 
 #[sqlx::test]
 async fn delete_school_not_found_returns_404(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
     let state = test_state(pool);
     let app = test::init_service(school_app(state)).await;
@@ -589,11 +545,9 @@ async fn delete_school_not_found_returns_404(pool: PgPool) {
 
 #[sqlx::test]
 async fn delete_school_with_users_returns_400(pool: PgPool) {
-    let admin_id = seed_user_with_role(&pool, "admin@test.edu", "admin").await;
-    let admin_user = make_user_model(admin_id, "admin@test.edu", "admin");
-    let token = sign_access_token_for_user(&admin_user);
+    let admin_id = seed_admin(&pool, "admin@test.edu", "super", serde_json::json!({})).await;
+    let token = sign_admin_token(admin_id, "super");
 
-    // Create a school that has users referencing it
     let result = sqlx::query(
         "INSERT INTO schools (name, domain) VALUES ('Has Users', 'hasusers.edu') RETURNING id",
     )
@@ -602,7 +556,6 @@ async fn delete_school_with_users_returns_400(pool: PgPool) {
     .expect("seed school");
     let school_id: i16 = result.get("id");
 
-    // Create a user referencing that school
     sqlx::query("INSERT INTO users (school_id, email, password_hash, display_name) VALUES ($1, 'user@hasusers.edu', 'hash', 'User')")
         .bind(school_id)
         .execute(&pool)
