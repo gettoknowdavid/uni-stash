@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
   flutter_secure_storage: ^11.0.0
   forui: ^0.26.0
-  forui_lucide: ^0.26.0
+  forui_assets: ^0.25.0
   freezed_annotation: ^3.1.0
   go_router: ^17.5.0
   image_picker: ^1.2.3
@@ -42,3 +42,22 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: ArchivoNarrow
+      fonts:
+        - asset: assets/Archivo_Narrow/ArchivoNarrow-VariableFont_wght.ttf
+        - asset: assets/Archivo_Narrow/ArchivoNarrow-Italic-VariableFont_wght.ttf
+          style: italic
+
+    - family: Inter
+      fonts:
+        - asset: assets/Inter/Inter-VariableFont_opsz,wght.ttf
+        - asset: assets/Inter/Inter-Italic-VariableFont_opsz,wght.ttf
+          style: italic
+
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf
+        - asset: assets/JetBrains_Mono/JetBrainsMono-Italic-VariableFont_wght.ttf
+          style: italic
