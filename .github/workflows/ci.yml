@@ -1,44 +1,125 @@
-# CI — single workflow for the whole monorepo (TRD §6).
-#
-# Two job stubs, one per toolchain, per CM-1.1:
-#   - api    -> apps/api     (Rust + Actix-Web)
-#   - mobile -> apps/mobile  (Flutter)
-#
-# Jobs currently only check out the code and print a placeholder. Real steps
-# land in CM-13.2: `api` runs cargo fmt --check / clippy / test, `mobile` runs
-# flutter analyze / test. CM-13.2 also adds per-job path filtering so a change
-# touching only one side doesn't run the other job.
-
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'apps/mobile/**'
+              - '.github/workflows/ci.yml'
+
   api:
     name: API (Rust backend)
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/api
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: uni_stash_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d uni_stash_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      SQLX_OFFLINE: "true"
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/uni_stash_test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Placeholder
-        run: echo "api job stub — real checks (fmt, clippy, test) land in CM-13.2"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/api
+
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: Run migrations
+        run: sqlx migrate run --source migrations
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test
 
   mobile:
     name: Mobile (Flutter app)
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/mobile
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Placeholder
-        run: echo "mobile job stub — real checks (analyze, test) land in CM-13.2"
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+        env:
+          BASE_URL: http://localhost:8080
+          WS_URL: ws://localhost:8080/ws
+          ENV: test
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
