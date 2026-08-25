@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:forui/forui.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'package:uni_stash_mobile/core/theme/theme.dart';
 
 void main() {
   runApp(const MainApp());
@@ -11,24 +12,16 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (lightTheme, darkTheme) =
-        const <TargetPlatform>{
-          .android,
-          .iOS,
-          .fuchsia,
-        }.contains(defaultTargetPlatform)
-        ? (FTheme.neutral.light.touch, FTheme.neutral.dark.touch)
-        : (FTheme.neutral.light.desktop, FTheme.neutral.dark.desktop);
+    final theme = usLightTheme;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'UniStash',
       supportedLocales: FLocalizations.supportedLocales,
       localizationsDelegates: const [...FLocalizations.localizationsDelegates],
-      theme: lightTheme.toApproximateMaterialTheme(),
-      darkTheme: darkTheme.toApproximateMaterialTheme(),
+      theme: theme.toApproximateMaterialTheme(),
       builder: (context, child) => FTheme(
-        data: Theme.brightnessOf(context) == .light ? lightTheme : darkTheme,
+        data: theme,
         child: FToaster(child: FTooltipGroup(child: child!)),
       ),
       home: const FScaffold(
