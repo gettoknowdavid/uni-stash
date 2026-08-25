@@ -186,6 +186,17 @@ async fn successful_signup_returns_201_with_email_verified_false(pool: PgPool) {
     assert_eq!(json["email_verified"], false);
     assert!(json["id"].is_string(), "response must include a UUID id");
 
+    // Verify tokens are returned so the client can reach the OTP flow on relaunch.
+    assert!(
+        json["access_token"].is_string(),
+        "response must include access_token"
+    );
+    assert!(
+        json["refresh_token"].is_string(),
+        "response must include refresh_token"
+    );
+    assert_eq!(json["expires_in"], 900);
+
     // Verify the row was actually inserted with email_verified = false.
     let verified = user_email_verified(&pool, "alice@test.edu").await;
     assert_eq!(
