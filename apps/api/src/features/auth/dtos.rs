@@ -16,6 +16,15 @@ pub struct SignUpResponse {
     pub email: String,
     pub display_name: String,
     pub email_verified: bool,
+    /// Tokens are included so the client can store them and reach
+    /// the OTP-verification flow on relaunch without requiring a
+    /// second signup.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_in: Option<i64>,
 }
 
 pub struct InsertUserInput<'a> {

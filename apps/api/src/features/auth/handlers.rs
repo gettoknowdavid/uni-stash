@@ -41,7 +41,16 @@ pub async fn signup(
         })
         .await?;
 
-    // Generate OTP and send via email (replaces JWT token flow)
+    // Issue tokens so the client can store them and reach the
+    // OTP-verification flow on relaunch.
+    let access_token = jwt::sign_access_token(&state.jwt_keys, &user)?;
+    let family_id = uuid::Uuid::new_v4();
+    let (refresh_token, _id) = state
+        .auth_repo
+        .issue_refresh_token(&state.db, user.id, family_id)
+        .await?;
+
+    // Generate OTP and send via email.
     let (otp_code, _otp_id) = state.auth_repo.insert_otp(user.id, "email_verify").await?;
 
     // Best-effort email — if SMTP fails, the user row exists and they
@@ -59,6 +68,9 @@ pub async fn signup(
         email: user.email,
         display_name: user.display_name,
         email_verified: false,
+        access_token: Some(access_token),
+        refresh_token: Some(refresh_token),
+        expires_in: Some(900),
     }))
 }
 
