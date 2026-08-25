@@ -117,7 +117,7 @@ mod tests {
         let claims = verify_access_token(&keys, &token).unwrap();
         assert_eq!(claims.sub, user.id);
         assert_eq!(claims.purpose, "access");
-        assert_eq!(claims.email_verified, true);
+        assert!(claims.email_verified);
     }
 
     #[test]

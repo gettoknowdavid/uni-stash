@@ -34,13 +34,12 @@ Future<Dio> initDio({
 
 class _AuthInterceptor extends Interceptor {
   _AuthInterceptor({
-    required FlutterSecureStorage storage,
-    required Logger logger,
-  })  : _storage = storage,
-        _logger = logger;
+    required this.storage,
+    required this.logger,
+  });
 
-  final FlutterSecureStorage _storage;
-  final Logger _logger;
+  final FlutterSecureStorage storage;
+  final Logger logger;
 
   Completer<void>? _refreshCompleter;
   final Queue<_PendingRequest> _pendingQueue = Queue<_PendingRequest>();
@@ -62,7 +61,7 @@ class _AuthInterceptor extends Interceptor {
       return;
     }
 
-    final token = await readAccessToken(_storage);
+    final token = await readAccessToken(storage);
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -98,12 +97,12 @@ class _AuthInterceptor extends Interceptor {
         handler.resolve(retryResponse);
         await _drainPendingQueue();
       } else {
-        await markUnauthenticated(_storage);
+        await markUnauthenticated(storage);
         handler.next(err);
         _drainPendingQueueWithError(err);
       }
     } on Object catch (_) {
-      await markUnauthenticated(_storage);
+      await markUnauthenticated(storage);
       handler.next(err);
       _drainPendingQueueWithError(err);
     } finally {
@@ -113,9 +112,9 @@ class _AuthInterceptor extends Interceptor {
   }
 
   Future<bool> _attemptRefresh() async {
-    final refreshToken = await readRefreshToken(_storage);
+    final refreshToken = await readRefreshToken(storage);
     if (refreshToken == null || refreshToken.isEmpty) {
-      _logger.w('[Auth] No refresh token stored — cannot refresh');
+      logger.w('[Auth] No refresh token stored — cannot refresh');
       return false;
     }
 
@@ -145,19 +144,19 @@ class _AuthInterceptor extends Interceptor {
 
         if (newAccess != null && newRefresh != null) {
           await markAuthenticated(
-            _storage,
+            storage,
             accessToken: newAccess,
             refreshToken: newRefresh,
           );
-          _logger.d('[Auth] Token refresh succeeded');
+          logger.d('[Auth] Token refresh succeeded');
           return true;
         }
       }
 
-      _logger.w('[Auth] Refresh response missing tokens');
+      logger.w('[Auth] Refresh response missing tokens');
       return false;
     } on DioException catch (e) {
-      _logger.e(
+      logger.e(
         '[Auth] Refresh request failed: ${e.type.name}',
         error: e.error,
       );
@@ -170,7 +169,7 @@ class _AuthInterceptor extends Interceptor {
   Future<Response<dynamic>> _retryRequest(
     RequestOptions requestOptions,
   ) async {
-    final token = await readAccessToken(_storage);
+    final token = await readAccessToken(storage);
     if (token != null && token.isNotEmpty) {
       requestOptions.headers['Authorization'] = 'Bearer $token';
     }
@@ -191,7 +190,7 @@ class _AuthInterceptor extends Interceptor {
       final pending = _pendingQueue.removeFirst();
 
       try {
-        final token = await readAccessToken(_storage);
+        final token = await readAccessToken(storage);
         if (token != null && token.isNotEmpty) {
           pending.requestOptions.headers['Authorization'] =
               'Bearer $token';
@@ -221,13 +220,13 @@ class _AuthInterceptor extends Interceptor {
 }
 
 class _LoggingInterceptor extends Interceptor {
-  _LoggingInterceptor(this._logger);
+  _LoggingInterceptor(this.logger);
 
-  final Logger _logger;
+  final Logger logger;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    _logger.d('[HTTP] ${options.method} ${options.uri}');
+    logger.d('[HTTP] ${options.method} ${options.uri}');
     handler.next(options);
   }
 
@@ -236,7 +235,7 @@ class _LoggingInterceptor extends Interceptor {
     Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) {
-    _logger.d(
+    logger.d(
       '[HTTP] ${response.statusCode} ${response.requestOptions.uri}',
     );
     handler.next(response);
@@ -244,7 +243,7 @@ class _LoggingInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    _logger.e(
+    logger.e(
       '[HTTP] ${err.type.name} ${err.requestOptions.uri}',
       error: err.error,
       stackTrace: err.stackTrace,

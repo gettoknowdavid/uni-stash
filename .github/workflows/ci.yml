@@ -20,8 +20,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Node.js 20 deprecation warning is expected until
+      # actions/checkout@v5 and dorny/paths-filter@v4 are released.
+
       - name: Detect changed paths
         uses: dorny/paths-filter@v3
+        # Note: v3 targets Node.js 20. GitHub forces Node.js 24.
+        # This produces a deprecation warning but works correctly.
         id: filter
         with:
           filters: |

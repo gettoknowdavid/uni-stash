@@ -265,7 +265,7 @@ pub async fn login(
     if !user.email_verified {
         return Err(AppError::EmailNotVerified);
     }
-    let access_token = jwt::sign_access_token(&state.jwt_keys, &user)?;
+    let access_token = jwt::sign_access_token(&state.jwt_keys, user)?;
     let family_id = uuid::Uuid::new_v4();
     let (refresh_token, _id) = state
         .auth_repo

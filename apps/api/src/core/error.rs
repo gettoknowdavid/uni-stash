@@ -169,7 +169,7 @@ impl ResponseError for AppError {
             AppError::NotFound { .. } => actix_web::http::StatusCode::NOT_FOUND,
             AppError::BadRequest { .. } => actix_web::http::StatusCode::BAD_REQUEST,
             AppError::Conflict { .. } => actix_web::http::StatusCode::CONFLICT,
-            AppError::Unauthorized { .. } | AppError::TokenExpired { .. } => {
+            AppError::Unauthorized(_) | AppError::TokenExpired => {
                 actix_web::http::StatusCode::UNAUTHORIZED
             }
             AppError::Forbidden | AppError::EmailNotVerified => {

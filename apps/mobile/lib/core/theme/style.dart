@@ -68,9 +68,6 @@ FStyle usStyle({
       size: typography.body.lg.fontSize,
     ),
     tappableStyle: FTappableStyle(),
-    // Self-referential ThemeExtension<T> constraint prevents
-    // static assignability check.
-    // ignore: list_element_type_not_assignable
     extensions: [const UsStyle()],
   );
 }

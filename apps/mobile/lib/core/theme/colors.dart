@@ -31,10 +31,6 @@ final FColors usLightColors = FColors(
   // ── Surface / Border ─────────────────────────────────────────────────────
   card: const Color(0xFFFFFFFF), // surface/card
   border: const Color(0xFFE3E2DF), // border/default
-  // UsColors extends ThemeExtension<UsColors> but the analyzer cannot
-  // prove assignability to ThemeExtension<dynamic> due to the self-referential
-  // constraint on ThemeExtension<T>.
-  // ignore: list_element_type_not_assignable
   extensions: [const UsColors()],
 );
 

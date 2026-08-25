@@ -162,7 +162,9 @@ void main() {
           (_) async => makeResponse(
             path: '/api/v1/auth/forgot-password',
             data: {
-              'message': 'if an account with that email exists, a reset code has been sent',
+              'message':
+                  'if an account with that email exists,'
+                  ' a reset code has been sent',
             },
           ),
         );
