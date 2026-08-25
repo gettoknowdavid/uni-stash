@@ -36,7 +36,7 @@ void main() {
 
   group('ApiClient', () {
     group('signUp', () {
-      test('returns SignUpResponse on 201', () async {
+      test('returns SignUpResponse with tokens on 201', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
           (_) async => makeResponse(
             path: '/api/v1/auth/signup',
@@ -45,6 +45,9 @@ void main() {
               'email': 'test@university.edu',
               'display_name': 'Test User',
               'email_verified': false,
+              'access_token': 'access_token_123',
+              'refresh_token': 'refresh_token_123',
+              'expires_in': 900,
             },
             statusCode: 201,
           ),
@@ -62,6 +65,9 @@ void main() {
         expect(result.email, 'test@university.edu');
         expect(result.displayName, 'Test User');
         expect(result.emailVerified, false);
+        expect(result.accessToken, 'access_token_123');
+        expect(result.refreshToken, 'refresh_token_123');
+        expect(result.expiresIn, 900);
       });
     });
 
