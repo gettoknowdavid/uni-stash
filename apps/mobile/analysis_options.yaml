@@ -9,6 +9,12 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+  errors:
+    unused_field: ignore
+    prefer_initializing_formals: ignore
 
 linter:
   rules:
