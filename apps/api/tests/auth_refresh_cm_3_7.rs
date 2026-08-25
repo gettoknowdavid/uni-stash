@@ -129,14 +129,11 @@ async fn insert_expired_refresh_token(pool: &PgPool, user_id: Uuid, family_id: U
 }
 
 async fn find_token_by_id(pool: &PgPool, token_id: Uuid) -> RefreshToken {
-    sqlx::query_as!(
-        RefreshToken,
-        "SELECT * FROM refresh_tokens WHERE id = $1",
-        token_id
-    )
-    .fetch_one(pool)
-    .await
-    .expect("find token")
+    sqlx::query_as::<_, RefreshToken>("SELECT * FROM refresh_tokens WHERE id = $1")
+        .bind(token_id)
+        .fetch_one(pool)
+        .await
+        .expect("find token")
 }
 
 async fn call_refresh(

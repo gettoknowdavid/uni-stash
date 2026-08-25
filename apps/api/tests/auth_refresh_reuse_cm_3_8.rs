@@ -204,10 +204,10 @@ async fn reuse_outside_grace_revokes_entire_family(pool: PgPool) {
     //   This simulates a scenario where an attacker obtained token A,
     //   the legitimate user rotated to B much earlier, and now the
     //   attacker tries to use A.
-    sqlx::query!(
+    sqlx::query(
         "UPDATE refresh_tokens SET revoked_at = now() - interval '60 seconds' WHERE id = $1",
-        id_a,
     )
+    .bind(id_a)
     .execute(&pool)
     .await
     .expect("backdate revoked_at");
@@ -251,10 +251,10 @@ async fn after_family_revocation_presenting_b_returns_401(pool: PgPool) {
     let plain_b = rotate_once(&state, &plain_a).await;
 
     // Backdate A's revoked_at to trigger family revocation on reuse.
-    sqlx::query!(
+    sqlx::query(
         "UPDATE refresh_tokens SET revoked_at = now() - interval '60 seconds' WHERE id = $1",
-        id_a,
     )
+    .bind(id_a)
     .execute(&pool)
     .await
     .expect("backdate revoked_at");

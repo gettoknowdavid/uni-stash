@@ -44,9 +44,9 @@ fn test_state(pool: PgPool) -> web::Data<AppState> {
 /// Seed a user with the given role and return their ID.
 async fn seed_user_with_role(pool: &PgPool, email: &str, role: &str) -> uuid::Uuid {
     // First ensure a school exists for the FK
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "INSERT INTO schools (name, domain) VALUES ('Test University', 'test.edu')
-         ON CONFLICT (domain) DO NOTHING"
+         ON CONFLICT (domain) DO NOTHING",
     )
     .execute(pool)
     .await
