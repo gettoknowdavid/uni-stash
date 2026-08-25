@@ -101,7 +101,29 @@ void main() {
   });
 
   group('SignUpResponse', () {
-    test('deserializes from JSON', () {
+    test('deserializes from JSON with tokens', () {
+      final json = {
+        'id': 'uuid-123',
+        'email': 'test@university.edu',
+        'display_name': 'Test User',
+        'email_verified': false,
+        'access_token': 'access_token_123',
+        'refresh_token': 'refresh_token_123',
+        'expires_in': 900,
+      };
+
+      final response = SignUpResponse.fromJson(json);
+
+      expect(response.id, 'uuid-123');
+      expect(response.email, 'test@university.edu');
+      expect(response.displayName, 'Test User');
+      expect(response.emailVerified, false);
+      expect(response.accessToken, 'access_token_123');
+      expect(response.refreshToken, 'refresh_token_123');
+      expect(response.expiresIn, 900);
+    });
+
+    test('deserializes without tokens', () {
       final json = {
         'id': 'uuid-123',
         'email': 'test@university.edu',
@@ -111,10 +133,9 @@ void main() {
 
       final response = SignUpResponse.fromJson(json);
 
-      expect(response.id, 'uuid-123');
-      expect(response.email, 'test@university.edu');
-      expect(response.displayName, 'Test User');
-      expect(response.emailVerified, false);
+      expect(response.accessToken, isNull);
+      expect(response.refreshToken, isNull);
+      expect(response.expiresIn, isNull);
     });
   });
 
