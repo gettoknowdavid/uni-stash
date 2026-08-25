@@ -68,16 +68,15 @@ async fn seed_school(pool: &PgPool, domain: &str) -> i16 {
 
 async fn insert_user(pool: &PgPool, school_id: i16, email: &str, email_verified: bool) -> User {
     let hash = password::hash_password("correct horse battery staple").expect("hash password");
-    sqlx::query_as!(
-        User,
+    sqlx::query_as::<_, User>(
         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified, role)
          VALUES ($1, $2, $3, 'Test User', $4, 'student')
          RETURNING *",
-        school_id,
-        email,
-        &hash,
-        email_verified,
     )
+    .bind(school_id)
+    .bind(email)
+    .bind(&hash)
+    .bind(email_verified)
     .fetch_one(pool)
     .await
     .expect("insert user")
@@ -103,14 +102,11 @@ async fn insert_refresh_token(pool: &PgPool, user_id: Uuid, family_id: Uuid) -> 
 
 async fn find_token_by_hash(pool: &PgPool, plain: &str) -> RefreshToken {
     let hash = refresh_token::hash_refresh_token(plain);
-    sqlx::query_as!(
-        RefreshToken,
-        "SELECT * FROM refresh_tokens WHERE token_hash = $1",
-        &hash
-    )
-    .fetch_one(pool)
-    .await
-    .expect("find token by hash")
+    sqlx::query_as::<_, RefreshToken>("SELECT * FROM refresh_tokens WHERE token_hash = $1")
+        .bind(&hash)
+        .fetch_one(pool)
+        .await
+        .expect("find token by hash")
 }
 
 async fn call_logout(
@@ -277,7 +273,8 @@ async fn me_role_reflects_db_not_jwt(pool: PgPool) {
     let access_token = jwt::sign_access_token(&state.jwt_keys, &user).expect("sign access token");
 
     // Now update the user's role in the DB to "admin".
-    sqlx::query!("UPDATE users SET role = 'admin' WHERE id = $1", user.id)
+    sqlx::query("UPDATE users SET role = 'admin' WHERE id = $1")
+        .bind(user.id)
         .execute(&pool)
         .await
         .expect("update role");

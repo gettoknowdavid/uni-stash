@@ -228,13 +228,11 @@ async fn expired_otp_returns_400(pool: PgPool) {
     let otp_code = generate_otp(&pool, user_id, "email_verify").await;
     let code_hash = otp::hash_otp(&otp_code);
 
-    sqlx::query!(
-        "UPDATE otps SET expires_at = now() - interval '1 minute' WHERE code = $1",
-        &code_hash,
-    )
-    .execute(&pool)
-    .await
-    .expect("expire the OTP");
+    sqlx::query("UPDATE otps SET expires_at = now() - interval '1 minute' WHERE code = $1")
+        .bind(&code_hash)
+        .execute(&pool)
+        .await
+        .expect("expire the OTP");
 
     let state = test_state(pool.clone());
     let resp = call_verify_otp(&state, &otp_code, "email_verify").await;
