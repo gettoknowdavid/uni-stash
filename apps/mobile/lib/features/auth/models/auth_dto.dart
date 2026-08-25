@@ -95,6 +95,9 @@ abstract class SignUpResponse with _$SignUpResponse {
     required String email,
     @JsonKey(name: 'display_name') required String displayName,
     @JsonKey(name: 'email_verified') required bool emailVerified,
+    @JsonKey(name: 'access_token') String? accessToken,
+    @JsonKey(name: 'refresh_token') String? refreshToken,
+    @JsonKey(name: 'expires_in') int? expiresIn,
   }) = _SignUpResponse;
 
   factory SignUpResponse.fromJson(Map<String, dynamic> json) =>
