@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.gettoknowdavid.uni_stash.uni_stash_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
