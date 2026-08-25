@@ -12,4 +12,5 @@ analyzer:
 
 linter:
   rules:
+    cascade_invocations: false
     public_member_api_docs: false
