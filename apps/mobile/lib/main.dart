@@ -1,5 +1,6 @@
 import 'package:forui/forui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:uni_stash_mobile/core/router/us_router.dart';
 
 import 'package:uni_stash_mobile/core/theme/theme.dart';
 
@@ -14,7 +15,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = usLightTheme;
 
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'UniStash',
       supportedLocales: FLocalizations.supportedLocales,
@@ -24,10 +25,7 @@ class MainApp extends StatelessWidget {
         data: theme,
         child: FToaster(child: FTooltipGroup(child: child!)),
       ),
-      home: const FScaffold(
-        header: FHeader(title: Text('Home')),
-        child: Text('Home'),
-      ),
+      routerConfig: routerConfig,
     );
   }
 }
