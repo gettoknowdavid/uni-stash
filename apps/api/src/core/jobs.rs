@@ -140,6 +140,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn cleanup_intervals_are_sane() {
         assert!(
             CLEANUP_EXPIRED_INTERVAL <= time::Duration::from_secs(30 * 60),

@@ -18,13 +18,13 @@ impl std::convert::From<String> for ListingStatus {
         }
     }
 }
-impl ToString for ListingStatus {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ListingStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ListingStatus::Active => "active".to_string(),
-            ListingStatus::Reserved => "reserved".to_string(),
-            ListingStatus::Sold => "sold".to_string(),
-            ListingStatus::Deleted => "deleted".to_string(),
+            ListingStatus::Active => f.write_str("active"),
+            ListingStatus::Reserved => f.write_str("reserved"),
+            ListingStatus::Sold => f.write_str("sold"),
+            ListingStatus::Deleted => f.write_str("deleted"),
         }
     }
 }
@@ -47,12 +47,12 @@ impl std::convert::From<String> for Condition {
         }
     }
 }
-impl ToString for Condition {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Condition::New => "new".to_string(),
-            Condition::Used => "used".to_string(),
-            Condition::Fair => "fair".to_string(),
+            Condition::New => f.write_str("new"),
+            Condition::Used => f.write_str("used"),
+            Condition::Fair => f.write_str("fair"),
         }
     }
 }

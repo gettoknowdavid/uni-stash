@@ -57,7 +57,7 @@ pub async fn list_listings(
         _ => ListingStatus::Active,
     };
 
-    let limit = query.limit.unwrap_or(20).min(50).max(1);
+    let limit = query.limit.unwrap_or(20).clamp(1, 50);
 
     // CM-5.1: full-text search query — treat whitespace-only as absent.
     let search_query = query.q.as_ref().and_then(|q| {
@@ -137,7 +137,7 @@ pub async fn update_listing(
         title: body.title.clone(),
         description: body.description.clone(),
         category_id: body.category_id,
-        price: body.price.clone(),
+        price: body.price,
         condition: body.condition.clone(),
     };
 
