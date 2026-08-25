@@ -357,15 +357,15 @@ async fn wrong_otp_type_is_rejected(pool: PgPool) {
 async fn malformed_otp_format_returns_400(pool: PgPool) {
     let state = test_state(pool);
 
-    // Too short
+    // Too short — caught by validator length check (422)
     let resp = call_verify_otp(&state, "12345", "email_verify").await;
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 422);
 
-    // Contains letters
+    // Contains letters — passes length check, caught by format check (400)
     let resp = call_verify_otp(&state, "12ab56", "email_verify").await;
     assert_eq!(resp.status(), 400);
 
-    // Too long
+    // Too long — caught by validator length check (422)
     let resp = call_verify_otp(&state, "1234567", "email_verify").await;
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 422);
 }
