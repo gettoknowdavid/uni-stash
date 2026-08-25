@@ -115,9 +115,7 @@ impl ListingsRepo {
         // Search results are rank-ordered, so a (created_at, id) cursor
         // would produce incorrect pages. For MVP, search results use simple
         // limit-only pagination (no cursor, no next_cursor).
-        if !is_search
-            && let Some(ref cursor) = filters.cursor
-        {
+        if !is_search && let Some(ref cursor) = filters.cursor {
             query
                 .push(" AND (created_at, id) < (")
                 .push_bind(cursor.created_at)
