@@ -334,21 +334,23 @@ async fn create_listing_success_returns_201_with_full_object(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
 
     // Full object returned
-    assert!(json["id"].is_string(), "must include a UUID id");
-    assert_eq!(json["seller_id"], user_id.to_string());
-    assert_eq!(json["category_id"], category_id);
-    assert_eq!(json["title"], "Organic Chemistry 8th Ed");
-    assert_eq!(json["price"], 45);
-    assert_eq!(json["condition"], "used");
-    assert_eq!(json["status"], "active");
+    assert!(data["id"].is_string(), "must include a UUID id");
+    assert_eq!(data["seller_id"], user_id.to_string());
+    assert_eq!(data["category_id"], category_id);
+    assert_eq!(data["title"], "Organic Chemistry 8th Ed");
+    assert_eq!(data["price"], 45);
+    assert_eq!(data["condition"], "used");
+    assert_eq!(data["status"], "active");
     assert!(
-        json["reserved_by"].is_null(),
+        data["reserved_by"].is_null(),
         "reserved_by must be null for a fresh listing"
     );
     assert!(
-        json["reserved_at"].is_null(),
+        data["reserved_at"].is_null(),
         "reserved_at must be null for a fresh listing"
     );
 }
@@ -380,15 +382,17 @@ async fn create_listing_seller_id_is_never_trusted_from_body(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
 
     // The seller_id must be the authenticated user, not the one from the body
     assert_eq!(
-        json["seller_id"],
+        data["seller_id"],
         real_user_id.to_string(),
         "seller_id must come from the JWT, not the request body"
     );
     assert_ne!(
-        json["seller_id"],
+        data["seller_id"],
         other_user_id.to_string(),
         "seller_id must never be the attacker-supplied value"
     );
@@ -412,13 +416,15 @@ async fn create_listing_barter_only_allows_null_price(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
 
     assert!(
-        json["price"].is_null(),
+        data["price"].is_null(),
         "barter-only listing must have null price"
     );
-    assert_eq!(json["title"], "Free Couch");
-    assert_eq!(json["condition"], "fair");
+    assert_eq!(data["title"], "Free Couch");
+    assert_eq!(data["condition"], "fair");
 }
 
 // ===========================================================================
@@ -445,9 +451,11 @@ async fn create_listing_default_description_when_omitted(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
 
     assert_eq!(
-        json["description"].as_str(),
+        data["description"].as_str(),
         Some(""),
         "omitted description must default to empty string (matches DB DEFAULT '')"
     );

@@ -126,8 +126,10 @@ async fn buyer_can_reserve_active_listing(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "reserved");
-    assert_eq!(json["reserved_by"], buyer.to_string());
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["status"], "reserved");
+    assert_eq!(data["reserved_by"], buyer.to_string());
 }
 
 #[sqlx::test]

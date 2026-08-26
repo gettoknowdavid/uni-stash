@@ -137,19 +137,21 @@ async fn valid_otp_returns_200_with_tokens_and_sets_email_verified(pool: PgPool)
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["verified"], true);
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["verified"], true);
 
     // Tokens must be included so the user is immediately authenticated
     // without a redundant login.
-    let access_token = json["access_token"].as_str().expect("access_token");
+    let access_token = data["access_token"].as_str().expect("access_token");
     assert!(!access_token.is_empty(), "access_token must not be empty");
-    let refresh_token = json["refresh_token"].as_str().expect("refresh_token");
+    let refresh_token = data["refresh_token"].as_str().expect("refresh_token");
     assert_eq!(
         refresh_token.len(),
         64,
         "refresh_token must be 64 hex chars"
     );
-    assert_eq!(json["expires_in"], 900);
+    assert_eq!(data["expires_in"], 900);
 
     // Verify the DB was updated.
     assert!(
@@ -170,7 +172,7 @@ async fn verify_email_issued_token_works_for_me_endpoint(pool: PgPool) {
     let resp = call_verify_otp(&state, &otp_code, "email_verify").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let access_token = json["access_token"].as_str().unwrap();
+    let access_token = json["data"]["access_token"].as_str().unwrap();
 
     // Use the token to call /me — must return the user's profile.
     let me_app = test::init_service(App::new().app_data(state.clone()).route(
@@ -185,8 +187,9 @@ async fn verify_email_issued_token_works_for_me_endpoint(pool: PgPool) {
     let me_resp = test::call_service(&me_app, me_req).await;
     assert_eq!(me_resp.status(), 200);
     let me_json: serde_json::Value = test::read_body_json(me_resp).await;
-    assert_eq!(me_json["email"], "alice@test.edu");
-    assert_eq!(me_json["email_verified"], true);
+    assert_eq!(me_json["status"], "success");
+    assert_eq!(me_json["data"]["email"], "alice@test.edu");
+    assert_eq!(me_json["data"]["email_verified"], true);
 }
 
 // ===========================================================================
@@ -281,7 +284,8 @@ async fn already_verified_user_returns_200_idempotent(pool: PgPool) {
         "re-verifying an already-verified user must be idempotent (200, not error)"
     );
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["verified"], true);
+    assert_eq!(json["status"], "success");
+    assert_eq!(json["data"]["verified"], true);
 
     // Still verified in DB.
     assert!(

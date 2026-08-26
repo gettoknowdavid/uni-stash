@@ -13,7 +13,8 @@ pub mod features;
 /// work depends on the deploy path working.
 #[actix_web::get("/health")]
 pub async fn health() -> actix_web::HttpResponse {
-    actix_web::HttpResponse::Ok().json(serde_json::json!({"status": "ok"}))
+    actix_web::HttpResponse::Ok()
+        .json(core::response::ApiResponse::<(), core::response::ErrorBody>::success((), "ok"))
 }
 
 /// Registers routes shared across every deploy target (Shuttle, local

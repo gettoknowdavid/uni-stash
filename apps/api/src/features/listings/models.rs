@@ -7,6 +7,16 @@ pub enum ListingStatus {
     Sold,
     Deleted,
 }
+impl std::fmt::Display for ListingStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ListingStatus::Active => write!(f, "active"),
+            ListingStatus::Reserved => write!(f, "reserved"),
+            ListingStatus::Sold => write!(f, "sold"),
+            ListingStatus::Deleted => write!(f, "deleted"),
+        }
+    }
+}
 impl std::convert::From<String> for ListingStatus {
     fn from(s: String) -> Self {
         match s.as_str() {
@@ -15,16 +25,6 @@ impl std::convert::From<String> for ListingStatus {
             "sold" => ListingStatus::Sold,
             "deleted" => ListingStatus::Deleted,
             _ => ListingStatus::Active,
-        }
-    }
-}
-impl std::fmt::Display for ListingStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ListingStatus::Active => f.write_str("active"),
-            ListingStatus::Reserved => f.write_str("reserved"),
-            ListingStatus::Sold => f.write_str("sold"),
-            ListingStatus::Deleted => f.write_str("deleted"),
         }
     }
 }
@@ -37,6 +37,16 @@ pub enum Condition {
     Used,
     Fair,
 }
+
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Condition::New => write!(f, "new"),
+            Condition::Used => write!(f, "used"),
+            Condition::Fair => write!(f, "fair"),
+        }
+    }
+}
 impl std::convert::From<String> for Condition {
     fn from(s: String) -> Self {
         match s.as_str() {
@@ -44,15 +54,6 @@ impl std::convert::From<String> for Condition {
             "used" => Condition::Used,
             "fair" => Condition::Fair,
             _ => Condition::New,
-        }
-    }
-}
-impl std::fmt::Display for Condition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Condition::New => f.write_str("new"),
-            Condition::Used => f.write_str("used"),
-            Condition::Fair => f.write_str("fair"),
         }
     }
 }

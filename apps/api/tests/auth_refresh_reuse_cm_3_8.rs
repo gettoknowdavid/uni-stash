@@ -137,7 +137,7 @@ async fn rotate_once(state: &web::Data<AppState>, plain_a: &str) -> String {
     let resp = call_refresh(state, plain_a).await;
     assert_eq!(resp.status(), 200, "rotation must succeed");
     let json: serde_json::Value = test::read_body_json(resp).await;
-    json["refresh_token"]
+    json["data"]["refresh_token"]
         .as_str()
         .expect("new refresh_token")
         .to_string()
@@ -165,7 +165,9 @@ async fn reuse_within_grace_rotates_from_current_valid_token(pool: PgPool) {
     let resp = call_refresh(&state, &plain_a).await;
     assert_eq!(resp.status(), 200, "reuse within grace window must succeed");
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let plain_c = json["refresh_token"].as_str().expect("refresh_token");
+    let plain_c = json["data"]["refresh_token"]
+        .as_str()
+        .expect("refresh_token");
 
     // C must differ from both A and B — it's a rotation of B.
     assert_ne!(plain_c, plain_a, "C must differ from A");
