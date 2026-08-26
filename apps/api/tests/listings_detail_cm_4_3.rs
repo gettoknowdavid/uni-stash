@@ -121,12 +121,14 @@ async fn active_listing_returns_full_detail(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["id"], listing_id.to_string());
-    assert_eq!(json["title"], "Item");
-    assert_eq!(json["seller"]["id"], seller.to_string());
-    assert_eq!(json["seller"]["display_name"], "U");
-    assert_eq!(json["category"]["slug"], "books");
-    assert_eq!(json["images"].as_array().unwrap().len(), 2);
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["id"], listing_id.to_string());
+    assert_eq!(data["title"], "Item");
+    assert_eq!(data["seller"]["id"], seller.to_string());
+    assert_eq!(data["seller"]["display_name"], "U");
+    assert_eq!(data["category"]["slug"], "books");
+    assert_eq!(data["images"].as_array().unwrap().len(), 2);
 }
 
 #[sqlx::test]
@@ -164,7 +166,7 @@ async fn images_returned_in_position_order(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let images = json["images"].as_array().unwrap();
+    let images = json["data"]["images"].as_array().unwrap();
     assert_eq!(images.len(), 3);
     assert_eq!(images[0]["position"], 0);
     assert_eq!(images[1]["position"], 1);

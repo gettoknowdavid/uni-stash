@@ -115,15 +115,13 @@ impl ListingsRepo {
         // Search results are rank-ordered, so a (created_at, id) cursor
         // would produce incorrect pages. For MVP, search results use simple
         // limit-only pagination (no cursor, no next_cursor).
-        if !is_search {
-            if let Some(ref cursor) = filters.cursor {
-                query
-                    .push(" AND (created_at, id) < (")
-                    .push_bind(cursor.created_at)
-                    .push(", ")
-                    .push_bind(cursor.id)
-                    .push(")");
-            }
+        if !is_search && let Some(ref cursor) = filters.cursor {
+            query
+                .push(" AND (created_at, id) < (")
+                .push_bind(cursor.created_at)
+                .push(", ")
+                .push_bind(cursor.id)
+                .push(")");
         }
 
         if is_search {
@@ -252,17 +250,17 @@ impl ListingsRepo {
         let row = match row {
             Some(r) => r,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::NotFound("listing not found".into()));
             }
         };
 
         if row.seller_id != seller_id {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::Forbidden);
         }
         if row.status != "active" {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::Conflict("listing is not active".into()));
         }
 
@@ -305,7 +303,7 @@ impl ListingsRepo {
         }
 
         if !has_fields {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::BadRequest("no fields to update".into()));
         }
 
@@ -343,13 +341,13 @@ impl ListingsRepo {
         let row = match row {
             Some(r) => r,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::NotFound("listing not found".into()));
             }
         };
 
         if row.seller_id != seller_id {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::Forbidden);
         }
 

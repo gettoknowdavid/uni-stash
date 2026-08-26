@@ -180,15 +180,17 @@ async fn valid_refresh_token_returns_200_with_new_pair(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data must be an object");
 
-    let access_token = json["access_token"].as_str().expect("access_token");
+    let access_token = data["access_token"].as_str().expect("access_token");
     assert!(!access_token.is_empty());
 
-    let new_refresh = json["refresh_token"].as_str().expect("refresh_token");
+    let new_refresh = data["refresh_token"].as_str().expect("refresh_token");
     assert_eq!(new_refresh.len(), 64);
     assert!(new_refresh.chars().all(|c| c.is_ascii_hexdigit()));
 
-    assert_eq!(json["expires_in"], 900);
+    assert_eq!(data["expires_in"], 900);
 
     // The new refresh token must be different from the old one.
     assert_ne!(new_refresh, plain, "new refresh token must differ from old");
@@ -355,13 +357,13 @@ async fn new_refresh_token_can_be_rotated_again(pool: PgPool) {
     let resp1 = call_refresh(&state, &plain).await;
     assert_eq!(resp1.status(), 200);
     let json1: serde_json::Value = test::read_body_json(resp1).await;
-    let second_plain = json1["refresh_token"].as_str().unwrap();
+    let second_plain = json1["data"]["refresh_token"].as_str().unwrap();
 
     // Second rotation with the new token.
     let resp2 = call_refresh(&state, second_plain).await;
     assert_eq!(resp2.status(), 200);
     let json2: serde_json::Value = test::read_body_json(resp2).await;
-    let third_plain = json2["refresh_token"].as_str().unwrap();
+    let third_plain = json2["data"]["refresh_token"].as_str().unwrap();
 
     // All three tokens must be distinct.
     assert_ne!(plain, second_plain);
@@ -433,8 +435,9 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
     let login_resp = test::call_service(&login_app, login_req).await;
     assert_eq!(login_resp.status(), 200, "login must succeed");
     let login_json: serde_json::Value = test::read_body_json(login_resp).await;
-    let issued_refresh = login_json["refresh_token"].as_str().expect("refresh_token");
-    let issued_access = login_json["access_token"].as_str().expect("access_token");
+    let login_data = login_json["data"].as_object().expect("login data");
+    let issued_refresh = login_data["refresh_token"].as_str().expect("refresh_token");
+    let issued_access = login_data["access_token"].as_str().expect("access_token");
     assert!(!issued_access.is_empty());
     assert_eq!(issued_refresh.len(), 64);
 
@@ -454,12 +457,13 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
 
-    let new_refresh = json["refresh_token"].as_str().expect("new refresh_token");
+    let refresh_data = json["data"].as_object().expect("refresh data");
+    let new_refresh = refresh_data["refresh_token"].as_str().expect("new refresh_token");
     assert_ne!(
         new_refresh, issued_refresh,
         "new token must differ from old"
     );
-    assert_eq!(json["expires_in"], 900);
+    assert_eq!(refresh_data["expires_in"], 900);
 
     // Step 3: Verify old row is revoked and superseded_by points to new.
     let old_after = find_token_by_id(&pool, old_row_id).await;

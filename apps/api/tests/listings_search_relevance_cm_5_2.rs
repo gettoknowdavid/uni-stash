@@ -154,7 +154,7 @@ async fn title_match_ranks_above_description_only_match(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 2, "both listings should match");
 
     // The title-match listing must rank first
@@ -216,7 +216,7 @@ async fn ranking_order_title_only_over_both_over_description_only(pool: PgPool) 
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 3);
 
     // Title-only and title+description should both outrank description-only
@@ -279,7 +279,7 @@ async fn updating_title_re_ranks_in_search(pool: PgPool) {
     let resp = call_search(&state, "?q=quantum").await;
     let json: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(
-        json["listings"].as_array().unwrap().len(),
+        json["data"]["listings"].as_array().unwrap().len(),
         0,
         "listing should not appear before title update"
     );
@@ -298,7 +298,7 @@ async fn updating_title_re_ranks_in_search(pool: PgPool) {
     let resp = call_search(&state, "?q=quantum").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         1,
@@ -331,7 +331,7 @@ async fn updating_description_re_ranks_in_search(pool: PgPool) {
     let state = test_state(pool.clone());
     let resp = call_search(&state, "?q=thermodynamics").await;
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["listings"].as_array().unwrap().len(), 0);
+    assert_eq!(json["data"]["listings"].as_array().unwrap().len(), 0);
 
     // Update description to include "thermodynamics"
     sqlx::query(
@@ -345,7 +345,7 @@ async fn updating_description_re_ranks_in_search(pool: PgPool) {
     let resp = call_search(&state, "?q=thermodynamics").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         1,

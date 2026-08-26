@@ -86,13 +86,13 @@ impl ImagesRepo {
         let seller_id = match row {
             Some(r) => r.seller_id,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::NotFound("listing not found".into()));
             }
         };
 
         if seller_id != user_id {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::Forbidden);
         }
 
@@ -107,7 +107,7 @@ impl ImagesRepo {
         let position = match [0, 1, 2].iter().find(|&&p| !taken.contains(&p)).copied() {
             Some(p) => p,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::BadRequest("listing already has 3 images".into()));
             }
         };
@@ -160,13 +160,13 @@ impl ImagesRepo {
         let row = match row {
             Some(r) => r,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::NotFound("image not found".into()));
             }
         };
 
         if row.seller_id != user_id {
-            let _ = tx.rollback();
+            let _ = tx.rollback().await;
             return Err(AppError::Forbidden);
         }
 

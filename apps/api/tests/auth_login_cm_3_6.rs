@@ -129,14 +129,17 @@ async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
 
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data must be an object");
+
     // access_token must be a non-empty string (JWT).
-    let access_token = json["access_token"]
+    let access_token = data["access_token"]
         .as_str()
         .expect("access_token must be a string");
     assert!(!access_token.is_empty(), "access_token must not be empty");
 
     // refresh_token must be a 64-char hex string.
-    let refresh_token = json["refresh_token"]
+    let refresh_token = data["refresh_token"]
         .as_str()
         .expect("refresh_token must be a string");
     assert_eq!(
@@ -150,7 +153,7 @@ async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
     );
 
     // expires_in must be 900 (15 minutes in seconds).
-    assert_eq!(json["expires_in"], 900);
+    assert_eq!(data["expires_in"], 900);
 }
 
 // ===========================================================================
