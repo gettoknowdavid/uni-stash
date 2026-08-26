@@ -161,7 +161,7 @@ async fn logout_valid_token_returns_200_and_revokes(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "ok");
+    assert_eq!(json["status"], "success");
 
     // Verify the row is now revoked in the DB.
     let row = find_token_by_hash(&pool, &plain).await;
@@ -182,7 +182,7 @@ async fn logout_unknown_token_returns_200_idempotent(pool: PgPool) {
 
     assert_eq!(resp.status(), 200, "unknown token must not error");
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "ok");
+    assert_eq!(json["status"], "success");
 }
 
 // ===========================================================================
@@ -206,7 +206,7 @@ async fn logout_already_revoked_token_returns_200_idempotent(pool: PgPool) {
     let resp2 = call_logout(&state, &plain).await;
     assert_eq!(resp2.status(), 200, "re-logout must be idempotent");
     let json: serde_json::Value = test::read_body_json(resp2).await;
-    assert_eq!(json["status"], "ok");
+    assert_eq!(json["status"], "success");
 }
 
 // ===========================================================================
@@ -228,11 +228,13 @@ async fn me_valid_token_returns_200_with_profile(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
 
-    assert_eq!(json["id"], user.id.to_string());
-    assert_eq!(json["email"], "carol@test.edu");
-    assert_eq!(json["display_name"], "Test User");
-    assert_eq!(json["email_verified"], true);
-    assert_eq!(json["role"], "student");
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["id"], user.id.to_string());
+    assert_eq!(data["email"], "carol@test.edu");
+    assert_eq!(data["display_name"], "Test User");
+    assert_eq!(data["email_verified"], true);
+    assert_eq!(data["role"], "student");
 }
 
 // ===========================================================================
@@ -284,5 +286,9 @@ async fn me_role_reflects_db_not_jwt(pool: PgPool) {
     let resp = call_me(&state, &access_token).await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["role"], "admin", "role must come from DB, not JWT");
+    assert_eq!(json["status"], "success");
+    assert_eq!(
+        json["data"]["role"], "admin",
+        "role must come from DB, not JWT"
+    );
 }

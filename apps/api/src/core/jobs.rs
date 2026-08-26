@@ -147,11 +147,17 @@ mod tests {
             "expired cleanup interval too long: {:?}",
             CLEANUP_EXPIRED_INTERVAL
         );
-        assert!(
-            REVOKED_TOKEN_RETENTION_SECS >= 3600,
-            "revoked retention too short: {}s",
-            REVOKED_TOKEN_RETENTION_SECS
-        );
+        // assert!(
+        //     REVOKED_TOKEN_RETENTION_SECS >= 3600,
+        //     "revoked retention too short: {}s",
+        //     REVOKED_TOKEN_RETENTION_SECS
+        // );
+        const {
+            assert!(
+                REVOKED_TOKEN_RETENTION_SECS >= 3600,
+                "revoked retention too short"
+            );
+        }
         assert!(
             CLEANUP_REVOKED_INTERVAL
                 <= time::Duration::from_secs(REVOKED_TOKEN_RETENTION_SECS as u64),

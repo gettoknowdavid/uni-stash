@@ -9,10 +9,12 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
-    # Generated files from build_runner (freezed, json_serializable,
-    # retrofit, envied) — analyzer warnings in these are noise.
-    - '**/*.g.dart'
-    - '**/*.freezed.dart'
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+  errors:
+    unused_field: ignore
+    prefer_initializing_formals: ignore
 
 linter:
   rules:

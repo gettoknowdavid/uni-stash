@@ -116,8 +116,10 @@ async fn owner_can_update_active_listing(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["title"], "Updated");
-    assert_eq!(json["description"], "Old desc");
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["title"], "Updated");
+    assert_eq!(data["description"], "Old desc");
 }
 
 #[sqlx::test]
@@ -167,7 +169,8 @@ async fn setting_price_to_null_makes_barter_only(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert!(json["price"].is_null());
+    assert_eq!(json["status"], "success");
+    assert!(json["data"]["price"].is_null());
 }
 
 #[sqlx::test]
@@ -184,9 +187,11 @@ async fn partial_update_only_changes_provided_fields(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["title"], "New Title");
-    assert_eq!(json["description"], "Old desc");
-    assert_eq!(json["price"], 50);
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["title"], "New Title");
+    assert_eq!(data["description"], "Old desc");
+    assert_eq!(data["price"], 50);
 }
 
 #[sqlx::test]

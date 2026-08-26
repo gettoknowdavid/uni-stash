@@ -2,11 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 
-part 'api_client.g.dart';
+part 'auth_api.g.dart';
 
 @RestApi()
-abstract class ApiClient {
-  factory ApiClient(Dio dio, {String? baseUrl}) = _ApiClient;
+abstract class AuthApiClient {
+  factory AuthApiClient(Dio dio, {String? baseUrl}) = _AuthApiClient;
 
   @POST('/api/v1/auth/signup')
   Future<SignUpResponse> signUp(@Body() SignUpRequest request);

@@ -5,13 +5,33 @@ auth:
   credentials:
     token: "{{accessToken}}"
 variables:
-  baseUrl: http://localhost:8080
-  accessToken: ""
-  refreshToken: ""
-  listingId: ""
-  imageId: ""
-  objectKey: ""
-  verificationToken: ""
-  schoolId: ""
-  adminAccessToken: ""
-  adminRefreshToken: ""
+  - key: baseUrl
+    value: http://localhost:8080
+    disabled: false
+  - key: accessToken
+    secret: true
+    disabled: false
+  - key: refreshToken
+    value: ""
+    disabled: false
+  - key: listingId
+    value: ""
+    disabled: false
+  - key: imageId
+    value: ""
+    disabled: false
+  - key: objectKey
+    value: ""
+    disabled: false
+  - key: verificationToken
+    value: ""
+    disabled: false
+  - key: schoolId
+    value: ""
+    disabled: false
+  - key: adminAccessToken
+    secret: true
+    disabled: false
+  - key: adminRefreshToken
+    value: ""
+    disabled: false

@@ -1,21 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:uni_stash_mobile/core/api/api_client.dart';
+import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 
 class MockDio extends Mock implements Dio {}
 
 void main() {
   late MockDio mockDio;
-  late ApiClient apiClient;
+  late AuthApiClient authApi;
 
   setUp(() {
     mockDio = MockDio();
     when(() => mockDio.options).thenReturn(
       BaseOptions(baseUrl: 'https://api.example.com'),
     );
-    apiClient = ApiClient(mockDio);
+    authApi = AuthApiClient(mockDio);
   });
 
   setUpAll(() {
@@ -34,7 +34,7 @@ void main() {
     );
   }
 
-  group('ApiClient', () {
+  group('AuthApiClient', () {
     group('signUp', () {
       test('returns SignUpResponse with tokens on 201', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
@@ -53,7 +53,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.signUp(
+        final result = await authApi.signUp(
           const SignUpRequest(
             email: 'test@university.edu',
             password: 'password123',
@@ -84,7 +84,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.login(
+        final result = await authApi.login(
           const LoginRequest(
             email: 'test@university.edu',
             password: 'password123',
@@ -111,7 +111,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.verifyOtp(
+        final result = await authApi.verifyOtp(
           const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
         );
 
@@ -129,7 +129,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.verifyOtp(
+        final result = await authApi.verifyOtp(
           const VerifyOtpRequest(code: '123456', otpType: 'password_reset'),
         );
 
@@ -148,7 +148,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.resendVerification(
+        final result = await authApi.resendVerification(
           const ResendVerificationRequest(email: 'test@university.edu'),
         );
 
@@ -163,13 +163,13 @@ void main() {
             path: '/api/v1/auth/forgot-password',
             data: {
               'message':
-                  'if an account with that email exists,'
-                  ' a reset code has been sent',
+                  'if an account with that email exists, '
+                  'a reset code has been sent',
             },
           ),
         );
 
-        final result = await apiClient.forgotPassword(
+        final result = await authApi.forgotPassword(
           const ForgotPasswordRequest(email: 'test@university.edu'),
         );
 
@@ -186,7 +186,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.resetPassword(
+        final result = await authApi.resetPassword(
           const ResetPasswordRequest(
             code: '123456',
             newPassword: 'newpassword123',
@@ -210,7 +210,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.refresh(
+        final result = await authApi.refresh(
           const RefreshRequest(refreshToken: 'old_refresh'),
         );
 
@@ -229,7 +229,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.logout(
+        final result = await authApi.logout(
           const LogoutRequest(refreshToken: 'token123'),
         );
 
@@ -252,7 +252,7 @@ void main() {
           ),
         );
 
-        final result = await apiClient.me();
+        final result = await authApi.me();
 
         expect(result.id, 'uuid-123');
         expect(result.email, 'test@university.edu');

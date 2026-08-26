@@ -1,10 +1,10 @@
 use actix_web::{HttpResponse, web};
-use serde_json::json;
 use validator::Validate;
 
 use crate::core::auth::middleware::AdminSession;
 use crate::core::error::AppError;
 use crate::core::json::ValidatedJson;
+use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::schools::dtos::{
     CreateSchoolRequest, CreateSchoolResponse, ListSchoolsQuery, ListSchoolsResponse,
@@ -37,9 +37,14 @@ pub async fn list_schools(
         .list_schools(query.search.as_deref())
         .await?;
 
-    Ok(HttpResponse::Ok().json(ListSchoolsResponse {
-        schools: schools.into_iter().map(school_to_response).collect(),
-    }))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListSchoolsResponse, ErrorBody>::success(
+            ListSchoolsResponse {
+                schools: schools.into_iter().map(school_to_response).collect(),
+            },
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +62,12 @@ pub async fn get_school(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("school with id {school_id} not found")))?;
 
-    Ok(HttpResponse::Ok().json(school_to_response(school)))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<SchoolResponse, ErrorBody>::success(
+            school_to_response(school),
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -80,12 +90,17 @@ pub async fn create_school(
         .create_school(&body.name, &body.domain)
         .await?;
 
-    Ok(HttpResponse::Created().json(CreateSchoolResponse {
-        id: school.id,
-        name: school.name,
-        domain: school.domain,
-        message: "school created successfully".to_string(),
-    }))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<CreateSchoolResponse, ErrorBody>::success(
+            CreateSchoolResponse {
+                id: school.id,
+                name: school.name,
+                domain: school.domain,
+                message: "school created successfully".to_string(),
+            },
+            "school created successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -117,10 +132,20 @@ pub async fn update_school(
         .update_school(school_id, body.name.as_deref(), body.domain.as_deref())
         .await?;
 
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "school updated successfully",
-        "school": school_to_response(school),
-    })))
+    #[derive(serde::Serialize)]
+    struct SchoolUpdateResponse {
+        message: String,
+        school: SchoolResponse,
+    }
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<SchoolUpdateResponse, ErrorBody>::success(
+            SchoolUpdateResponse {
+                message: "school updated successfully".to_string(),
+                school: school_to_response(school),
+            },
+            "school updated successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------

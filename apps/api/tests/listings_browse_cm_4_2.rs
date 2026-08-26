@@ -121,9 +121,10 @@ async fn default_limit_and_status_filter_applied(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let data = json["data"].as_object().expect("data");
+    let listings = data["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 3, "sold listing must be excluded");
-    assert!(json["next_cursor"].is_null());
+    assert!(data["next_cursor"].is_null());
 }
 
 // ===========================================================================
@@ -145,7 +146,8 @@ async fn category_filter_narrows_results(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let data = json["data"].as_object().expect("data");
+    let listings = data["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 1);
     assert_eq!(listings[0]["title"], "Book");
 }
@@ -169,7 +171,8 @@ async fn min_max_price_filter_narrows_results(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let data = json["data"].as_object().expect("data");
+    let listings = data["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 1);
     assert_eq!(listings[0]["title"], "Mid");
 }
@@ -202,10 +205,11 @@ async fn pagination_returns_next_cursor_when_more_rows_exist(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let data = json["data"].as_object().expect("data");
+    let listings = data["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 20);
     assert!(
-        json["next_cursor"].is_string(),
+        data["next_cursor"].is_string(),
         "must provide next_cursor when more rows exist"
     );
 }
@@ -240,8 +244,9 @@ async fn pagination_second_page_excludes_first_page_rows(pool: PgPool) {
     // Page 1
     let resp1 = call_browse(&state, "?limit=20").await;
     let json1: serde_json::Value = test::read_body_json(resp1).await;
-    let cursor = json1["next_cursor"].as_str().unwrap();
-    let page1_ids: Vec<serde_json::Value> = json1["listings"]
+    let data1 = json1["data"].as_object().expect("data");
+    let cursor = data1["next_cursor"].as_str().unwrap();
+    let page1_ids: Vec<serde_json::Value> = data1["listings"]
         .as_array()
         .unwrap()
         .iter()
@@ -251,7 +256,8 @@ async fn pagination_second_page_excludes_first_page_rows(pool: PgPool) {
     // Page 2
     let resp2 = call_browse(&state, &format!("?limit=20&cursor={cursor}")).await;
     let json2: serde_json::Value = test::read_body_json(resp2).await;
-    let page2_ids: Vec<serde_json::Value> = json2["listings"]
+    let data2 = json2["data"].as_object().expect("data");
+    let page2_ids: Vec<serde_json::Value> = data2["listings"]
         .as_array()
         .unwrap()
         .iter()
@@ -300,7 +306,8 @@ async fn limit_is_clamped_to_max_50(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let data = json["data"].as_object().expect("data");
+    let listings = data["listings"].as_array().unwrap();
     assert!(
         listings.len() <= 50,
         "must never return more than 50 items, got {}",
@@ -319,8 +326,9 @@ async fn empty_result_set_returns_empty_array_and_null_cursor(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["listings"].as_array().unwrap().len(), 0);
-    assert!(json["next_cursor"].is_null());
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["listings"].as_array().unwrap().len(), 0);
+    assert!(data["next_cursor"].is_null());
 }
 
 // ===========================================================================
@@ -357,7 +365,7 @@ async fn stable_ordering_under_identical_created_at(pool: PgPool) {
     // Run browse twice — ordering must be deterministic
     let resp1 = call_browse(&state, "").await;
     let json1: serde_json::Value = test::read_body_json(resp1).await;
-    let ids1: Vec<String> = json1["listings"]
+    let ids1: Vec<String> = json1["data"]["listings"]
         .as_array()
         .unwrap()
         .iter()
@@ -366,7 +374,7 @@ async fn stable_ordering_under_identical_created_at(pool: PgPool) {
 
     let resp2 = call_browse(&state, "").await;
     let json2: serde_json::Value = test::read_body_json(resp2).await;
-    let ids2: Vec<String> = json2["listings"]
+    let ids2: Vec<String> = json2["data"]["listings"]
         .as_array()
         .unwrap()
         .iter()

@@ -1,11 +1,11 @@
 use actix_web::{HttpResponse, web};
-use serde_json::json;
 use validator::Validate;
 
 use crate::core::auth::middleware::AuthUser;
 use crate::core::auth::{self, jwt, otp, password};
 use crate::core::error::AppError;
 use crate::core::json::ValidatedJson;
+use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
     ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginResponse, LogoutRequest,
@@ -63,15 +63,20 @@ pub async fn signup(
         tracing::warn!(error = %e, email = %user.email, "failed to send verification OTP");
     }
 
-    Ok(HttpResponse::Created().json(SignUpResponse {
-        id: user.id,
-        email: user.email,
-        display_name: user.display_name,
-        email_verified: false,
-        access_token: Some(access_token),
-        refresh_token: Some(refresh_token),
-        expires_in: Some(900),
-    }))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<SignUpResponse, ErrorBody>::success(
+            SignUpResponse {
+                id: user.id,
+                email: user.email,
+                display_name: user.display_name,
+                email_verified: false,
+                access_token: Some(access_token),
+                refresh_token: Some(refresh_token),
+                expires_in: Some(900),
+            },
+            "account created successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -112,22 +117,32 @@ pub async fn verify_otp(
             .issue_refresh_token(&state.db, user.id, family_id)
             .await?;
 
-        return Ok(HttpResponse::Ok().json(VerifyOtpResponse {
-            verified: true,
-            access_token: Some(access_token),
-            refresh_token: Some(refresh_token),
-            expires_in: Some(900),
-        }));
+        return Ok(
+            HttpResponse::Ok().json(ApiResponse::<VerifyOtpResponse, ErrorBody>::success(
+                VerifyOtpResponse {
+                    verified: true,
+                    access_token: Some(access_token),
+                    refresh_token: Some(refresh_token),
+                    expires_in: Some(900),
+                },
+                "email verified successfully",
+            )),
+        );
     }
 
     // password_reset — just confirm verification, no tokens (user must login
     // with their new password via the separate reset-password endpoint).
-    Ok(HttpResponse::Ok().json(VerifyOtpResponse {
-        verified: true,
-        access_token: None,
-        refresh_token: None,
-        expires_in: None,
-    }))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<VerifyOtpResponse, ErrorBody>::success(
+            VerifyOtpResponse {
+                verified: true,
+                access_token: None,
+                refresh_token: None,
+                expires_in: None,
+            },
+            "password reset verified",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -168,9 +183,12 @@ pub async fn resend_verification(
         )));
     }
 
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "verification code sent"
-    })))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "verification code sent",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -206,9 +224,12 @@ pub async fn forgot_password(
     }
 
     // Always return success — don't reveal whether the email exists
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "if an account with that email exists, a reset code has been sent"
-    })))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "if an account with that email exists, a reset code has been sent",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -237,9 +258,12 @@ pub async fn reset_password(
         .update_password_hash(&user_id, &new_hash)
         .await?;
 
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "password updated successfully"
-    })))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "password updated successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -271,11 +295,16 @@ pub async fn login(
         .auth_repo
         .issue_refresh_token(&state.db, user.id, family_id)
         .await?;
-    Ok(HttpResponse::Ok().json(LoginResponse {
-        access_token,
-        refresh_token,
-        expires_in: 900,
-    }))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<LoginResponse, ErrorBody>::success(
+            LoginResponse {
+                access_token,
+                refresh_token,
+                expires_in: 900,
+            },
+            "login successful",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -304,11 +333,16 @@ pub async fn refresh(
             .auth_repo
             .handle_reused_token(&state.jwt_keys, &row)
             .await?;
-        return Ok(HttpResponse::Ok().json(RefreshResponse {
-            access_token: access,
-            refresh_token: refresh,
-            expires_in: expires,
-        }));
+        return Ok(
+            HttpResponse::Ok().json(ApiResponse::<RefreshResponse, ErrorBody>::success(
+                RefreshResponse {
+                    access_token: access,
+                    refresh_token: refresh,
+                    expires_in: expires,
+                },
+                "token refreshed",
+            )),
+        );
     }
 
     let (access, refresh, expires) = state
@@ -316,11 +350,16 @@ pub async fn refresh(
         .rotate_from_row(&state.jwt_keys, &row)
         .await?;
 
-    Ok(HttpResponse::Ok().json(RefreshResponse {
-        access_token: access,
-        refresh_token: refresh,
-        expires_in: expires,
-    }))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<RefreshResponse, ErrorBody>::success(
+            RefreshResponse {
+                access_token: access,
+                refresh_token: refresh,
+                expires_in: expires,
+            },
+            "token refreshed",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -335,7 +374,12 @@ pub async fn logout(
         .auth_repo
         .revoke_refresh_token_by_hash(&body.refresh_token)
         .await?;
-    Ok(HttpResponse::Ok().json(json!({ "status": "ok" })))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "logged out successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -348,5 +392,5 @@ pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpRespon
         .find_user_profile_by_id(&user.id)
         .await?
         .ok_or_else(|| AppError::NotFound("user not found".into()))?;
-    Ok(HttpResponse::Ok().json(profile))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(profile, "ok")))
 }
