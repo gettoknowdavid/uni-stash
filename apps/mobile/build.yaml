@@ -1,6 +1,10 @@
 # build.yaml
 targets:
   $default:
+    builders:
+      freezed:
+        options:
+          generic_argument_factories: true
     sources:
       - $package$
       - lib/**
