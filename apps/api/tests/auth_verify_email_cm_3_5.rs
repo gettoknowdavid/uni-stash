@@ -365,7 +365,7 @@ async fn malformed_otp_format_returns_400(pool: PgPool) {
 
     // Too short
     let resp = call_verify_otp(&state, "12345", "email_verify").await;
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 422);
 
     // Contains letters
     let resp = call_verify_otp(&state, "12ab56", "email_verify").await;
@@ -373,5 +373,5 @@ async fn malformed_otp_format_returns_400(pool: PgPool) {
 
     // Too long
     let resp = call_verify_otp(&state, "1234567", "email_verify").await;
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 422);
 }
