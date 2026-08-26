@@ -63,13 +63,13 @@ mod tests {
     #[test]
     fn test_correct_password_verifies_true() {
         let hash = hash_password("correct horse battery staple twice").unwrap();
-        assert!(verify_password("correct horse battery staple twice", &hash).unwrap() == true);
+        assert!(verify_password("correct horse battery staple twice", &hash).unwrap());
     }
 
     #[test]
     fn test_incorrect_password_verifies_false() {
         let hash = hash_password("correct horse battery staple twice").unwrap();
-        assert!(verify_password("correct horse battery staple", &hash).unwrap() == false);
+        assert!(!verify_password("correct horse battery staple", &hash).unwrap());
     }
 
     #[test]

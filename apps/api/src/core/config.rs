@@ -284,7 +284,7 @@ mod tests {
         assert!(
             config.jwt_public_key.contains("fake-key-content"),
             "should read from file, got: {}",
-            &config.jwt_public_key
+            config.jwt_public_key
         );
 
         // Cleanup
