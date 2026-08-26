@@ -84,16 +84,18 @@ pub async fn create_admin(
 
     tx.commit().await?;
 
-    Ok(HttpResponse::Created().json(ApiResponse::<CreateAdminResponse, ErrorBody>::success(
-        CreateAdminResponse {
-            id: admin.id,
-            email: admin.email,
-            display_name: admin.display_name,
-            level: admin.level,
-            message: "admin created successfully".to_string(),
-        },
-        "admin created successfully",
-    )))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<CreateAdminResponse, ErrorBody>::success(
+            CreateAdminResponse {
+                id: admin.id,
+                email: admin.email,
+                display_name: admin.display_name,
+                level: admin.level,
+                message: "admin created successfully".to_string(),
+            },
+            "admin created successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -105,12 +107,14 @@ pub async fn list_admins(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, AppError> {
     let admins = state.admin_management_repo.list_admins().await?;
-    Ok(HttpResponse::Ok().json(ApiResponse::<ListAdminsResponse, ErrorBody>::success(
-        ListAdminsResponse {
-            admins: admins.into_iter().map(admin_to_list_item).collect(),
-        },
-        "ok",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListAdminsResponse, ErrorBody>::success(
+            ListAdminsResponse {
+                admins: admins.into_iter().map(admin_to_list_item).collect(),
+            },
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -191,12 +195,14 @@ pub async fn update_admin(
 
     tx.commit().await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<UpdateAdminResponse, ErrorBody>::success(
-        UpdateAdminResponse {
-            message: "admin updated successfully".to_string(),
-        },
-        "admin updated successfully",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<UpdateAdminResponse, ErrorBody>::success(
+            UpdateAdminResponse {
+                message: "admin updated successfully".to_string(),
+            },
+            "admin updated successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -251,10 +257,12 @@ pub async fn deactivate_admin(
 
     tx.commit().await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<UpdateAdminResponse, ErrorBody>::success(
-        UpdateAdminResponse {
-            message: "admin deactivated successfully".to_string(),
-        },
-        "admin deactivated successfully",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<UpdateAdminResponse, ErrorBody>::success(
+            UpdateAdminResponse {
+                message: "admin deactivated successfully".to_string(),
+            },
+            "admin deactivated successfully",
+        )),
+    )
 }

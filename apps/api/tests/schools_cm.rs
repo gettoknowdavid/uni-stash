@@ -396,7 +396,10 @@ async fn admin_can_update_school_domain(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["data"]["school"]["name"], "My Uni", "name should be unchanged");
+    assert_eq!(
+        json["data"]["school"]["name"], "My Uni",
+        "name should be unchanged"
+    );
     assert_eq!(json["data"]["school"]["domain"], "new.edu");
 }
 

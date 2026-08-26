@@ -121,10 +121,7 @@ pub struct ErrorField {
 
 impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
     /// Create a generic error response.
-    pub fn error(
-        code: impl Into<String>,
-        message: impl Into<String>,
-    ) -> ApiResponse<T, ErrorBody> {
+    pub fn error(code: impl Into<String>, message: impl Into<String>) -> ApiResponse<T, ErrorBody> {
         ApiResponse {
             status: "error",
             data: None,
@@ -199,7 +196,11 @@ pub struct ErrorEnvelope {
 }
 
 impl ErrorEnvelope {
-    pub fn new(code: &str, message: String, fields: Option<&[crate::core::error::FieldError]>) -> Self {
+    pub fn new(
+        code: &str,
+        message: String,
+        fields: Option<&[crate::core::error::FieldError]>,
+    ) -> Self {
         ErrorEnvelope {
             status: "error",
             data: serde_json::Value::Null,

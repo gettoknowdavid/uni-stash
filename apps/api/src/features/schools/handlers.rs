@@ -37,12 +37,14 @@ pub async fn list_schools(
         .list_schools(query.search.as_deref())
         .await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<ListSchoolsResponse, ErrorBody>::success(
-        ListSchoolsResponse {
-            schools: schools.into_iter().map(school_to_response).collect(),
-        },
-        "ok",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListSchoolsResponse, ErrorBody>::success(
+            ListSchoolsResponse {
+                schools: schools.into_iter().map(school_to_response).collect(),
+            },
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -60,10 +62,12 @@ pub async fn get_school(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("school with id {school_id} not found")))?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<SchoolResponse, ErrorBody>::success(
-        school_to_response(school),
-        "ok",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<SchoolResponse, ErrorBody>::success(
+            school_to_response(school),
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -86,15 +90,17 @@ pub async fn create_school(
         .create_school(&body.name, &body.domain)
         .await?;
 
-    Ok(HttpResponse::Created().json(ApiResponse::<CreateSchoolResponse, ErrorBody>::success(
-        CreateSchoolResponse {
-            id: school.id,
-            name: school.name,
-            domain: school.domain,
-            message: "school created successfully".to_string(),
-        },
-        "school created successfully",
-    )))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<CreateSchoolResponse, ErrorBody>::success(
+            CreateSchoolResponse {
+                id: school.id,
+                name: school.name,
+                domain: school.domain,
+                message: "school created successfully".to_string(),
+            },
+            "school created successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -131,13 +137,15 @@ pub async fn update_school(
         message: String,
         school: SchoolResponse,
     }
-    Ok(HttpResponse::Ok().json(ApiResponse::<SchoolUpdateResponse, ErrorBody>::success(
-        SchoolUpdateResponse {
-            message: "school updated successfully".to_string(),
-            school: school_to_response(school),
-        },
-        "school updated successfully",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<SchoolUpdateResponse, ErrorBody>::success(
+            SchoolUpdateResponse {
+                message: "school updated successfully".to_string(),
+                school: school_to_response(school),
+            },
+            "school updated successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
