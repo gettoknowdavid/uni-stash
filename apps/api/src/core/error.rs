@@ -1,31 +1,6 @@
 use actix_web::{HttpResponse, ResponseError, http::header::ContentType};
 
-#[derive(serde::Serialize)]
-struct ErrorBody<'a> {
-    error: ErrorDetail<'a>,
-}
-
-#[derive(serde::Serialize)]
-struct ErrorDetail<'a> {
-    code: &'a str,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    fields: Option<&'a [FieldError]>,
-}
-
-/// Error response shape.
-#[derive(serde::Serialize)]
-pub struct ErrorResponse {
-    pub error: ErrorResponseBody,
-}
-
-#[derive(serde::Serialize)]
-pub struct ErrorResponseBody {
-    pub code: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fields: Option<Vec<FieldError>>,
-}
+use crate::core::response::ErrorEnvelope;
 
 /// A single field-level validation error, serialised inside the
 /// `fields` array of the JSON response body.
@@ -148,20 +123,10 @@ impl ResponseError for AppError {
         if matches!(self, AppError::Internal { .. }) {
             tracing::error!(error = ?self, "internal error");
         }
+        let body = ErrorEnvelope::new(self.code(), self.client_message(), self.fields());
         HttpResponse::build(self.status_code())
             .insert_header(ContentType::json())
-            .body(
-                serde_json::to_string(&ErrorBody {
-                    error: ErrorDetail {
-                        code: self.code(),
-                        message: self.client_message(),
-                        fields: self.fields(),
-                    },
-                })
-                .unwrap_or_else(|_| {
-                    r#"{"error":{"code":"internal","message":"internal server error"}}"#.to_string()
-                }),
-            )
+            .json(body)
     }
 
     fn status_code(&self) -> actix_web::http::StatusCode {
@@ -169,7 +134,7 @@ impl ResponseError for AppError {
             AppError::NotFound { .. } => actix_web::http::StatusCode::NOT_FOUND,
             AppError::BadRequest { .. } => actix_web::http::StatusCode::BAD_REQUEST,
             AppError::Conflict { .. } => actix_web::http::StatusCode::CONFLICT,
-            AppError::Unauthorized { .. } | AppError::TokenExpired { .. } => {
+            AppError::Unauthorized { .. } | AppError::TokenExpired => {
                 actix_web::http::StatusCode::UNAUTHORIZED
             }
             AppError::Forbidden | AppError::EmailNotVerified => {
@@ -319,6 +284,8 @@ mod tests {
 
             let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
             let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(json["status"], "error");
+            assert_eq!(json["data"], serde_json::Value::Null);
             assert_eq!(json["error"]["code"], expected_code);
             assert_eq!(json["error"]["message"], expected_message);
             // None of these base variants should emit a `fields` key.
@@ -416,6 +383,8 @@ mod tests {
         let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
+        assert_eq!(json["status"], "error");
+        assert_eq!(json["data"], serde_json::Value::Null);
         assert_eq!(json["error"]["code"], "validation");
         assert_eq!(json["error"]["message"], "Validation failed");
 

@@ -2,7 +2,13 @@ use actix_web::{HttpResponse, web};
 use validator::Validate;
 
 use crate::{
-    core::{auth::middleware::AuthUser, error::AppError, json, state::AppState},
+    core::{
+        auth::middleware::AuthUser,
+        error::AppError,
+        json,
+        response::{ApiResponse, ErrorBody},
+        state::AppState,
+    },
     features::listings::{
         cursor::decode_cursor,
         dtos::{
@@ -39,7 +45,12 @@ pub async fn create_listing(
         condition: body.condition.clone(),
     };
     let listing = state.listings_repo.insert_listing(&input).await?;
-    Ok(HttpResponse::Created().json(ListingResponse::from(listing)))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<ListingResponse, ErrorBody>::success(
+            ListingResponse::from(listing),
+            "listing created successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +68,7 @@ pub async fn list_listings(
         _ => ListingStatus::Active,
     };
 
-    let limit = query.limit.unwrap_or(20).min(50).max(1);
+    let limit = query.limit.unwrap_or(20).clamp(1, 50);
 
     // CM-5.1: full-text search query — treat whitespace-only as absent.
     let search_query = query.q.as_ref().and_then(|q| {
@@ -89,10 +100,15 @@ pub async fn list_listings(
 
     let (listings, next_cursor) = state.listings_repo.list(&filters).await?;
 
-    Ok(HttpResponse::Ok().json(ListListingsResponse {
-        listings,
-        next_cursor,
-    }))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListListingsResponse, ErrorBody>::success(
+            ListListingsResponse {
+                listings,
+                next_cursor,
+            },
+            "ok",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -118,7 +134,7 @@ pub async fn get_listing_detail(
         return Err(AppError::NotFound("listing not found".into()));
     }
 
-    Ok(HttpResponse::Ok().json(detail))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(detail, "ok")))
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +153,7 @@ pub async fn update_listing(
         title: body.title.clone(),
         description: body.description.clone(),
         category_id: body.category_id,
-        price: body.price.clone(),
+        price: body.price,
         condition: body.condition.clone(),
     };
 
@@ -146,7 +162,12 @@ pub async fn update_listing(
         .update_partial(path.into_inner(), user.id, &patch)
         .await?;
 
-    Ok(HttpResponse::Ok().json(ListingResponse::from(updated)))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(
+            ListingResponse::from(updated),
+            "listing updated successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +205,12 @@ pub async fn reserve_listing(
     // identity" pattern used in CM-4.1.
     let listing = state_machine::reserve_listing(&state.db, path.into_inner(), user.id).await?;
 
-    Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(
+            ListingResponse::from(listing),
+            "listing reserved successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +224,12 @@ pub async fn mark_sold(
 ) -> Result<HttpResponse, AppError> {
     let listing = state_machine::mark_sold(&state.db, path.into_inner(), user.id).await?;
 
-    Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(
+            ListingResponse::from(listing),
+            "listing marked as sold",
+        )),
+    )
 }
 
 pub async fn unreserve_listing(
@@ -208,5 +239,10 @@ pub async fn unreserve_listing(
 ) -> Result<HttpResponse, AppError> {
     let listing = state_machine::unreserve(&state.db, path.into_inner(), user.id).await?;
 
-    Ok(HttpResponse::Ok().json(ListingResponse::from(listing)))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(
+            ListingResponse::from(listing),
+            "listing unreserved successfully",
+        )),
+    )
 }

@@ -146,7 +146,7 @@ async fn search_finds_listings_by_title_term(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 1, "should find only the chemistry listing");
     assert_eq!(listings[0]["title"], "Organic Chemistry");
 }
@@ -182,7 +182,7 @@ async fn search_finds_listings_by_description_term(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         1,
@@ -227,7 +227,7 @@ async fn search_results_ordered_by_relevance(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 2);
     // Title match (weight A) should rank above description-only match (weight B)
     assert_eq!(
@@ -256,7 +256,7 @@ async fn empty_q_falls_back_to_browse(pool: PgPool) {
     let resp = call_search(&state, "?q=").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         2,
@@ -267,7 +267,7 @@ async fn empty_q_falls_back_to_browse(pool: PgPool) {
     let resp = call_search(&state, "?q=%20%20%20").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         2,
@@ -311,7 +311,7 @@ async fn search_respects_category_filter(pool: PgPool) {
     let resp = call_search(&state, &format!("?q=physics&category={cat_books}")).await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         1,
@@ -351,7 +351,7 @@ async fn search_respects_price_filter(pool: PgPool) {
     let resp = call_search(&state, "?q=calculator&max_price=50").await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 1, "price filter must narrow search results");
     assert_eq!(listings[0]["title"], "Cheap Calculator");
 }
@@ -383,10 +383,10 @@ async fn search_uses_limit_without_cursor(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 5, "must respect limit parameter");
     assert!(
-        json["next_cursor"].is_null(),
+        json["data"]["next_cursor"].is_null(),
         "search results must not return a cursor (no cursor-based pagination for rank ordering)"
     );
 }
@@ -408,11 +408,11 @@ async fn search_returns_empty_for_no_match(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let listings = json["listings"].as_array().unwrap();
+    let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(
         listings.len(),
         0,
         "non-matching search must return empty array"
     );
-    assert!(json["next_cursor"].is_null());
+    assert!(json["data"]["next_cursor"].is_null());
 }

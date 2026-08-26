@@ -359,7 +359,7 @@ impl AuthRepo {
         let row = match row {
             Some(r) => r,
             None => {
-                let _ = tx.rollback();
+                let _ = tx.rollback().await;
                 return Err(AppError::BadRequest("invalid or expired OTP".into()));
             }
         };

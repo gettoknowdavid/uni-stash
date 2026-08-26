@@ -200,7 +200,7 @@ async fn deleted_listing_excluded_from_default_browse(pool: PgPool) {
     // Confirm it shows up before delete
     let json = call_browse(&state).await;
     assert!(
-        json["listings"]
+        json["data"]["listings"]
             .as_array()
             .unwrap()
             .iter()
@@ -214,7 +214,7 @@ async fn deleted_listing_excluded_from_default_browse(pool: PgPool) {
     // Confirm it's gone from browse
     let json = call_browse(&state).await;
     assert!(
-        !json["listings"]
+        !json["data"]["listings"]
             .as_array()
             .unwrap()
             .iter()

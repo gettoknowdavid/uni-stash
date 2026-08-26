@@ -126,7 +126,7 @@ async fn list_schools_returns_all_schools(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let schools = json["schools"].as_array().unwrap();
+    let schools = json["data"]["schools"].as_array().unwrap();
     assert!(schools.len() >= 2, "should return at least 2 schools");
 
     // Should be ordered by name ASC
@@ -149,7 +149,7 @@ async fn list_schools_empty_returns_empty_array(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["schools"].as_array().unwrap().len(), 0);
+    assert_eq!(json["data"]["schools"].as_array().unwrap().len(), 0);
 }
 
 // ===========================================================================
@@ -176,8 +176,9 @@ async fn get_school_returns_school(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["name"], "Test Uni");
-    assert_eq!(json["domain"], "test.edu");
+    assert_eq!(json["status"], "success");
+    assert_eq!(json["data"]["name"], "Test Uni");
+    assert_eq!(json["data"]["domain"], "test.edu");
 }
 
 #[sqlx::test]
@@ -219,10 +220,12 @@ async fn admin_can_create_school(pool: PgPool) {
     assert_eq!(resp.status(), 201);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["name"], "University of Lagos");
-    assert_eq!(json["domain"], "unilag.edu.ng");
-    assert_eq!(json["message"], "school created successfully");
-    assert!(json["id"].is_number());
+    assert_eq!(json["status"], "success");
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["name"], "University of Lagos");
+    assert_eq!(data["domain"], "unilag.edu.ng");
+    assert_eq!(data["message"], "school created successfully");
+    assert!(data["id"].is_number());
 }
 
 #[sqlx::test]
@@ -357,9 +360,9 @@ async fn admin_can_update_school_name(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["school"]["name"], "New Name");
+    assert_eq!(json["data"]["school"]["name"], "New Name");
     assert_eq!(
-        json["school"]["domain"], "old.edu",
+        json["data"]["school"]["domain"], "old.edu",
         "domain should be unchanged"
     );
 }
@@ -393,8 +396,8 @@ async fn admin_can_update_school_domain(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["school"]["name"], "My Uni", "name should be unchanged");
-    assert_eq!(json["school"]["domain"], "new.edu");
+    assert_eq!(json["data"]["school"]["name"], "My Uni", "name should be unchanged");
+    assert_eq!(json["data"]["school"]["domain"], "new.edu");
 }
 
 #[sqlx::test]
@@ -647,7 +650,7 @@ async fn list_schools_search_filters_by_name(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let schools = json["schools"].as_array().unwrap();
+    let schools = json["data"]["schools"].as_array().unwrap();
     assert_eq!(
         schools.len(),
         1,
@@ -675,7 +678,7 @@ async fn list_schools_search_filters_by_domain(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    let schools = json["schools"].as_array().unwrap();
+    let schools = json["data"]["schools"].as_array().unwrap();
     assert_eq!(
         schools.len(),
         1,

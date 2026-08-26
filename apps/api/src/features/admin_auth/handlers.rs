@@ -1,11 +1,11 @@
 use actix_web::{HttpResponse, web};
-use serde_json::json;
 use validator::Validate;
 
 use crate::core::auth::middleware::AdminSession;
 use crate::core::auth::{self, admin_jwt, otp};
 use crate::core::error::AppError;
 use crate::core::json::ValidatedJson;
+use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::admin_auth::dtos::{
     AdminForgotPasswordRequest, AdminLoginRequest, AdminLoginResponse, AdminLogoutRequest,
@@ -45,11 +45,14 @@ pub async fn login(
         .admin_auth_repo
         .issue_admin_refresh_token(&state.db, admin.id, family_id)
         .await?;
-    Ok(HttpResponse::Ok().json(AdminLoginResponse {
-        access_token,
-        refresh_token,
-        expires_in: 900,
-    }))
+    Ok(HttpResponse::Ok().json(ApiResponse::<AdminLoginResponse, ErrorBody>::success(
+        AdminLoginResponse {
+            access_token,
+            refresh_token,
+            expires_in: 900,
+        },
+        "login successful",
+    )))
 }
 
 // ---------------------------------------------------------------------------
@@ -78,11 +81,14 @@ pub async fn refresh(
             .admin_auth_repo
             .handle_reused_admin_token(&state.jwt_keys, &row)
             .await?;
-        return Ok(HttpResponse::Ok().json(AdminRefreshResponse {
-            access_token: access,
-            refresh_token: refresh,
-            expires_in: expires,
-        }));
+        return Ok(HttpResponse::Ok().json(ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
+            AdminRefreshResponse {
+                access_token: access,
+                refresh_token: refresh,
+                expires_in: expires,
+            },
+            "token refreshed",
+        )));
     }
 
     let (access, refresh, expires) = state
@@ -90,11 +96,14 @@ pub async fn refresh(
         .rotate_admin_from_row(&state.jwt_keys, &row)
         .await?;
 
-    Ok(HttpResponse::Ok().json(AdminRefreshResponse {
-        access_token: access,
-        refresh_token: refresh,
-        expires_in: expires,
-    }))
+    Ok(HttpResponse::Ok().json(ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
+        AdminRefreshResponse {
+            access_token: access,
+            refresh_token: refresh,
+            expires_in: expires,
+        },
+        "token refreshed",
+    )))
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +118,10 @@ pub async fn logout(
         .admin_auth_repo
         .revoke_admin_refresh_token_by_hash(&body.refresh_token)
         .await?;
-    Ok(HttpResponse::Ok().json(json!({ "status": "ok" })))
+    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+        (),
+        "logged out successfully",
+    )))
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +137,7 @@ pub async fn me(
         .find_admin_profile_by_id(&session.id)
         .await?
         .ok_or_else(|| AppError::NotFound("admin not found".into()))?;
-    Ok(HttpResponse::Ok().json(profile))
+    Ok(HttpResponse::Ok().json(ApiResponse::success(profile, "ok")))
 }
 
 // ---------------------------------------------------------------------------
@@ -161,9 +173,10 @@ pub async fn forgot_password(
     }
 
     // Always return success — don't reveal whether the email exists
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "if an account with that email exists, a reset code has been sent"
-    })))
+    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+        (),
+        "if an account with that email exists, a reset code has been sent",
+    )))
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +209,8 @@ pub async fn reset_password(
         .revoke_all_admin_tokens(admin_id)
         .await?;
 
-    Ok(HttpResponse::Ok().json(json!({
-        "message": "password updated successfully"
-    })))
+    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+        (),
+        "password updated successfully",
+    )))
 }
