@@ -55,14 +55,16 @@ pub async fn presign_image(
         .presign_put(&object_key, content_type)
         .await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<PresignResponse, ErrorBody>::success(
-        PresignResponse {
-            upload_url,
-            object_key,
-            position,
-        },
-        "presigned url generated",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<PresignResponse, ErrorBody>::success(
+            PresignResponse {
+                upload_url,
+                object_key,
+                position,
+            },
+            "presigned url generated",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -93,16 +95,18 @@ pub async fn confirm_image(
         .confirm_image(listing_id, object_key, user.id)
         .await?;
 
-    Ok(HttpResponse::Created().json(ApiResponse::<ConfirmResponse, ErrorBody>::success(
-        ConfirmResponse {
-            id: confirmed.id,
-            listing_id: confirmed.listing_id,
-            object_key: confirmed.object_key,
-            position: confirmed.position,
-            created_at: confirmed.created_at,
-        },
-        "image confirmed successfully",
-    )))
+    Ok(
+        HttpResponse::Created().json(ApiResponse::<ConfirmResponse, ErrorBody>::success(
+            ConfirmResponse {
+                id: confirmed.id,
+                listing_id: confirmed.listing_id,
+                object_key: confirmed.object_key,
+                position: confirmed.position,
+                created_at: confirmed.created_at,
+            },
+            "image confirmed successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------

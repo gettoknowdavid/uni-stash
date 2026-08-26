@@ -290,5 +290,8 @@ async fn me_role_reflects_db_not_jwt(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(json["status"], "success");
-    assert_eq!(json["data"]["role"], "admin", "role must come from DB, not JWT");
+    assert_eq!(
+        json["data"]["role"], "admin",
+        "role must come from DB, not JWT"
+    );
 }

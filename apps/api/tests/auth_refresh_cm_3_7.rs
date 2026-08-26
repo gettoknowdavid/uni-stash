@@ -458,7 +458,9 @@ async fn login_then_refresh_returns_new_pair_and_rotates(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
 
     let refresh_data = json["data"].as_object().expect("refresh data");
-    let new_refresh = refresh_data["refresh_token"].as_str().expect("new refresh_token");
+    let new_refresh = refresh_data["refresh_token"]
+        .as_str()
+        .expect("new refresh_token");
     assert_ne!(
         new_refresh, issued_refresh,
         "new token must differ from old"

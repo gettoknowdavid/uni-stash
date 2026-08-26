@@ -45,14 +45,16 @@ pub async fn login(
         .admin_auth_repo
         .issue_admin_refresh_token(&state.db, admin.id, family_id)
         .await?;
-    Ok(HttpResponse::Ok().json(ApiResponse::<AdminLoginResponse, ErrorBody>::success(
-        AdminLoginResponse {
-            access_token,
-            refresh_token,
-            expires_in: 900,
-        },
-        "login successful",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<AdminLoginResponse, ErrorBody>::success(
+            AdminLoginResponse {
+                access_token,
+                refresh_token,
+                expires_in: 900,
+            },
+            "login successful",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -81,14 +83,16 @@ pub async fn refresh(
             .admin_auth_repo
             .handle_reused_admin_token(&state.jwt_keys, &row)
             .await?;
-        return Ok(HttpResponse::Ok().json(ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
-            AdminRefreshResponse {
-                access_token: access,
-                refresh_token: refresh,
-                expires_in: expires,
-            },
-            "token refreshed",
-        )));
+        return Ok(HttpResponse::Ok().json(
+            ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
+                AdminRefreshResponse {
+                    access_token: access,
+                    refresh_token: refresh,
+                    expires_in: expires,
+                },
+                "token refreshed",
+            ),
+        ));
     }
 
     let (access, refresh, expires) = state
@@ -96,14 +100,16 @@ pub async fn refresh(
         .rotate_admin_from_row(&state.jwt_keys, &row)
         .await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
-        AdminRefreshResponse {
-            access_token: access,
-            refresh_token: refresh,
-            expires_in: expires,
-        },
-        "token refreshed",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<AdminRefreshResponse, ErrorBody>::success(
+            AdminRefreshResponse {
+                access_token: access,
+                refresh_token: refresh,
+                expires_in: expires,
+            },
+            "token refreshed",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -118,10 +124,12 @@ pub async fn logout(
         .admin_auth_repo
         .revoke_admin_refresh_token_by_hash(&body.refresh_token)
         .await?;
-    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
-        (),
-        "logged out successfully",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "logged out successfully",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -173,10 +181,12 @@ pub async fn forgot_password(
     }
 
     // Always return success — don't reveal whether the email exists
-    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
-        (),
-        "if an account with that email exists, a reset code has been sent",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "if an account with that email exists, a reset code has been sent",
+        )),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -209,8 +219,10 @@ pub async fn reset_password(
         .revoke_all_admin_tokens(admin_id)
         .await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
-        (),
-        "password updated successfully",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "password updated successfully",
+        )),
+    )
 }
