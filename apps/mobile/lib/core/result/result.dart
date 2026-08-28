@@ -35,29 +35,28 @@ sealed class Result<T> with _$Result<T> {
 
   /// Transforms the success value using [fn], propagating failures unchanged.
   Result<R> map<R>(R Function(T value) fn) => switch (this) {
-        Success(:final value) => Result.success(fn(value)),
-        Failure(:final message) => Result.failure(message),
-      };
+    Success(:final value) => Result.success(fn(value)),
+    Failure(:final message) => Result.failure(message),
+  };
 
   /// Returns the success value, or throws if this is a [Failure].
   T get orThrow => switch (this) {
-        Success(:final value) => value,
-        Failure(:final message) => throw Exception(message),
-      };
+    Success(:final value) => value,
+    Failure(:final message) => throw Exception(message),
+  };
 
   /// Returns the success value, or [defaultValue] if this is a [Failure].
   T orElse(T defaultValue) => switch (this) {
-        Success(:final value) => value,
-        Failure() => defaultValue,
-      };
+    Success(:final value) => value,
+    Failure() => defaultValue,
+  };
 
   /// Unwraps the result, calling [onSuccess] or [onFailure].
   R fold<R>(
     R Function(T value) onSuccess,
     R Function(String message) onFailure,
-  ) =>
-      switch (this) {
-        Success(:final value) => onSuccess(value),
-        Failure(:final message) => onFailure(message),
-      };
+  ) => switch (this) {
+    Success(:final value) => onSuccess(value),
+    Failure(:final message) => onFailure(message),
+  };
 }
