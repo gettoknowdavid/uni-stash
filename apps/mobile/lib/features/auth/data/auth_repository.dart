@@ -39,7 +39,10 @@ class AuthRepository implements IAuthRepository, Disposable {
   }) async {
     try {
       final response = await _client.login(
-        LoginRequest(email: email, password: password),
+        LoginRequest(
+          email: email,
+          password: password,
+        ),
       );
       return Result.success(response);
     } on DioException catch (e) {
@@ -112,19 +115,19 @@ class AuthRepository implements IAuthRepository, Disposable {
         'Connection timed out. Please check your network.',
       DioExceptionType.connectionError => 'No internet connection.',
       DioExceptionType.badResponse => _humanizeStatus(
-          e.response?.statusCode,
-        ),
+        e.response?.statusCode,
+      ),
       _ => 'Network error. Please check your connection.',
     };
   }
 
   String _humanizeStatus(int? status) => switch (status) {
-        401 => 'Invalid email or password.',
-        409 => 'An account with this email already exists.',
-        422 => 'Please check your input and try again.',
-        final s? => 'Server error ($s). Please try again later.',
-        null => 'Unknown server error.',
-      };
+    401 => 'Invalid email or password.',
+    409 => 'An account with this email already exists.',
+    422 => 'Please check your input and try again.',
+    final s? => 'Server error ($s). Please try again later.',
+    null => 'Unknown server error.',
+  };
 
   @override
   FutureOr<dynamic> onDispose() {
