@@ -13,6 +13,7 @@ import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 
 // ---------------------------------------------------------------------------
 // MOCK CLASSES
@@ -101,12 +102,14 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    // Create a real AuthViewModel with mocked dependencies and register in DI.
+    // Create real ViewModels with mocked dependencies and register in DI.
     authViewModel = AuthViewModel(mockRepository, mockStorage);
+    final loginViewModel = LoginViewModel(mockRepository);
     testDi.registerSingleton<IAuthRepository>(mockRepository);
     testDi.registerSingleton<Logger>(mockLogger);
     testDi.registerSingleton<FlutterSecureStorage>(mockStorage);
     testDi.registerSingleton<AuthViewModel>(authViewModel);
+    testDi.registerSingleton<LoginViewModel>(loginViewModel);
   });
 
   tearDown(testDi.reset);
