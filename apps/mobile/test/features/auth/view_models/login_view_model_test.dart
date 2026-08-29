@@ -1,33 +1,3 @@
-// =============================================================================
-// FILE: login_view_model_test.dart
-// PURPOSE: Unit tests for LoginViewModel — the business logic behind login
-// WHAT YOU'LL LEARN: Testing signals, mocking dependencies, async state changes
-// =============================================================================
-//
-// HOW TO USE THIS FILE:
-// This file contains pseudo-code with detailed comments. Each test is outlined
-// step-by-step so you can implement it yourself. Look for lines starting with
-// "// => YOUR CODE:" — those are the lines you need to write.
-//
-// PATTERN: Every test follows Arrange → Act → Assert (AAA)
-//   - ARRANGE: Set up mocks, variables, and initial state
-//   - ACT: Perform the action you're testing
-//   - ASSERT: Verify the result matches expectations
-//
-// =============================================================================
-
-// ---------------------------------------------------------------------------
-// SECTION 1: IMPORTS
-// ---------------------------------------------------------------------------
-// You need imports for:
-// - flutter_test: The core testing framework (provides test(), group(), expect())
-// - mocktail: For creating mock objects (your project already uses this)
-// - signals_flutter: To read signal values (.value) and subscribe to changes
-// - LoginViewModel: The class you're testing
-// - IAuthRepository: The dependency that LoginViewModel uses (we'll mock it)
-// - LoginRequest, LoginResponse, User: The data types used in the login flow
-// - Result: Your custom success/failure type
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
@@ -36,23 +6,7 @@ import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 
-// ---------------------------------------------------------------------------
-// SECTION 2: MOCK CLASSES
-// ---------------------------------------------------------------------------
-// Mocktail creates a fake version of IAuthRepository that we fully control.
-// Instead of making real API calls, we decide what it returns.
-//
-// WHY: We want to test LoginViewModel in isolation — not the network layer.
-// The real IAuthRepository talks to Dio/HTTP. Our mock just returns what we tell it.
-
 class MockAuthRepository extends Mock implements IAuthRepository {}
-
-// ---------------------------------------------------------------------------
-// SECTION 3: HELPER FUNCTIONS
-// ---------------------------------------------------------------------------
-// These create test data so each test doesn't have to build everything
-// from scratch.You can customize parameters when needed
-// (e.g., makeLoginResponse(accessToken: 'xxx'))
 
 LoginResponse makeLoginResponse({
   String accessToken = 'test_access_token',
@@ -76,31 +30,10 @@ LoginResponse makeLoginResponse({
   );
 }
 
-// ---------------------------------------------------------------------------
-// SECTION 4: MAIN TEST FUNCTION
-// ---------------------------------------------------------------------------
-// All tests live inside main(). The structure is:
-//   main() {
-//     setUp(() { ... });     // Runs BEFORE each test
-//     tearDown(() { ... });  // Runs AFTER each test
-//     group('...', () {      // Groups related tests together
-//       test('...', () { ... });  // Individual test
-//     });
-//   }
-
 void main() {
-  // --------------------------------------------------------------------------
-  // SECTION 4.1: SETUP & TEARDOWN
-  // --------------------------------------------------------------------------
-  // Declare variables here so they're accessible in all tests below.
-  // "late" means "I'll assign this later, in setUp()".
-  // "MockAuthRepository" is our fake — each test gets a fresh one.
-
   late MockAuthRepository mockRepository;
   late LoginViewModel viewModel;
 
-  // setUp() runs BEFORE EVERY test — this ensures test isolation.
-  // If test A changes the repository, test B still starts fresh.
   setUpAll(() {
     registerFallbackValue(
       const LoginRequest(email: '', password: ''),
@@ -126,17 +59,9 @@ void main() {
     viewModel = LoginViewModel(mockRepository);
   });
 
-  // tearDown() runs AFTER EVERY test — cleans up to prevent memory leaks.
-  // LoginViewModel has dispose() that cleans up signals.
   tearDown(() {
     viewModel.dispose();
   });
-
-  // --------------------------------------------------------------------------
-  // SECTION 4.2: TEST GROUP — Initial State
-  // --------------------------------------------------------------------------
-  // These tests verify the ViewModel starts with correct default values.
-  // When you create a LoginViewModel, all signals should have sensible defaults.
 
   group('Initial State', () {
     test('email signal starts as empty string', () {
@@ -165,11 +90,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.3: TEST GROUP — setEmail and setPassword
-  // --------------------------------------------------------------------------
-  // These test the setter methods that the form calls when user types.
-
   group('setEmail and setPassword', () {
     test('setEmail updates email signal', () {
       viewModel.setEmail('test@example.com');
@@ -194,9 +114,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.4: submit() Success Cases
-  // --------------------------------------------------------------------------
   group('submit - Success', () {
     test('successful login sets result signal and clears error', () async {
       final loginResponse = makeLoginResponse();
@@ -230,9 +147,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.5: submit() Failure Cases
-  // --------------------------------------------------------------------------
   group('submit - Failure', () {
     test('failed login sets error signal', () async {
       when(() => mockRepository.login(any())).thenAnswer(
@@ -273,9 +187,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.6: submit() Clears Previous State
-  // --------------------------------------------------------------------------
   group('submit - Clears Previous State', () {
     test('submit clears previous error on success', () async {
       when(() => mockRepository.login(any())).thenAnswer(
@@ -297,9 +208,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.7: reset()
-  // --------------------------------------------------------------------------
   group('reset', () {
     test('reset clears all signals to initial values', () {
       viewModel.setEmail('test@example.com');
@@ -327,9 +235,6 @@ void main() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // SECTION 4.8: Signal Reactivity
-  // --------------------------------------------------------------------------
   group('Signal Reactivity', () {
     test('email signal notifies listeners when changed', () {
       String? capturedValue;

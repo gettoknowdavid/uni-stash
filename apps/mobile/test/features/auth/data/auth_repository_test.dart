@@ -1,13 +1,13 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/core/result/result.dart';
 
 /// Mock classes for isolating the repository from real API and logger.
 class MockAuthApiClient extends Mock implements AuthApiClient {}
@@ -25,7 +25,8 @@ LoginResponse makeLoginResponse({
     accessToken: accessToken ?? 'access_token_123',
     refreshToken: refreshToken ?? 'refresh_token_123',
     expiresIn: expiresIn ?? 900,
-    user: user ??
+    user:
+        user ??
         const User(
           id: 'uuid-123',
           email: 'test@example.com',
@@ -76,27 +77,31 @@ void main() {
   // GROUP: login - Success
   // =========================================================================
   group('login - Success', () {
-    test('returns Success with LoginResponse when API returns valid data',
-        () async {
-      when(() => mockApiClient.login(any())).thenAnswer(
-        (_) async => ApiResponse<LoginResponse>(
-          status: true,
-          message: 'ok',
-          data: makeLoginResponse(),
-        ),
-      );
+    test(
+      'returns Success with LoginResponse when API returns valid data',
+      () async {
+        when(() => mockApiClient.login(any())).thenAnswer(
+          (_) async => ApiResponse<LoginResponse>(
+            status: true,
+            message: 'ok',
+            data: makeLoginResponse(),
+          ),
+        );
 
-      final request =
-          LoginRequest(email: 'test@example.com', password: 'password123');
-      final result = await repository.login(request);
+        const request = LoginRequest(
+          email: 'test@example.com',
+          password: 'password123',
+        );
+        final result = await repository.login(request);
 
-      expect(result.isSuccess, true);
-      if (result case Success(:final value)) {
-        expect(value.accessToken, 'access_token_123');
-        expect(value.user.email, 'test@example.com');
-      }
-      verify(() => mockApiClient.login(request)).called(1);
-    });
+        expect(result.isSuccess, true);
+        if (result case Success(:final value)) {
+          expect(value.accessToken, 'access_token_123');
+          expect(value.user.email, 'test@example.com');
+        }
+        verify(() => mockApiClient.login(request)).called(1);
+      },
+    );
   });
 
   // =========================================================================
@@ -108,12 +113,11 @@ void main() {
         (_) async => const ApiResponse<LoginResponse>(
           status: false,
           message: 'Invalid credentials',
-          data: null,
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'wrong@example.com', password: 'wrong'),
+        const LoginRequest(email: 'wrong@example.com', password: 'wrong'),
       );
 
       expect(result.isFailure, true);
@@ -127,12 +131,11 @@ void main() {
         (_) async => const ApiResponse<LoginResponse>(
           status: true,
           message: 'ok',
-          data: null,
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -152,7 +155,7 @@ void main() {
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -167,7 +170,7 @@ void main() {
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -182,7 +185,7 @@ void main() {
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -197,7 +200,7 @@ void main() {
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -209,14 +212,13 @@ void main() {
     test('returns invalid credentials for 401', () async {
       when(() => mockApiClient.login(any())).thenThrow(
         makeDioException(
-          type: DioExceptionType.badResponse,
           statusCode: 401,
           responseData: {'message': 'Invalid email or password'},
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -228,13 +230,12 @@ void main() {
     test('returns already exists for 409', () async {
       when(() => mockApiClient.login(any())).thenThrow(
         makeDioException(
-          type: DioExceptionType.badResponse,
           statusCode: 409,
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -246,13 +247,12 @@ void main() {
     test('returns check input for 422', () async {
       when(() => mockApiClient.login(any())).thenThrow(
         makeDioException(
-          type: DioExceptionType.badResponse,
           statusCode: 422,
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -264,13 +264,12 @@ void main() {
     test('returns server error for 500', () async {
       when(() => mockApiClient.login(any())).thenThrow(
         makeDioException(
-          type: DioExceptionType.badResponse,
           statusCode: 500,
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -282,14 +281,13 @@ void main() {
     test('uses response body message when available', () async {
       when(() => mockApiClient.login(any())).thenThrow(
         makeDioException(
-          type: DioExceptionType.badResponse,
           statusCode: 500,
           responseData: {'message': 'Custom server message'},
         ),
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -309,7 +307,7 @@ void main() {
       );
 
       final result = await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       expect(result.isFailure, true);
@@ -329,7 +327,7 @@ void main() {
       );
 
       await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       verify(
@@ -346,7 +344,7 @@ void main() {
       );
 
       await repository.login(
-        LoginRequest(email: 'test@example.com', password: 'pass'),
+        const LoginRequest(email: 'test@example.com', password: 'pass'),
       );
 
       verify(
