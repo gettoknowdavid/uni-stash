@@ -161,16 +161,18 @@ abstract class LogoutResponse with _$LogoutResponse {
       _$LogoutResponseFromJson(json);
 }
 
+enum UserRole { admin, student }
+
 @freezed
-abstract class UserProfile with _$UserProfile {
-  const factory UserProfile({
+abstract class User with _$User {
+  const factory User({
     required String id,
     required String email,
+    @JsonKey(name: 'school_id') required int schoolId,
     @JsonKey(name: 'display_name') required String displayName,
     @JsonKey(name: 'email_verified') required bool emailVerified,
-    required String role,
-  }) = _UserProfile;
+    required UserRole role,
+  }) = _User;
 
-  factory UserProfile.fromJson(Map<String, dynamic> json) =>
-      _$UserProfileFromJson(json);
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 }
