@@ -41,13 +41,13 @@ LoginResponse makeLoginResponse() {
   );
 }
 
-/// Wraps [LoginPage] in MaterialApp.router with FTheme and GoRouter so that
-/// forui widgets render correctly and navigation works.
+/// Wraps [LoginPage] in MaterialApp.router with FTheme, FToaster, and GoRouter
+/// so that forui widgets render correctly, toasts work, and navigation works.
 Widget buildLoginPage() {
   return MaterialApp.router(
     builder: (context, child) => FTheme(
       data: FTheme.neutral.light.touch,
-      child: child!,
+      child: FToaster(child: child!),
     ),
     routerConfig: GoRouter(
       initialLocation: UsRoutes.login,
@@ -244,7 +244,7 @@ void main() {
   // GROUP: Error Display
   // =========================================================================
   group('Error Display', () {
-    testWidgets('displays error message when login fails', (tester) async {
+    testWidgets('shows error toast when login fails', (tester) async {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
@@ -257,10 +257,12 @@ void main() {
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
 
+      // The error should appear in a toast notification.
       expect(find.text('Invalid credentials'), findsOneWidget);
+      expect(find.byType(FToast), findsOneWidget);
     });
 
-    testWidgets('displays network error message', (tester) async {
+    testWidgets('shows network error toast', (tester) async {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
@@ -274,13 +276,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No internet connection.'), findsOneWidget);
+      expect(find.byType(FToast), findsOneWidget);
     });
 
-    testWidgets('clears previous error on successful retry', (tester) async {
+    testWidgets('does not show new toast on successful retry', (tester) async {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
-      // First submit: failure.
+      // First submit: failure — should show a toast.
       when(() => mockRepository.login(any())).thenAnswer(
         (_) async => const Result.failure('First error'),
       );
@@ -291,7 +294,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('First error'), findsOneWidget);
 
-      // Second submit: success.
+      // Second submit: success — no new error toast should appear.
       when(() => mockRepository.login(any())).thenAnswer(
         (_) async => Result.success(makeLoginResponse()),
       );
@@ -300,7 +303,8 @@ void main() {
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
 
-      expect(find.text('First error'), findsNothing);
+      // Only the original toast should exist — no second toast.
+      expect(find.byType(FToast), findsOneWidget);
     });
   });
 
