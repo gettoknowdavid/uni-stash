@@ -121,7 +121,7 @@ async fn active_listing_returns_full_detail(pool: PgPool) {
     assert_eq!(resp.status(), 200);
 
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
     assert_eq!(data["id"], listing_id.to_string());
     assert_eq!(data["title"], "Item");

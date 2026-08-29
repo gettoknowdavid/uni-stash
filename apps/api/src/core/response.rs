@@ -10,9 +10,9 @@ use actix_web::{HttpRequest, HttpResponse, Responder};
 ///
 /// ```json
 /// {
-///   "status": "success",
-///   "data": { ... } | null,
-///   "message": "ok"
+///   "status": true,
+///   "message": "ok",
+///   "data": { ... } | null
 /// }
 /// ```
 ///
@@ -20,8 +20,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder};
 ///
 /// ```json
 /// {
-///   "status": "error",
-///   "data": null,
+///   "status": false,
 ///   "message": "bad request",
 ///   "error": {
 ///     "code": "validation",
@@ -32,12 +31,12 @@ use actix_web::{HttpRequest, HttpResponse, Responder};
 /// ```
 #[derive(serde::Serialize)]
 pub struct ApiResponse<T: serde::Serialize, E: serde::Serialize = ErrorBody> {
-    pub status: &'static str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<T>,
+    pub status: bool,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<E>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<T>,
 }
 
 // ---------------------------------------------------------------------------
@@ -48,20 +47,20 @@ impl<T: serde::Serialize> ApiResponse<T> {
     /// 200 with data and a custom message.
     pub fn success(data: T, message: impl Into<String>) -> Self {
         ApiResponse {
-            status: "success",
-            data: Some(data),
+            status: true,
             message: message.into(),
             error: None,
+            data: Some(data),
         }
     }
 
     /// 200 with data and an empty/ok message.
     pub fn success_with_status(data: T) -> Self {
         ApiResponse {
-            status: "success",
-            data: Some(data),
+            status: true,
             message: "ok".to_string(),
             error: None,
+            data: Some(data),
         }
     }
 
@@ -80,8 +79,7 @@ impl serde::Serialize for MessageOnly {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(3))?;
-        map.serialize_entry("status", "success")?;
-        map.serialize_entry("data", &serde_json::Value::Null)?;
+        map.serialize_entry("status", &true)?;
         map.serialize_entry("message", &self.message)?;
         map.end()
     }
@@ -91,10 +89,10 @@ impl serde::Serialize for MessageOnly {
 impl ApiResponse<(), ErrorBody> {
     pub fn message_only(message: impl Into<String>) -> Self {
         ApiResponse {
-            status: "success",
-            data: Some(()),
+            status: true,
             message: message.into(),
             error: None,
+            data: Some(()),
         }
     }
 }
@@ -123,14 +121,14 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
     /// Create a generic error response.
     pub fn error(code: impl Into<String>, message: impl Into<String>) -> ApiResponse<T, ErrorBody> {
         ApiResponse {
-            status: "error",
-            data: None,
+            status: false,
             message: message.into(),
             error: Some(ErrorBody {
                 code: code.into(),
                 message: String::new(),
                 fields: None,
             }),
+            data: None,
         }
     }
 
@@ -139,8 +137,7 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
         fields: Vec<crate::core::error::FieldError>,
     ) -> ApiResponse<T, ErrorBody> {
         ApiResponse {
-            status: "error",
-            data: None,
+            status: false,
             message: "Validation failed".to_string(),
             error: Some(ErrorBody {
                 code: "validation".to_string(),
@@ -155,6 +152,7 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
                         .collect(),
                 ),
             }),
+            data: None,
         }
     }
 
@@ -164,8 +162,7 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
         fields: Option<Vec<crate::core::error::FieldError>>,
     ) -> ApiResponse<T, ErrorBody> {
         ApiResponse {
-            status: "error",
-            data: None,
+            status: false,
             message: "Validation failed".to_string(),
             error: Some(ErrorBody {
                 code: "validation".to_string(),
@@ -179,6 +176,7 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
                         .collect()
                 }),
             }),
+            data: None,
         }
     }
 }
@@ -186,11 +184,10 @@ impl<T: serde::Serialize> ApiResponse<T, ErrorBody> {
 /// Typed error envelope for `From<AppError>` implementation.
 ///
 /// This carries the error details in a strongly-typed way while still
-/// conforming to the standard `{status, data, message, error}` shape.
+/// conforming to the standard `{status, message, error}` shape.
 #[derive(serde::Serialize)]
 pub struct ErrorEnvelope {
-    pub status: &'static str,
-    pub data: serde_json::Value,
+    pub status: bool,
     pub message: String,
     pub error: ErrorBody,
 }
@@ -202,8 +199,7 @@ impl ErrorEnvelope {
         fields: Option<&[crate::core::error::FieldError]>,
     ) -> Self {
         ErrorEnvelope {
-            status: "error",
-            data: serde_json::Value::Null,
+            status: false,
             message: message.clone(),
             error: ErrorBody {
                 code: code.to_string(),

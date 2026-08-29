@@ -177,7 +177,7 @@ async fn valid_refresh_token_returns_200_with_new_pair(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data must be an object");
 
     let access_token = data["access_token"].as_str().expect("access_token");

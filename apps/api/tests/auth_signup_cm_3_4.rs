@@ -181,7 +181,7 @@ async fn successful_signup_returns_201_with_email_verified_false(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data must be an object");
     assert_eq!(data["email"], "alice@test.edu");
     assert_eq!(data["display_name"], "Alice");

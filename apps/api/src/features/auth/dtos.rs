@@ -1,3 +1,78 @@
+/// Generic wrapper for auth responses that include tokens + user.
+///
+/// Serializes as:
+/// ```json
+/// {
+///   "access_token": "...",
+///   "refresh_token": "...",
+///   "expires_in": 900,
+///   "user": { ... }
+/// }
+/// ```
+#[derive(serde::Serialize)]
+pub struct AuthData<T: serde::Serialize> {
+    #[serde(flatten)]
+    pub tokens: T,
+    pub user: UserProfile,
+}
+
+// ---------------------------------------------------------------------------
+// Token-only response types (flattened inside AuthData)
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+pub struct SignUpTokens {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_in: Option<i64>,
+}
+
+#[derive(serde::Serialize)]
+pub struct LoginTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct RefreshTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct VerifyOtpTokens {
+    pub verified: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_in: Option<i64>,
+}
+
+// ---------------------------------------------------------------------------
+// User profile (embedded in auth responses)
+// ---------------------------------------------------------------------------
+
+/// Slim user profile returned inside auth responses and GET /auth/me.
+#[derive(serde::Serialize, sqlx::FromRow, Clone)]
+pub struct UserProfile {
+    pub id: uuid::Uuid,
+    pub email: String,
+    pub display_name: String,
+    pub email_verified: bool,
+    pub role: String,
+}
+
+// ---------------------------------------------------------------------------
+// Request types
+// ---------------------------------------------------------------------------
+
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct SignUpRequest {
     #[validate(email)]
@@ -10,23 +85,6 @@ pub struct SignUpRequest {
     pub display_name: String,
 }
 
-#[derive(serde::Serialize)]
-pub struct SignUpResponse {
-    pub id: uuid::Uuid,
-    pub email: String,
-    pub display_name: String,
-    pub email_verified: bool,
-    /// Tokens are included so the client can store them and reach
-    /// the OTP-verification flow on relaunch without requiring a
-    /// second signup.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expires_in: Option<i64>,
-}
-
 pub struct InsertUserInput<'a> {
     pub school_id: i16,
     pub email: &'a str,
@@ -34,9 +92,9 @@ pub struct InsertUserInput<'a> {
     pub display_name: &'a str,
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 // OTP verification (replaces VerifyEmailRequest)
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 #[derive(Debug, serde::Deserialize, validator::Validate)]
 pub struct VerifyOtpRequest {
@@ -48,19 +106,6 @@ pub struct VerifyOtpRequest {
     pub otp_type: String,
 }
 
-#[derive(serde::Serialize)]
-pub struct VerifyOtpResponse {
-    pub verified: bool,
-    /// Tokens are only included for email_verify (user just signed up).
-    /// For password_reset, the user must login with their new password.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expires_in: Option<i64>,
-}
-
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct LoginRequest {
     #[validate(email)]
@@ -70,23 +115,9 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-#[derive(serde::Serialize)]
-pub struct LoginResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
-}
-
 #[derive(serde::Deserialize)]
 pub struct RefreshRequest {
     pub refresh_token: String,
-}
-
-#[derive(serde::Serialize)]
-pub struct RefreshResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
 }
 
 #[derive(serde::Deserialize)]
@@ -94,9 +125,9 @@ pub struct LogoutRequest {
     pub refresh_token: String,
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 // Resend verification
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ResendVerificationRequest {
@@ -104,9 +135,9 @@ pub struct ResendVerificationRequest {
     pub email: String,
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 // Forgot password
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ForgotPasswordRequest {
@@ -114,9 +145,9 @@ pub struct ForgotPasswordRequest {
     pub email: String,
 }
 
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 // Reset password
-// ---------------------------------------------------------------------------
+// -------------------------------------------------------------------
 
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ResetPasswordRequest {

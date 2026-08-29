@@ -284,7 +284,7 @@ mod tests {
 
             let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
             let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-            assert_eq!(json["status"], "error");
+            assert_eq!(json["status"], false);
             assert_eq!(json["data"], serde_json::Value::Null);
             assert_eq!(json["error"]["code"], expected_code);
             assert_eq!(json["error"]["message"], expected_message);
@@ -383,7 +383,7 @@ mod tests {
         let body = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-        assert_eq!(json["status"], "error");
+        assert_eq!(json["status"], false);
         assert_eq!(json["data"], serde_json::Value::Null);
         assert_eq!(json["error"]["code"], "validation");
         assert_eq!(json["error"]["message"], "Validation failed");
