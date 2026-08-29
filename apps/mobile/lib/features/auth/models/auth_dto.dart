@@ -1,7 +1,73 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
 part 'auth_dto.freezed.dart';
 part 'auth_dto.g.dart';
+
+// ---------------------------------------------------------------------------
+// Auth response: tokens + user (backend flattens them at the same level)
+// ---------------------------------------------------------------------------
+
+/// Login response shape from the backend.
+@freezed
+abstract class LoginResponse with _$LoginResponse {
+  const factory LoginResponse({
+    @JsonKey(name: 'access_token') required String accessToken,
+    @JsonKey(name: 'refresh_token') required String refreshToken,
+    @JsonKey(name: 'expires_in') required int expiresIn,
+    required User user,
+  }) = _LoginResponse;
+
+  factory LoginResponse.fromJson(Map<String, dynamic> json) =>
+      _$LoginResponseFromJson(json);
+}
+
+/// Signup response shape (tokens may be null if not yet issued).
+@freezed
+abstract class SignUpResponse with _$SignUpResponse {
+  const factory SignUpResponse({
+    required User user,
+    @JsonKey(name: 'access_token') String? accessToken,
+    @JsonKey(name: 'refresh_token') String? refreshToken,
+    @JsonKey(name: 'expires_in') int? expiresIn,
+  }) = _SignUpResponse;
+
+  factory SignUpResponse.fromJson(Map<String, dynamic> json) =>
+      _$SignUpResponseFromJson(json);
+}
+
+/// Refresh response shape.
+@freezed
+abstract class RefreshResponse with _$RefreshResponse {
+  const factory RefreshResponse({
+    @JsonKey(name: 'access_token') required String accessToken,
+    @JsonKey(name: 'refresh_token') required String refreshToken,
+    @JsonKey(name: 'expires_in') required int expiresIn,
+    required User user,
+  }) = _RefreshResponse;
+
+  factory RefreshResponse.fromJson(Map<String, dynamic> json) =>
+      _$RefreshResponseFromJson(json);
+}
+
+/// Verify OTP response shape (for email_verify flow).
+@freezed
+abstract class VerifyOtpResponse with _$VerifyOtpResponse {
+  const factory VerifyOtpResponse({
+    required bool verified,
+    @JsonKey(name: 'access_token') String? accessToken,
+    @JsonKey(name: 'refresh_token') String? refreshToken,
+    @JsonKey(name: 'expires_in') int? expiresIn,
+    User? user,
+  }) = _VerifyOtpResponse;
+
+  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) =>
+      _$VerifyOtpResponseFromJson(json);
+}
+
+// ---------------------------------------------------------------------------
+// Request types
+// ---------------------------------------------------------------------------
 
 @freezed
 abstract class SignUpRequest with _$SignUpRequest {
@@ -89,59 +155,6 @@ abstract class LogoutRequest with _$LogoutRequest {
 }
 
 @freezed
-abstract class SignUpResponse with _$SignUpResponse {
-  const factory SignUpResponse({
-    required String id,
-    required String email,
-    @JsonKey(name: 'display_name') required String displayName,
-    @JsonKey(name: 'email_verified') required bool emailVerified,
-    @JsonKey(name: 'access_token') String? accessToken,
-    @JsonKey(name: 'refresh_token') String? refreshToken,
-    @JsonKey(name: 'expires_in') int? expiresIn,
-  }) = _SignUpResponse;
-
-  factory SignUpResponse.fromJson(Map<String, dynamic> json) =>
-      _$SignUpResponseFromJson(json);
-}
-
-@freezed
-abstract class LoginResponse with _$LoginResponse {
-  const factory LoginResponse({
-    @JsonKey(name: 'access_token') required String accessToken,
-    @JsonKey(name: 'refresh_token') required String refreshToken,
-    @JsonKey(name: 'expires_in') required int expiresIn,
-  }) = _LoginResponse;
-
-  factory LoginResponse.fromJson(Map<String, dynamic> json) =>
-      _$LoginResponseFromJson(json);
-}
-
-@freezed
-abstract class VerifyOtpResponse with _$VerifyOtpResponse {
-  const factory VerifyOtpResponse({
-    required bool verified,
-    @JsonKey(name: 'access_token') String? accessToken,
-    @JsonKey(name: 'refresh_token') String? refreshToken,
-    @JsonKey(name: 'expires_in') int? expiresIn,
-  }) = _VerifyOtpResponse;
-
-  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) =>
-      _$VerifyOtpResponseFromJson(json);
-}
-
-@freezed
-abstract class RefreshResponse with _$RefreshResponse {
-  const factory RefreshResponse({
-    @JsonKey(name: 'access_token') required String accessToken,
-    @JsonKey(name: 'refresh_token') required String refreshToken,
-    @JsonKey(name: 'expires_in') required int expiresIn,
-  }) = _RefreshResponse;
-
-  factory RefreshResponse.fromJson(Map<String, dynamic> json) =>
-      _$RefreshResponseFromJson(json);
-}
-
-@freezed
 abstract class MessageResponse with _$MessageResponse {
   const factory MessageResponse({
     required String message,
@@ -162,17 +175,3 @@ abstract class LogoutResponse with _$LogoutResponse {
 }
 
 enum UserRole { admin, student }
-
-@freezed
-abstract class User with _$User {
-  const factory User({
-    required String id,
-    required String email,
-    @JsonKey(name: 'school_id') required int schoolId,
-    @JsonKey(name: 'display_name') required String displayName,
-    @JsonKey(name: 'email_verified') required bool emailVerified,
-    required UserRole role,
-  }) = _User;
-
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-}

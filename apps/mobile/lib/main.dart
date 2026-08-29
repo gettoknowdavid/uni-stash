@@ -1,20 +1,16 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:forui/forui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:uni_stash_mobile/core/auth/auth_store.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/router/us_router.dart';
 import 'package:uni_stash_mobile/core/theme/theme.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   configureDependencies();
   await GetIt.I.allReady();
-
-  await bootstrapAuth(di<FlutterSecureStorage>());
-
+  await GetIt.I<AuthViewModel>().bootstrap();
   runApp(const MainApp());
 }
 

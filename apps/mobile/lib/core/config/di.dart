@@ -5,7 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
-import 'package:uni_stash_mobile/features/auth/notifiers/auth_notifier.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 
 final GetIt di = GetIt.instance;
 
@@ -30,11 +30,8 @@ void configureDependencies() {
     dependsOn: [AuthApiClient],
   );
 
-  di.registerFactory<AuthNotifier>(
-    () => AuthNotifier(
-      repository: di<IAuthRepository>(),
-      storage: di<FlutterSecureStorage>(),
-      logger: di<Logger>(),
-    ),
+  di.registerSingletonWithDependencies<AuthViewModel>(
+    () => AuthViewModel(di<IAuthRepository>(), di<FlutterSecureStorage>()),
+    dependsOn: [IAuthRepository],
   );
 }

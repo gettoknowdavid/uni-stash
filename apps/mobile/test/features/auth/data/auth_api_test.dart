@@ -22,13 +22,17 @@ void main() {
     registerFallbackValue(RequestOptions());
   });
 
-  Response<Map<String, dynamic>> makeResponse({
+  Response<Map<String, dynamic>> makeEnvelope({
     required String path,
     required Map<String, dynamic> data,
     int statusCode = 200,
   }) {
     return Response<Map<String, dynamic>>(
-      data: data,
+      data: {
+        'status': true,
+        'message': 'ok',
+        'data': data,
+      },
       statusCode: statusCode,
       requestOptions: RequestOptions(path: path),
     );
@@ -36,18 +40,21 @@ void main() {
 
   group('AuthApiClient', () {
     group('signUp', () {
-      test('returns SignUpResponse with tokens on 201', () async {
+      test('returns SignUpResponse with tokens and user on 201', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/signup',
             data: {
-              'id': 'uuid-123',
-              'email': 'test@university.edu',
-              'display_name': 'Test User',
-              'email_verified': false,
               'access_token': 'access_token_123',
               'refresh_token': 'refresh_token_123',
               'expires_in': 900,
+              'user': {
+                'id': 'uuid-123',
+                'email': 'test@university.edu',
+                'display_name': 'Test User',
+                'email_verified': false,
+                'role': 'student',
+              },
             },
             statusCode: 201,
           ),
@@ -61,25 +68,30 @@ void main() {
           ),
         );
 
-        expect(result.id, 'uuid-123');
-        expect(result.email, 'test@university.edu');
-        expect(result.displayName, 'Test User');
-        expect(result.emailVerified, false);
-        expect(result.accessToken, 'access_token_123');
-        expect(result.refreshToken, 'refresh_token_123');
-        expect(result.expiresIn, 900);
+        expect(result.status, true);
+        expect(result.data?.accessToken, 'access_token_123');
+        expect(result.data?.refreshToken, 'refresh_token_123');
+        expect(result.data?.expiresIn, 900);
+        expect(result.data?.user.id, 'uuid-123');
       });
     });
 
     group('login', () {
-      test('returns LoginResponse with tokens', () async {
+      test('returns LoginResponse with tokens and user', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/login',
             data: {
               'access_token': 'access_token_123',
               'refresh_token': 'refresh_token_123',
               'expires_in': 900,
+              'user': {
+                'id': 'uuid-456',
+                'email': 'test@university.edu',
+                'display_name': 'Test User',
+                'email_verified': true,
+                'role': 'student',
+              },
             },
           ),
         );
@@ -91,22 +103,31 @@ void main() {
           ),
         );
 
-        expect(result.accessToken, 'access_token_123');
-        expect(result.refreshToken, 'refresh_token_123');
-        expect(result.expiresIn, 900);
+        expect(result.status, true);
+        expect(result.data?.accessToken, 'access_token_123');
+        expect(result.data?.refreshToken, 'refresh_token_123');
+        expect(result.data?.expiresIn, 900);
+        expect(result.data?.user.id, 'uuid-456');
       });
     });
 
     group('verifyOtp', () {
-      test('returns tokens for email_verify', () async {
+      test('returns tokens and user for email_verify', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/verify-otp',
             data: {
               'verified': true,
               'access_token': 'token123',
               'refresh_token': 'refresh123',
               'expires_in': 900,
+              'user': {
+                'id': 'uuid-789',
+                'email': 'test@university.edu',
+                'display_name': 'Test User',
+                'email_verified': true,
+                'role': 'student',
+              },
             },
           ),
         );
@@ -115,15 +136,16 @@ void main() {
           const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
         );
 
-        expect(result.verified, true);
-        expect(result.accessToken, 'token123');
-        expect(result.refreshToken, 'refresh123');
-        expect(result.expiresIn, 900);
+        expect(result.status, true);
+        expect(result.data?.verified, true);
+        expect(result.data?.accessToken, 'token123');
+        expect(result.data?.refreshToken, 'refresh123');
+        expect(result.data?.user?.id, 'uuid-789');
       });
 
       test('returns no tokens for password_reset', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/verify-otp',
             data: {'verified': true},
           ),
@@ -133,16 +155,17 @@ void main() {
           const VerifyOtpRequest(code: '123456', otpType: 'password_reset'),
         );
 
-        expect(result.verified, true);
-        expect(result.accessToken, isNull);
-        expect(result.refreshToken, isNull);
+        expect(result.status, true);
+        expect(result.data?.verified, true);
+        expect(result.data?.accessToken, isNull);
+        expect(result.data?.refreshToken, isNull);
       });
     });
 
     group('resendVerification', () {
       test('returns message', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/resend-verification',
             data: {'message': 'verification code sent'},
           ),
@@ -152,14 +175,15 @@ void main() {
           const ResendVerificationRequest(email: 'test@university.edu'),
         );
 
-        expect(result.message, 'verification code sent');
+        expect(result.status, true);
+        expect(result.data?.message, 'verification code sent');
       });
     });
 
     group('forgotPassword', () {
       test('returns message', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/forgot-password',
             data: {
               'message':
@@ -173,14 +197,15 @@ void main() {
           const ForgotPasswordRequest(email: 'test@university.edu'),
         );
 
-        expect(result.message, contains('reset code has been sent'));
+        expect(result.status, true);
+        expect(result.data?.message, contains('reset code has been sent'));
       });
     });
 
     group('resetPassword', () {
       test('returns success message', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/reset-password',
             data: {'message': 'password updated successfully'},
           ),
@@ -193,19 +218,27 @@ void main() {
           ),
         );
 
-        expect(result.message, 'password updated successfully');
+        expect(result.status, true);
+        expect(result.data?.message, 'password updated successfully');
       });
     });
 
     group('refresh', () {
-      test('returns new tokens', () async {
+      test('returns new tokens and user', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/refresh',
             data: {
               'access_token': 'new_access',
               'refresh_token': 'new_refresh',
               'expires_in': 900,
+              'user': {
+                'id': 'uuid-123',
+                'email': 'test@university.edu',
+                'display_name': 'Test User',
+                'email_verified': true,
+                'role': 'student',
+              },
             },
           ),
         );
@@ -214,16 +247,18 @@ void main() {
           const RefreshRequest(refreshToken: 'old_refresh'),
         );
 
-        expect(result.accessToken, 'new_access');
-        expect(result.refreshToken, 'new_refresh');
-        expect(result.expiresIn, 900);
+        expect(result.status, true);
+        expect(result.data?.accessToken, 'new_access');
+        expect(result.data?.refreshToken, 'new_refresh');
+        expect(result.data?.expiresIn, 900);
+        expect(result.data?.user.id, 'uuid-123');
       });
     });
 
     group('logout', () {
       test('returns status ok', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/logout',
             data: {'status': 'ok'},
           ),
@@ -233,14 +268,15 @@ void main() {
           const LogoutRequest(refreshToken: 'token123'),
         );
 
-        expect(result.status, 'ok');
+        expect(result.status, true);
+        expect(result.data?.status, 'ok');
       });
     });
 
     group('me', () {
       test('returns UserProfile', () async {
         when(() => mockDio.fetch<Map<String, dynamic>>(any())).thenAnswer(
-          (_) async => makeResponse(
+          (_) async => makeEnvelope(
             path: '/api/v1/auth/me',
             data: {
               'id': 'uuid-123',
@@ -254,11 +290,12 @@ void main() {
 
         final result = await authApi.me();
 
-        expect(result.id, 'uuid-123');
-        expect(result.email, 'test@university.edu');
-        expect(result.displayName, 'Test User');
-        expect(result.emailVerified, true);
-        expect(result.role, 'student');
+        expect(result.status, true);
+        expect(result.data?.id, 'uuid-123');
+        expect(result.data?.email, 'test@university.edu');
+        expect(result.data?.displayName, 'Test User');
+        expect(result.data?.emailVerified, true);
+        expect(result.data?.role, 'student');
       });
     });
   });
