@@ -358,14 +358,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.2"
-  flutter_hooks:
-    dependency: transitive
-    description:
-      name: flutter_hooks
-      sha256: "8ae1f090e5f4ef5cfa6670ce1ab5dddadd33f3533a7f9ba19d9f958aa2a89f42"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.21.3+1"
   flutter_localizations:
     dependency: transitive
     description: flutter
@@ -973,14 +965,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  signals:
-    dependency: "direct main"
-    description:
-      name: signals
-      sha256: "3b6be91d04808b542612a525eaeb1875e50be153671e618a42f74e0607088ecd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.1.0"
   signals_core:
     dependency: transitive
     description:
@@ -994,14 +978,6 @@ packages:
     description:
       name: signals_flutter
       sha256: f0285fd2f98d720724df879c258dc41725f260f8e5b1184655ef64ba679197ad
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.1.0"
-  signals_hooks:
-    dependency: transitive
-    description:
-      name: signals_hooks
-      sha256: af6c2c4be47f06214292fedab6f6e943433c02086c956eeaffe45c4a23a57413
       url: "https://pub.dev"
     source: hosted
     version: "7.1.0"

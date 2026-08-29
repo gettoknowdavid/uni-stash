@@ -4,8 +4,12 @@ import 'dart:collection';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
-import 'package:uni_stash_mobile/core/auth/auth_store.dart';
+import 'package:uni_stash_mobile/core/api/api_response.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/env.dart';
+import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 
 Future<Dio> initDio({
   required Logger logger,
@@ -25,7 +29,7 @@ Future<Dio> initDio({
   final dio = Dio(options);
 
   dio.interceptors.addAll([
-    _AuthInterceptor(storage: storage, logger: logger),
+    _AuthInterceptor(storage, logger),
     _LoggingInterceptor(logger),
   ]);
 
@@ -33,13 +37,12 @@ Future<Dio> initDio({
 }
 
 class _AuthInterceptor extends Interceptor {
-  _AuthInterceptor({
-    required this.storage,
-    required this.logger,
-  });
+  _AuthInterceptor(this._storage, this._logger);
 
-  final FlutterSecureStorage storage;
-  final Logger logger;
+  final FlutterSecureStorage _storage;
+  final Logger _logger;
+
+  AuthViewModel get _auth => di<AuthViewModel>();
 
   Completer<void>? _refreshCompleter;
   final Queue<_PendingRequest> _pendingQueue = Queue<_PendingRequest>();
@@ -61,7 +64,7 @@ class _AuthInterceptor extends Interceptor {
       return;
     }
 
-    final token = await readAccessToken(storage);
+    final token = await _storage.read(key: 'access_token');
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -97,12 +100,12 @@ class _AuthInterceptor extends Interceptor {
         handler.resolve(retryResponse);
         await _drainPendingQueue();
       } else {
-        await markUnauthenticated(storage);
+        _auth.unauthenticate();
         handler.next(err);
         _drainPendingQueueWithError(err);
       }
     } on Object catch (_) {
-      await markUnauthenticated(storage);
+      _auth.unauthenticate();
       handler.next(err);
       _drainPendingQueueWithError(err);
     } finally {
@@ -112,9 +115,9 @@ class _AuthInterceptor extends Interceptor {
   }
 
   Future<bool> _attemptRefresh() async {
-    final refreshToken = await readRefreshToken(storage);
+    final refreshToken = await _storage.read(key: 'refresh_token');
     if (refreshToken == null || refreshToken.isEmpty) {
-      logger.w('[Auth] No refresh token stored — cannot refresh');
+      _logger.w('[Auth] No refresh token stored — cannot refresh');
       return false;
     }
 
@@ -131,32 +134,33 @@ class _AuthInterceptor extends Interceptor {
     );
 
     try {
-      final response = await refreshDio.post<dynamic>(
+      final response = await refreshDio.post<ApiResponse<RefreshResponse>>(
         '/api/v1/auth/refresh',
         data: <String, dynamic>{'refresh_token': refreshToken},
       );
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data?.data;
+        final newAccess = data?.accessToken;
+        final newRefresh = data?.refreshToken;
+        final user = data?.user;
 
-      if (response.statusCode == 200 &&
-          response.data is Map<String, dynamic>) {
-        final data = response.data as Map<String, dynamic>;
-        final newAccess = data['access_token'] as String?;
-        final newRefresh = data['refresh_token'] as String?;
-
-        if (newAccess != null && newRefresh != null) {
-          await markAuthenticated(
-            storage,
+        if (newAccess != null && newRefresh != null && user != null) {
+          final credentials = UserCredentials(
+            user: user,
             accessToken: newAccess,
             refreshToken: newRefresh,
+            expiresIn: data?.expiresIn ?? 0,
           );
-          logger.d('[Auth] Token refresh succeeded');
+          _auth.authenticate(credentials);
+          _logger.d('[Auth] Token refresh succeeded');
           return true;
         }
       }
 
-      logger.w('[Auth] Refresh response missing tokens');
+      _logger.w('[Auth] Refresh response missing tokens');
       return false;
     } on DioException catch (e) {
-      logger.e(
+      _logger.e(
         '[Auth] Refresh request failed: ${e.type.name}',
         error: e.error,
       );
@@ -166,10 +170,8 @@ class _AuthInterceptor extends Interceptor {
     }
   }
 
-  Future<Response<dynamic>> _retryRequest(
-    RequestOptions requestOptions,
-  ) async {
-    final token = await readAccessToken(storage);
+  Future<Response<dynamic>> _retryRequest(RequestOptions requestOptions) async {
+    final token = await _storage.read(key: 'access_token');
     if (token != null && token.isNotEmpty) {
       requestOptions.headers['Authorization'] = 'Bearer $token';
     }
@@ -190,17 +192,15 @@ class _AuthInterceptor extends Interceptor {
       final pending = _pendingQueue.removeFirst();
 
       try {
-        final token = await readAccessToken(storage);
+        final token = await _storage.read(key: 'access_token');
         if (token != null && token.isNotEmpty) {
-          pending.requestOptions.headers['Authorization'] =
-              'Bearer $token';
+          pending.requestOptions.headers['Authorization'] = 'Bearer $token';
         }
 
         final retryDio = Dio(
           BaseOptions(baseUrl: pending.requestOptions.baseUrl),
         );
-        final response =
-            await retryDio.fetch<dynamic>(pending.requestOptions);
+        final response = await retryDio.fetch<dynamic>(pending.requestOptions);
         pending.handler.resolve(response);
       } on DioException catch (e) {
         pending.handler.next(e);

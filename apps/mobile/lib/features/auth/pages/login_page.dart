@@ -7,9 +7,12 @@ import 'package:logger/logger.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/router/us_routes.dart';
-import 'package:uni_stash_mobile/features/auth/notifiers/auth_notifier.dart';
+import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends SignalStatefulWidget {
   const LoginPage({super.key});
 
   @override
@@ -19,44 +22,45 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
-  late final AuthNotifier _auth;
-  late final Logger _logger;
-  EffectCleanup? _authEffect;
+  late final LoginViewModel _model;
 
-  String? _email;
-  String? _password;
+  late final Logger _logger;
+  EffectCleanup? _onLogin;
 
   @override
   void initState() {
     super.initState();
-    _auth = di<AuthNotifier>();
+    _model = LoginViewModel(di<IAuthRepository>());
+
     _logger = di<Logger>();
 
     // Watch for successful login — the global authStatus signal change
     // will trigger the router redirect automatically.
-    _authEffect = effect(() {
-      final state = _auth.actionState.value;
-      if (state == AuthActionState.success) {
-        _logger.d('[LoginPage] Login succeeded');
-        untracked(() => _auth.reset());
-      }
+    _onLogin = effect(() {
+      final response = _model.result.value;
+      if (response == null) return;
+      final credentials = UserCredentials(
+        user: response.user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        expiresIn: response.expiresIn,
+      );
+      di<AuthViewModel>().authenticate(credentials);
+      _model.reset();
     });
   }
 
   @override
   void dispose() {
-    _authEffect?.call();
+    _onLogin?.call();
+    _model.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
-
-    final email = _email ?? '';
-    final password = _password ?? '';
-
-    await _auth.login(email: email, password: password);
+    _model.submit();
   }
 
   @override
@@ -72,16 +76,13 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 32),
 
-              // ── Email ─────────────────────────────────────────────
               SignalBuilder(
                 builder: (context) {
-                  final isBusy =
-                      _auth.actionState.value == AuthActionState.loading;
                   return FTextFormField.email(
-                    enabled: !isBusy,
+                    enabled: !_model.isLoading.value,
                     autofocus: true,
                     autovalidateMode: .onUserInteraction,
-                    onSaved: (value) => _email = value,
+                    onSaved: _model.setEmail,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your email.';
@@ -98,16 +99,13 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 16),
 
-              // ── Password ──────────────────────────────────────────
               SignalBuilder(
                 builder: (context) {
-                  final isBusy =
-                      _auth.actionState.value == AuthActionState.loading;
                   return FTextFormField.password(
-                    enabled: !isBusy,
+                    enabled: !_model.isLoading.value,
                     textInputAction: .done,
                     autovalidateMode: .onUserInteraction,
-                    onSaved: (value) => _password = value,
+                    onSaved: _model.setPassword,
                     onSubmit: (_) => _handleLogin(),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -121,25 +119,22 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 24),
 
-              // ── Error banner ──────────────────────────────────────
               SignalBuilder(
-                builder: (context) {
-                  final error = _auth.errorMessage.value;
+                builder: (ctx) {
+                  final error = _model.error.value;
                   if (error == null) return const SizedBox.shrink();
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: context.theme.colors.destructive.withAlpha(25),
+                      color: ctx.theme.colors.destructive.withAlpha(25),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: context.theme.colors.destructive,
-                      ),
+                      border: Border.all(color: ctx.theme.colors.destructive),
                     ),
                     child: Text(
                       error,
-                      style: context.theme.typography.body.sm.copyWith(
-                        color: context.theme.colors.destructive,
+                      style: ctx.theme.typography.body.sm.copyWith(
+                        color: ctx.theme.colors.destructive,
                       ),
                     ),
                   );
@@ -148,17 +143,15 @@ class _LoginPageState extends State<LoginPage> {
 
               SignalBuilder(
                 builder: (context) {
-                  final hasError = _auth.errorMessage.value != null;
+                  final hasError = _model.error.value != null;
                   if (!hasError) return const SizedBox.shrink();
                   return const SizedBox(height: 16);
                 },
               ),
 
-              // ── Sign-in button ────────────────────────────────────
               SignalBuilder(
                 builder: (context) {
-                  final isBusy =
-                      _auth.actionState.value == AuthActionState.loading;
+                  final isBusy = _model.isLoading.value;
                   return SizedBox(
                     width: double.infinity,
                     child: FButton(

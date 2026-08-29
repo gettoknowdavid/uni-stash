@@ -20,3 +20,4 @@ linter:
   rules:
     cascade_invocations: false
     public_member_api_docs: false
+    use_setters_to_change_properties: false

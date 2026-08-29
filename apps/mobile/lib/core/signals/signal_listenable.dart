@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:signals/signals.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 /// Bridges a Signals [ReadonlySignal] to a Flutter [Listenable] for APIs
 /// that expect one (e.g. `GoRouter.refreshListenable`). Never cast a

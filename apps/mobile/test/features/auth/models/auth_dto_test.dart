@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
 void main() {
   group('SignUpRequest', () {
@@ -71,11 +72,18 @@ void main() {
   });
 
   group('LoginResponse', () {
-    test('deserializes from JSON with snake_case keys', () {
+    test('deserializes from JSON with user', () {
       final json = {
         'access_token': 'eyJhbGciOiJIUzI1NiIs...',
         'refresh_token': 'abc123def456',
         'expires_in': 900,
+        'user': {
+          'id': 'uuid-123',
+          'email': 'test@university.edu',
+          'display_name': 'Test User',
+          'email_verified': true,
+          'role': 'student',
+        },
       };
 
       final response = LoginResponse.fromJson(json);
@@ -83,52 +91,44 @@ void main() {
       expect(response.accessToken, 'eyJhbGciOiJIUzI1NiIs...');
       expect(response.refreshToken, 'abc123def456');
       expect(response.expiresIn, 900);
-    });
-
-    test('serializes to JSON with snake_case keys', () {
-      const response = LoginResponse(
-        accessToken: 'eyJhbGciOiJIUzI1NiIs...',
-        refreshToken: 'abc123def456',
-        expiresIn: 900,
-      );
-
-      final json = response.toJson();
-
-      expect(json['access_token'], 'eyJhbGciOiJIUzI1NiIs...');
-      expect(json['refresh_token'], 'abc123def456');
-      expect(json['expires_in'], 900);
+      expect(response.user.id, 'uuid-123');
+      expect(response.user.email, 'test@university.edu');
     });
   });
 
   group('SignUpResponse', () {
-    test('deserializes from JSON with tokens', () {
+    test('deserializes from JSON with tokens and user', () {
       final json = {
-        'id': 'uuid-123',
-        'email': 'test@university.edu',
-        'display_name': 'Test User',
-        'email_verified': false,
         'access_token': 'access_token_123',
         'refresh_token': 'refresh_token_123',
         'expires_in': 900,
+        'user': {
+          'id': 'uuid-123',
+          'email': 'test@university.edu',
+          'display_name': 'Test User',
+          'email_verified': false,
+          'role': 'student',
+        },
       };
 
       final response = SignUpResponse.fromJson(json);
 
-      expect(response.id, 'uuid-123');
-      expect(response.email, 'test@university.edu');
-      expect(response.displayName, 'Test User');
-      expect(response.emailVerified, false);
       expect(response.accessToken, 'access_token_123');
       expect(response.refreshToken, 'refresh_token_123');
       expect(response.expiresIn, 900);
+      expect(response.user.id, 'uuid-123');
+      expect(response.user.emailVerified, false);
     });
 
     test('deserializes without tokens', () {
       final json = {
-        'id': 'uuid-123',
-        'email': 'test@university.edu',
-        'display_name': 'Test User',
-        'email_verified': false,
+        'user': {
+          'id': 'uuid-123',
+          'email': 'test@university.edu',
+          'display_name': 'Test User',
+          'email_verified': false,
+          'role': 'student',
+        },
       };
 
       final response = SignUpResponse.fromJson(json);
@@ -136,6 +136,7 @@ void main() {
       expect(response.accessToken, isNull);
       expect(response.refreshToken, isNull);
       expect(response.expiresIn, isNull);
+      expect(response.user.id, 'uuid-123');
     });
   });
 
@@ -166,12 +167,19 @@ void main() {
   });
 
   group('VerifyOtpResponse', () {
-    test('deserializes with optional token fields', () {
+    test('deserializes with optional token fields and user', () {
       final json = {
         'verified': true,
         'access_token': 'token123',
         'refresh_token': 'refresh123',
         'expires_in': 900,
+        'user': {
+          'id': 'uuid-123',
+          'email': 'test@university.edu',
+          'display_name': 'Test User',
+          'email_verified': true,
+          'role': 'student',
+        },
       };
 
       final response = VerifyOtpResponse.fromJson(json);
@@ -180,6 +188,7 @@ void main() {
       expect(response.accessToken, 'token123');
       expect(response.refreshToken, 'refresh123');
       expect(response.expiresIn, 900);
+      expect(response.user?.id, 'uuid-123');
     });
 
     test('deserializes without token fields for password_reset', () {
@@ -193,6 +202,7 @@ void main() {
       expect(response.accessToken, isNull);
       expect(response.refreshToken, isNull);
       expect(response.expiresIn, isNull);
+      expect(response.user, isNull);
     });
   });
 
@@ -215,11 +225,18 @@ void main() {
   });
 
   group('RefreshResponse', () {
-    test('deserializes from JSON', () {
+    test('deserializes from JSON with user', () {
       final json = {
         'access_token': 'new_access_token',
         'refresh_token': 'new_refresh_token',
         'expires_in': 900,
+        'user': {
+          'id': 'uuid-123',
+          'email': 'test@university.edu',
+          'display_name': 'Test User',
+          'email_verified': true,
+          'role': 'student',
+        },
       };
 
       final response = RefreshResponse.fromJson(json);
@@ -227,6 +244,7 @@ void main() {
       expect(response.accessToken, 'new_access_token');
       expect(response.refreshToken, 'new_refresh_token');
       expect(response.expiresIn, 900);
+      expect(response.user.id, 'uuid-123');
     });
   });
 
@@ -260,7 +278,7 @@ void main() {
     });
   });
 
-  group('UserProfile', () {
+  group('User', () {
     test('deserializes from JSON', () {
       final json = {
         'id': 'uuid-123',
@@ -270,7 +288,7 @@ void main() {
         'role': 'student',
       };
 
-      final profile = UserProfile.fromJson(json);
+      final profile = User.fromJson(json);
 
       expect(profile.id, 'uuid-123');
       expect(profile.email, 'test@university.edu');

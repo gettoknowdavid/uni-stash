@@ -1,50 +1,38 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
 /// Abstraction over auth data sources.
 ///
 /// All public methods return [Result] so callers never need
 /// to catch exceptions.
 abstract interface class IAuthRepository {
-  Future<Result<LoginResponse>> login({
-    required String email,
-    required String password,
-  });
+  Future<Result<LoginResponse>> login(LoginRequest request);
 
-  Future<Result<SignUpResponse>> signUp({
-    required String email,
-    required String password,
-    required String displayName,
-  });
+  Future<Result<SignUpResponse>> signUp(SignUpRequest request);
 
-  Future<Result<UserProfile>> me();
+  Future<Result<User>> me();
 }
 
-class AuthRepository implements IAuthRepository, Disposable {
+class AuthRepository implements IAuthRepository {
   AuthRepository(this._client, this._logger);
 
   final AuthApiClient _client;
   final Logger _logger;
 
   @override
-  Future<Result<LoginResponse>> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<Result<LoginResponse>> login(LoginRequest request) async {
     try {
-      final response = await _client.login(
-        LoginRequest(
-          email: email,
-          password: password,
-        ),
-      );
-      return Result.success(response);
+      final response = await _client.login(request);
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
+      return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] login failed', error: e);
       return Result.failure(_humanize(e));
@@ -58,20 +46,13 @@ class AuthRepository implements IAuthRepository, Disposable {
   }
 
   @override
-  Future<Result<SignUpResponse>> signUp({
-    required String email,
-    required String password,
-    required String displayName,
-  }) async {
+  Future<Result<SignUpResponse>> signUp(SignUpRequest request) async {
     try {
-      final response = await _client.signUp(
-        SignUpRequest(
-          email: email,
-          password: password,
-          displayName: displayName,
-        ),
-      );
-      return Result.success(response);
+      final response = await _client.signUp(request);
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
+      return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] signUp failed', error: e);
       return Result.failure(_humanize(e));
@@ -85,10 +66,13 @@ class AuthRepository implements IAuthRepository, Disposable {
   }
 
   @override
-  Future<Result<UserProfile>> me() async {
+  Future<Result<User>> me() async {
     try {
-      final profile = await _client.me();
-      return Result.success(profile);
+      final response = await _client.me();
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
+      return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] me failed', error: e);
       return Result.failure(_humanize(e));
@@ -128,10 +112,4 @@ class AuthRepository implements IAuthRepository, Disposable {
     final s? => 'Server error ($s). Please try again later.',
     null => 'Unknown server error.',
   };
-
-  @override
-  FutureOr<dynamic> onDispose() {
-    // No resources to release — the Dio client lifecycle
-    // is managed elsewhere.
-  }
 }
