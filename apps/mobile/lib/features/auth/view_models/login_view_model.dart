@@ -15,6 +15,8 @@ class LoginViewModel {
         (data) => result.value = data,
         (message) => error.value = message,
       );
+
+      isLoading.value = false;
     });
   }
 
