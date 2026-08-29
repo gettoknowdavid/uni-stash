@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:logger/logger.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:forui/forui.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
-import 'package:forui/forui.dart';
+import 'package:logger/logger.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
+import 'package:uni_stash_mobile/core/router/us_routes.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
-import 'package:uni_stash_mobile/core/result/result.dart';
-import 'package:uni_stash_mobile/core/router/us_routes.dart';
 
 // ---------------------------------------------------------------------------
 // MOCK CLASSES
@@ -54,12 +54,11 @@ Widget buildLoginPage() {
       routes: [
         GoRoute(
           path: UsRoutes.login,
-          builder: (_, __) => const LoginPage(),
+          builder: (_, _) => const LoginPage(),
         ),
         GoRoute(
           path: UsRoutes.forgotPw,
-          builder: (_, __) =>
-              const Scaffold(body: Text('Forgot Password Page')),
+          builder: (_, _) => const Scaffold(body: Text('Forgot Password Page')),
         ),
       ],
     ),
@@ -67,7 +66,8 @@ Widget buildLoginPage() {
 }
 
 /// Finds the underlying [EditableText] inside forui text form fields.
-/// Forui's FTextFormField wraps a standard TextField, which contains an EditableText.
+/// Forui's FTextFormField wraps a standard TextField, which contains an
+/// EditableText.
 Finder findTextFieldAt(int index) {
   final editables = find.byType(EditableText);
   return editables.at(index);
@@ -85,7 +85,7 @@ void main() {
   final testDi = GetIt.instance;
 
   setUpAll(() {
-    registerFallbackValue(LoginRequest(email: '', password: ''));
+    registerFallbackValue(const LoginRequest(email: '', password: ''));
   });
 
   setUp(() {
@@ -109,9 +109,7 @@ void main() {
     testDi.registerSingleton<AuthViewModel>(authViewModel);
   });
 
-  tearDown(() {
-    testDi.reset();
-  });
+  tearDown(testDi.reset);
 
   // =========================================================================
   // GROUP: Initial Render
@@ -199,8 +197,9 @@ void main() {
   // GROUP: Login Submission
   // =========================================================================
   group('Login Submission', () {
-    testWidgets('calls repository.login with correct credentials',
-        (tester) async {
+    testWidgets('calls repository.login with correct credentials', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
@@ -309,8 +308,9 @@ void main() {
   // GROUP: Forgot Password Link
   // =========================================================================
   group('Forgot Password', () {
-    testWidgets('tapping Forgot password navigates to forgot-password route',
-        (tester) async {
+    testWidgets('tapping Forgot password navigates to forgot-password route', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
