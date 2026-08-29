@@ -31,5 +31,3 @@ pub struct RefreshToken {
     pub expires_at: time::OffsetDateTime,
     pub created_at: time::OffsetDateTime,
 }
-
-
