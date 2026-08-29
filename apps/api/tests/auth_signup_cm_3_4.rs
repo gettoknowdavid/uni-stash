@@ -183,10 +183,12 @@ async fn successful_signup_returns_201_with_email_verified_false(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data must be an object");
-    assert_eq!(data["email"], "alice@test.edu");
-    assert_eq!(data["display_name"], "Alice");
-    assert_eq!(data["email_verified"], false);
-    assert!(data["id"].is_string(), "response must include a UUID id");
+    // User profile is nested under data.user
+    let user = data["user"].as_object().expect("user must be an object");
+    assert_eq!(user["email"], "alice@test.edu");
+    assert_eq!(user["display_name"], "Alice");
+    assert_eq!(user["email_verified"], false);
+    assert!(user["id"].is_string(), "response must include a UUID id");
 
     // Verify tokens are returned so the client can reach the OTP flow on relaunch.
     assert!(
