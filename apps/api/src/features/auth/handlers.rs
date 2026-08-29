@@ -8,10 +8,11 @@ use crate::core::json::ValidatedJson;
 use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginResponse, LogoutRequest,
-    RefreshRequest, RefreshResponse, ResetPasswordRequest, SignUpRequest, SignUpResponse,
-    VerifyOtpRequest, VerifyOtpResponse,
+    AuthData, ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginTokens, LogoutRequest,
+    RefreshRequest, RefreshTokens, ResetPasswordRequest, SignUpRequest, SignUpTokens,
+    VerifyOtpRequest, VerifyOtpTokens,
 };
+use crate::features::auth::repo::AuthRepo;
 
 // ---------------------------------------------------------------------------
 // Signup (CM-3.4) — now sends OTP instead of JWT token
@@ -63,16 +64,17 @@ pub async fn signup(
         tracing::warn!(error = %e, email = %user.email, "failed to send verification OTP");
     }
 
+    let profile = AuthRepo::user_to_profile(&user);
+
     Ok(
-        HttpResponse::Created().json(ApiResponse::<SignUpResponse, ErrorBody>::success(
-            SignUpResponse {
-                id: user.id,
-                email: user.email,
-                display_name: user.display_name,
-                email_verified: false,
-                access_token: Some(access_token),
-                refresh_token: Some(refresh_token),
-                expires_in: Some(900),
+        HttpResponse::Created().json(ApiResponse::<AuthData<SignUpTokens>, ErrorBody>::success(
+            AuthData {
+                tokens: SignUpTokens {
+                    access_token: Some(access_token),
+                    refresh_token: Some(refresh_token),
+                    expires_in: Some(900),
+                },
+                user: profile,
             },
             "account created successfully",
         )),
@@ -117,24 +119,29 @@ pub async fn verify_otp(
             .issue_refresh_token(&state.db, user.id, family_id)
             .await?;
 
-        return Ok(
-            HttpResponse::Ok().json(ApiResponse::<VerifyOtpResponse, ErrorBody>::success(
-                VerifyOtpResponse {
-                    verified: true,
-                    access_token: Some(access_token),
-                    refresh_token: Some(refresh_token),
-                    expires_in: Some(900),
+        let profile = AuthRepo::user_to_profile(&user);
+
+        return Ok(HttpResponse::Ok().json(
+            ApiResponse::<AuthData<VerifyOtpTokens>, ErrorBody>::success(
+                AuthData {
+                    tokens: VerifyOtpTokens {
+                        verified: true,
+                        access_token: Some(access_token),
+                        refresh_token: Some(refresh_token),
+                        expires_in: Some(900),
+                    },
+                    user: profile,
                 },
                 "email verified successfully",
-            )),
-        );
+            ),
+        ));
     }
 
     // password_reset — just confirm verification, no tokens (user must login
     // with their new password via the separate reset-password endpoint).
     Ok(
-        HttpResponse::Ok().json(ApiResponse::<VerifyOtpResponse, ErrorBody>::success(
-            VerifyOtpResponse {
+        HttpResponse::Ok().json(ApiResponse::<VerifyOtpTokens, ErrorBody>::success(
+            VerifyOtpTokens {
                 verified: true,
                 access_token: None,
                 refresh_token: None,
@@ -267,7 +274,7 @@ pub async fn reset_password(
 }
 
 // ---------------------------------------------------------------------------
-// Login (CM-3.6) — unchanged
+// Login (CM-3.6) — returns tokens + user
 // ---------------------------------------------------------------------------
 
 pub async fn login(
@@ -295,12 +302,18 @@ pub async fn login(
         .auth_repo
         .issue_refresh_token(&state.db, user.id, family_id)
         .await?;
+
+    let profile = AuthRepo::user_to_profile(user);
+
     Ok(
-        HttpResponse::Ok().json(ApiResponse::<LoginResponse, ErrorBody>::success(
-            LoginResponse {
-                access_token,
-                refresh_token,
-                expires_in: 900,
+        HttpResponse::Ok().json(ApiResponse::<AuthData<LoginTokens>, ErrorBody>::success(
+            AuthData {
+                tokens: LoginTokens {
+                    access_token,
+                    refresh_token,
+                    expires_in: 900,
+                },
+                user: profile,
             },
             "login successful",
         )),
@@ -308,7 +321,7 @@ pub async fn login(
 }
 
 // ---------------------------------------------------------------------------
-// Refresh (CM-3.7 / CM-3.8) — unchanged
+// Refresh (CM-3.7 / CM-3.8) — returns tokens + user
 // ---------------------------------------------------------------------------
 
 pub async fn refresh(
@@ -329,33 +342,39 @@ pub async fn refresh(
     }
 
     if row.revoked {
-        let (access, refresh, expires) = state
+        let (access, refresh, expires, profile) = state
             .auth_repo
             .handle_reused_token(&state.jwt_keys, &row)
             .await?;
-        return Ok(
-            HttpResponse::Ok().json(ApiResponse::<RefreshResponse, ErrorBody>::success(
-                RefreshResponse {
-                    access_token: access,
-                    refresh_token: refresh,
-                    expires_in: expires,
+        return Ok(HttpResponse::Ok().json(
+            ApiResponse::<AuthData<RefreshTokens>, ErrorBody>::success(
+                AuthData {
+                    tokens: RefreshTokens {
+                        access_token: access,
+                        refresh_token: refresh,
+                        expires_in: expires,
+                    },
+                    user: profile,
                 },
                 "token refreshed",
-            )),
-        );
+            ),
+        ));
     }
 
-    let (access, refresh, expires) = state
+    let (access, refresh, expires, profile) = state
         .auth_repo
         .rotate_from_row(&state.jwt_keys, &row)
         .await?;
 
     Ok(
-        HttpResponse::Ok().json(ApiResponse::<RefreshResponse, ErrorBody>::success(
-            RefreshResponse {
-                access_token: access,
-                refresh_token: refresh,
-                expires_in: expires,
+        HttpResponse::Ok().json(ApiResponse::<AuthData<RefreshTokens>, ErrorBody>::success(
+            AuthData {
+                tokens: RefreshTokens {
+                    access_token: access,
+                    refresh_token: refresh,
+                    expires_in: expires,
+                },
+                user: profile,
             },
             "token refreshed",
         )),

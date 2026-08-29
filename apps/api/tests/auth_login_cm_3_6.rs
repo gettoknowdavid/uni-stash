@@ -129,7 +129,7 @@ async fn valid_credentials_returns_200_with_token_triple(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
 
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data must be an object");
 
     // access_token must be a non-empty string (JWT).

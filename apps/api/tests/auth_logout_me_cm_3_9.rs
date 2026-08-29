@@ -161,7 +161,7 @@ async fn logout_valid_token_returns_200_and_revokes(pool: PgPool) {
 
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
 
     // Verify the row is now revoked in the DB.
     let row = find_token_by_hash(&pool, &plain).await;
@@ -182,7 +182,7 @@ async fn logout_unknown_token_returns_200_idempotent(pool: PgPool) {
 
     assert_eq!(resp.status(), 200, "unknown token must not error");
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
 }
 
 // ===========================================================================
@@ -206,7 +206,7 @@ async fn logout_already_revoked_token_returns_200_idempotent(pool: PgPool) {
     let resp2 = call_logout(&state, &plain).await;
     assert_eq!(resp2.status(), 200, "re-logout must be idempotent");
     let json: serde_json::Value = test::read_body_json(resp2).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
 }
 
 // ===========================================================================
@@ -228,7 +228,7 @@ async fn me_valid_token_returns_200_with_profile(pool: PgPool) {
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
 
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
     assert_eq!(data["id"], user.id.to_string());
     assert_eq!(data["email"], "carol@test.edu");
@@ -286,7 +286,7 @@ async fn me_role_reflects_db_not_jwt(pool: PgPool) {
     let resp = call_me(&state, &access_token).await;
     assert_eq!(resp.status(), 200);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     assert_eq!(
         json["data"]["role"], "admin",
         "role must come from DB, not JWT"

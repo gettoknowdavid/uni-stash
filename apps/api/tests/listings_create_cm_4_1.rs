@@ -334,7 +334,7 @@ async fn create_listing_success_returns_201_with_full_object(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
 
     // Full object returned
@@ -382,7 +382,7 @@ async fn create_listing_seller_id_is_never_trusted_from_body(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
 
     // The seller_id must be the authenticated user, not the one from the body
@@ -416,7 +416,7 @@ async fn create_listing_barter_only_allows_null_price(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
 
     assert!(
@@ -451,7 +451,7 @@ async fn create_listing_default_description_when_omitted(pool: PgPool) {
 
     assert_eq!(resp.status(), 201);
     let json: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(json["status"], "success");
+    assert_eq!(json["status"], true);
     let data = json["data"].as_object().expect("data");
 
     assert_eq!(

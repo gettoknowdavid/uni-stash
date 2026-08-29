@@ -1,8 +1,8 @@
 use crate::{
     core::{auth::refresh_token, error::AppError},
     features::auth::{
-        dtos::InsertUserInput,
-        models::{RefreshToken, School, User, UserProfile},
+        dtos::{InsertUserInput, UserProfile},
+        models::{RefreshToken, School, User},
     },
 };
 
@@ -224,6 +224,17 @@ impl AuthRepo {
         Ok(profile)
     }
 
+    /// Fetch the slim profile by converting a [`User`] row.
+    pub fn user_to_profile(user: &User) -> UserProfile {
+        UserProfile {
+            id: user.id,
+            email: user.email.clone(),
+            display_name: user.display_name.clone(),
+            email_verified: user.email_verified,
+            role: user.role.clone(),
+        }
+    }
+
     pub async fn find_refresh_token_by_id(
         &self,
         token_id: uuid::Uuid,
@@ -411,7 +422,7 @@ impl AuthRepo {
         &self,
         keys: &crate::core::clients::JwtKeys,
         row: &RefreshToken,
-    ) -> Result<(String, String, i64), AppError> {
+    ) -> Result<(String, String, i64, UserProfile), AppError> {
         let mut tx = self.db.begin().await?;
 
         self.revoke_refresh_token(&mut *tx, row.id).await?;
@@ -431,7 +442,8 @@ impl AuthRepo {
         })?;
 
         let access_token = crate::core::auth::jwt::sign_access_token(keys, &user)?;
-        Ok((access_token, new_plain, 900))
+        let profile = Self::user_to_profile(&user);
+        Ok((access_token, new_plain, 900, profile))
     }
 
     /// Handle reuse of an already-revoked token.
@@ -448,7 +460,7 @@ impl AuthRepo {
         &self,
         keys: &crate::core::clients::JwtKeys,
         row: &RefreshToken,
-    ) -> Result<(String, String, i64), AppError> {
+    ) -> Result<(String, String, i64, UserProfile), AppError> {
         let now = time::OffsetDateTime::now_utc();
 
         // Within grace = revoked_at is set, within the window, AND the token
