@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forui/forui.dart';
-import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/core/router/us_routes.dart';
+import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
@@ -27,6 +26,13 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    di.pushNewScope(
+      scopeName: 'login',
+      init: (getIt) => getIt.registerLazySingleton(
+        () => LoginViewModel(getIt<IAuthRepository>()),
+      ),
+    );
+
     _onLogin = effect(() {
       final response = di<LoginViewModel>().result.value;
       if (response == null) return;
@@ -70,20 +76,15 @@ class _LoginPageState extends State<LoginPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Form(
           key: _formKey,
-          child: Column(
+          child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 32),
-              const _EmailField(),
-              const SizedBox(height: 16),
-              const _PasswordField(),
-              const SizedBox(height: 24),
-              const _LoginButton(),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => context.push(UsRoutes.forgotPw),
-                child: const Text('Forgot password?'),
-              ),
+              SizedBox(height: 32),
+              _EmailField(),
+              SizedBox(height: 24),
+              _PasswordField(),
+              SizedBox(height: 32),
+              _LoginButton(),
             ],
           ),
         ),
@@ -99,8 +100,9 @@ class _EmailField extends SignalWidget {
   Widget build(BuildContext context) {
     final model = di<LoginViewModel>();
     return FTextFormField.email(
+      label: const Text('SCHOOL EMAIL'),
       enabled: !model.isLoading.value,
-      autofocus: true,
+      hint: 'you@university.edu',
       autovalidateMode: .onUserInteraction,
       onSaved: model.setEmail,
       validator: (value) {
@@ -123,8 +125,8 @@ class _PasswordField extends SignalWidget {
   Widget build(BuildContext context) {
     final model = di<LoginViewModel>();
     return FTextFormField.password(
+      label: const Text('PASSWORD'),
       enabled: !model.isLoading.value,
-      textInputAction: .done,
       autovalidateMode: .onUserInteraction,
       onSaved: model.setPassword,
       validator: (value) {

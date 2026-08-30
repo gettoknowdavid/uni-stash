@@ -1,5 +1,6 @@
 import 'package:forui/forui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:uni_stash_mobile/core/theme/styles/form_field_style.dart';
 
 // ---------------------------------------------------------------------------
 // Spacing tokens
@@ -51,16 +52,29 @@ FStyle usStyle({
   required FTypography typography,
   required bool touch,
 }) {
-  const borderRadius = FBorderRadius();
+  // Design system default: sharp corners (0px radius).
+  const zero = BorderRadius.zero;
+  const borderRadius = FBorderRadius(
+    xs2: zero,
+    xs: zero,
+    sm: zero,
+    md: zero,
+    lg: zero,
+    xl: zero,
+    xl2: zero,
+    xl3: zero,
+    pill: zero,
+  );
   return FStyle(
-    formFieldStyle: .inherit(
+    formFieldStyle: formFieldStyle(
       colors: colors,
-      typography: typography,
       touch: touch,
+      typography: typography,
     ),
     focusedOutlineStyle: FFocusedOutlineStyle(
       color: colors.primary,
-      borderRadius: borderRadius.md,
+      borderRadius: zero,
+      width: 10,
     ),
     sizes: FSizes.inherit(touch: touch),
     iconStyle: IconThemeData(
@@ -68,6 +82,8 @@ FStyle usStyle({
       size: typography.body.lg.fontSize,
     ),
     tappableStyle: FTappableStyle(),
+    borderRadius: borderRadius,
+    borderWidth: 2,
     extensions: [const UsStyle()],
   );
 }

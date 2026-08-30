@@ -25,10 +25,10 @@ FThemeData get usLightTheme {
   );
 
   return FThemeData(
-    colors: colors,
-    typography: typography,
-    icons: const FIcons.lucide(),
-    style: style,
-    touch: touch,
+      colors: colors,
+      typography: typography,
+      icons: const FIcons.lucide(),
+      style: style,
+      touch: touch,
   );
 }
