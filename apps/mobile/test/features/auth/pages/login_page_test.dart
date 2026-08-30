@@ -126,7 +126,7 @@ void main() {
       // which is the actual input widget inside each TextField.
       expect(find.byType(EditableText), findsNWidgets(2));
       expect(find.text('Sign in'), findsOneWidget);
-      expect(find.text('Forgot password?'), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
     });
 
     testWidgets('renders Login header', (tester) async {
@@ -321,7 +321,7 @@ void main() {
       await tester.pumpWidget(buildLoginPage());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Forgot password?'));
+      await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
 
       // Verify we navigated to the forgot-password page.

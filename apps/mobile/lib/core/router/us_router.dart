@@ -3,10 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/router/_router.dart';
 import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
-import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -19,15 +17,7 @@ final GoRouter routerConfig = GoRouter(
   routes: [
     GoRoute(
       path: UsRoutes.login,
-      builder: (context, state) {
-        di.pushNewScope(
-          scopeName: 'login',
-          init: (getIt) => getIt.registerLazySingleton(
-            () => LoginViewModel(getIt<IAuthRepository>()),
-          ),
-        );
-        return const LoginPage();
-      },
+      builder: (context, state) => const LoginPage(),
       onExit: (context, state) async {
         await di.popScope();
         return true;

@@ -11,26 +11,48 @@ final FColors usLightColors = FColors(
   systemOverlayStyle: .dark,
   barrier: const Color(0x33000000),
 
-  // ── Backgrounds ──────────────────────────────────────────────────────────
-  background: const Color(0xFFFFFFFF), // bg/primary
-  foreground: const Color(0xFF15140F), // text/primary
-  // ── Primary (orange accent) ──────────────────────────────────────────────
-  primary: const Color(0xFFFF5B1F), // action/primary
-  primaryForeground: const Color(0xFFFFFFFF), // text/inverse
-  // ── Secondary ────────────────────────────────────────────────────────────
-  secondary: const Color(0xFFFAF9F5), // bg/secondary
-  secondaryForeground: const Color(0xFF15140F), // text/primary
-  // ── Muted ────────────────────────────────────────────────────────────────
-  muted: const Color(0xFFF7F6F2), // bg/tertiary
-  mutedForeground: const Color(0xFF6B7280), // text/tertiary
-  // ── Destructive / Error ──────────────────────────────────────────────────
-  destructive: const Color(0xFFBA1A1A), // status/error
-  destructiveForeground: const Color(0xFFFFFFFF), // text/inverse
-  error: const Color(0xFFBA1A1A), // status/error
-  errorForeground: const Color(0xFFFFFFFF), // text/inverse
-  // ── Surface / Border ─────────────────────────────────────────────────────
-  card: const Color(0xFFFFFFFF), // surface/card
-  border: const Color(0xFFE3E2DF), // border/default
+  // bg/primary
+  background: const Color(0xFFFFFFFF),
+
+  // text/primary
+  foreground: const Color(0xFF15140F),
+
+  // action/primary
+  primary: const Color(0xFFFF5B1F),
+
+  // text/inverse
+  primaryForeground: const Color(0xFFFFFFFF),
+
+  // bg/secondary
+  secondary: const Color(0xFFFAF9F5),
+
+  // text/primary
+  secondaryForeground: const Color(0xFF15140F),
+
+  // bg/tertiary
+  muted: const Color(0xFFF7F6F2),
+
+  // text/tertiary
+  mutedForeground: const Color(0xFF6B7280),
+
+  // status/error
+  destructive: const Color(0xFFBA1A1A),
+
+  // text/inverse
+  destructiveForeground: const Color(0xFFFFFFFF),
+
+  // status/error
+  error: const Color(0xFFBA1A1A),
+
+  // text/inverse
+  errorForeground: const Color(0xFFFFFFFF),
+
+  // surface/card
+  card: const Color(0xFFFFFFFF),
+
+  // border/default
+  border: const Color(0xFF000000),
+
   extensions: [const UsColors()],
 );
 
@@ -71,23 +93,18 @@ class UsColors extends ThemeExtension<UsColors> {
     this.iconAccent = const Color(0xFFFF5B1F),
   });
 
-  // ── Text ───────────────────────────────────────────────────────────────
   final Color textSecondary;
   final Color textLink;
 
-  // ── Border ─────────────────────────────────────────────────────────────
   final Color borderSubtle;
   final Color borderStrong;
 
-  // ── Surface ────────────────────────────────────────────────────────────
   final Color surfaceInput;
   final Color surfaceOverlay;
 
-  // ── Action ─────────────────────────────────────────────────────────────
   final Color actionPrimaryHover;
   final Color actionSecondary;
 
-  // ── Status ─────────────────────────────────────────────────────────────
   final Color statusSuccess;
   final Color statusSuccessBg;
   final Color statusErrorBg;
@@ -95,7 +112,6 @@ class UsColors extends ThemeExtension<UsColors> {
   final Color statusWarningBg;
   final Color statusInfo;
 
-  // ── Icon ───────────────────────────────────────────────────────────────
   final Color iconPrimary;
   final Color iconSecondary;
   final Color iconAccent;

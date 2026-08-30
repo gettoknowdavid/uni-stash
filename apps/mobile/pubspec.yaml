@@ -34,6 +34,7 @@ dev_dependencies:
   envied_generator: ^1.3.8
   flutter_test:
     sdk: flutter
+  forui_cli: ^0.26.0
   freezed: ^4.0.0
   json_serializable: ^6.14.1
   mockito: ^5.8.1
