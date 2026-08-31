@@ -5,12 +5,12 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/core/theme/us_typography.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
+import 'package:uni_stash_mobile/theme/us_typography.dart';
 
 class LoginPage extends SignalStatefulWidget {
   const LoginPage({super.key});
