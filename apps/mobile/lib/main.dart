@@ -3,9 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/core/router/us_router.dart';
-import 'package:uni_stash_mobile/core/theme/theme.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
+import 'package:uni_stash_mobile/router/us_router.dart';
+import 'package:uni_stash_mobile/theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

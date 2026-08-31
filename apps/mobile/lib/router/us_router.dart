@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/core/router/_router.dart';
 import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
+import 'package:uni_stash_mobile/router/_router.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 

@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import 'package:uni_stash_mobile/core/theme/style.dart';
-import 'package:uni_stash_mobile/core/theme/us_colors.dart';
-import 'package:uni_stash_mobile/core/theme/us_typography.dart';
+import 'package:uni_stash_mobile/theme/style.dart';
+import 'package:uni_stash_mobile/theme/us_colors.dart';
+import 'package:uni_stash_mobile/theme/us_typography.dart';
 
 /// UniStash light theme built on top of [ShadThemeData].
 ///
@@ -168,7 +168,7 @@ ShadThemeData get usLightTheme {
         fontWeight: FontWeight.w400,
         color: UsPrimitives.red500,
       ),
-      shape: BoxShape.rectangle
+      shape: BoxShape.rectangle,
     ),
   );
 
