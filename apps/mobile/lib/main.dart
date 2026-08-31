@@ -1,6 +1,7 @@
-import 'package:forui/forui.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get_it/get_it.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/router/us_router.dart';
 import 'package:uni_stash_mobile/core/theme/theme.dart';
@@ -11,26 +12,25 @@ void main() async {
   configureDependencies();
   await GetIt.I.allReady();
   await GetIt.I<AuthViewModel>().bootstrap();
-  runApp(const MainApp());
+  runApp(const UniStashApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class UniStashApp extends StatelessWidget {
+  const UniStashApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = usLightTheme;
-
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
+    return ShadApp.router(
       title: 'UniStash',
-      supportedLocales: FLocalizations.supportedLocales,
-      localizationsDelegates: const [...FLocalizations.localizationsDelegates],
-      theme: theme.toApproximateMaterialTheme(),
-      builder: (context, child) => FTheme(
-        data: theme,
-        child: FToaster(child: FTooltipGroup(child: child!)),
-      ),
+      theme: usLightTheme,
+      localizationsDelegates: const [
+        GlobalShadLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('en')],
+      builder: (context, child) => child!,
       routerConfig: routerConfig,
     );
   }
