@@ -66,6 +66,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _onLogin?.call();
     _onError?.call();
+    unawaited(di.popScope());
     super.dispose();
   }
 
