@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:forui/forui.dart';
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/theme/us_typography.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
+import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 
 class LoginPage extends SignalStatefulWidget {
   const LoginPage({super.key});
@@ -50,12 +52,11 @@ class _LoginPageState extends State<LoginPage> {
       if (error == null) return;
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showFToast(
-          context: context,
-          title: Text(error),
-          variant: .destructive,
-          duration: const Duration(seconds: 4),
-          alignment: .bottomCenter,
+        ShadToaster.of(context).show(
+          ShadToast.destructive(
+            title: const Text('Authentication Error'),
+            description: Text(error),
+          ),
         );
       });
     });
@@ -70,23 +71,20 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FScaffold(
-      header: const FHeader(title: Text('Login')),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Form(
-          key: _formKey,
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(height: 32),
-              _EmailField(),
-              SizedBox(height: 24),
-              _PasswordField(),
-              SizedBox(height: 32),
-              _LoginButton(),
-            ],
-          ),
+    return Container(
+      padding: const .fromLTRB(24, 48, 24, 0),
+      child: Form(
+        key: _formKey,
+        child: const Column(
+          mainAxisSize: .min,
+          children: [
+            SizedBox(height: 32),
+            _EmailField(),
+            SizedBox(height: 24),
+            _PasswordField(),
+            SizedBox(height: 32),
+            _LoginButton(),
+          ],
         ),
       ),
     );
@@ -94,21 +92,22 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _EmailField extends SignalWidget {
-  const new();
+  const _EmailField();
 
   @override
   Widget build(BuildContext context) {
     final model = di<LoginViewModel>();
-    return FTextFormField.email(
-      label: const Text('SCHOOL EMAIL'),
+    final us = ShadTheme.of(context);
+
+    return ShadInputFormField(
+      id: 'email',
+      label: Text('SCHOOL EMAIL', style: us.textTheme.labelMd),
       enabled: !model.isLoading.value,
-      hint: 'you@university.edu',
-      autovalidateMode: .onUserInteraction,
+      placeholder: const Text('you@university.edu'),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       onSaved: model.setEmail,
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Please enter your email.';
-        }
+        if (value.trim().isEmpty) return 'Please enter your email.';
         if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim())) {
           return 'Please enter a valid email.';
         }
@@ -119,20 +118,22 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends SignalWidget {
-  const new();
+  const _PasswordField();
 
   @override
   Widget build(BuildContext context) {
     final model = di<LoginViewModel>();
-    return FTextFormField.password(
-      label: const Text('PASSWORD'),
+    final us = ShadTheme.of(context);
+
+    return ShadInputFormField(
+      id: 'password',
+      label: Text('PASSWORD', style: us.textTheme.labelMd),
       enabled: !model.isLoading.value,
-      autovalidateMode: .onUserInteraction,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      obscureText: true,
       onSaved: model.setPassword,
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your password.';
-        }
+        if (value.isEmpty) return 'Please enter your password.';
         return null;
       },
     );
@@ -140,7 +141,7 @@ class _PasswordField extends SignalWidget {
 }
 
 class _LoginButton extends SignalWidget {
-  const new();
+  const _LoginButton();
 
   @override
   Widget build(BuildContext context) {
@@ -149,15 +150,9 @@ class _LoginButton extends SignalWidget {
 
     return SizedBox(
       width: double.infinity,
-      child: FButton(
-        onPress: isBusy ? null : () => _handleLogin(context),
-        child: isBusy
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: FCircularProgress(size: .sm),
-              )
-            : const Text('PUBLISH LISTING'),
+      child: ShadButton(
+        onPressed: isBusy ? null : () => _handleLogin(context),
+        child: isBusy ? const ShadSpinner() : const Text('LOG IN'),
       ),
     );
   }

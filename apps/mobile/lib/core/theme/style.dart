@@ -1,12 +1,8 @@
-import 'dart:ui';
-
-import 'package:forui/forui.dart';
-import 'package:material_ui/material_ui.dart';
-import 'package:uni_stash_mobile/core/theme/styles/form_field_style.dart';
-
 // ---------------------------------------------------------------------------
 // Spacing tokens (Base-4)
 // ---------------------------------------------------------------------------
+
+import 'package:flutter/widgets.dart';
 
 /// Base-4 spatial scale used for padding, margins, and gaps.
 ///
@@ -46,27 +42,26 @@ abstract final class UsSpacing {
 // Radius tokens
 // ---------------------------------------------------------------------------
 
-/// Corner radius tokens from sharp to fully rounded.
+/// Corner radius tokens.
 ///
-/// The design uses sm (4px) for buttons/inputs, md (8px) for badges/minor
-/// cards, lg (12px) for grid items/listing cards, xl (16px) for large modals,
-/// and full (9999px) for pill badges, toggles, and circles.
+/// The global border radius is capped at `sm` (4px) per the project
+/// requirement. Larger values are used only in specific overrides.
 abstract final class UsRadius {
   const UsRadius._();
 
   /// Hard corners (0px) — checkboxes, square icons
   static const double none = 0;
 
-  /// Buttons, input fields, subtle panels (4px)
+  /// **Global max** — buttons, input fields, subtle panels (4px)
   static const double sm = 4;
 
-  /// Badges, minor cards (8px)
+  /// Badges, minor cards (8px) — used sparingly
   static const double md = 8;
 
-  /// Grid items, main listing cards (12px)
+  /// Grid items, main listing cards (12px) — used sparingly
   static const double lg = 12;
 
-  /// Large modal containers (16px)
+  /// Large modal containers (16px) — used sparingly
   static const double xl = 16;
 
   /// Pill badges, toggles, circles (9999px)
@@ -143,119 +138,4 @@ abstract final class UsElevation {
       color: Color(0xFF15140F),
     ),
   ];
-}
-
-// ---------------------------------------------------------------------------
-// FStyle builder
-// ---------------------------------------------------------------------------
-
-/// Builds [FStyle] with UniStash spacing and radius tokens.
-FStyle usStyle({
-  required FColors colors,
-  required FTypography typography,
-}) {
-  return FStyle(
-    formFieldStyle: formFieldStyle(
-      colors: colors,
-      touch: true,
-      typography: typography,
-    ),
-    focusedOutlineStyle: FFocusedOutlineStyle(
-      color: colors.primary,
-      borderRadius: BorderRadius.circular(UsRadius.sm),
-    ),
-    sizes: FSizes.inherit(touch: true),
-    iconStyle: IconThemeData(
-      color: colors.foreground,
-      size: typography.body.lg.fontSize,
-    ),
-    tappableStyle: FTappableStyle(),
-    borderRadius: FBorderRadius(
-      xs2: BorderRadius.circular(UsRadius.none),
-      xs: BorderRadius.circular(UsRadius.none),
-      sm: BorderRadius.circular(UsRadius.none),
-      md: BorderRadius.circular(UsRadius.none),
-      lg: BorderRadius.circular(UsRadius.none),
-      xl: BorderRadius.circular(UsRadius.none),
-      xl2: BorderRadius.circular(UsRadius.none),
-      xl3: BorderRadius.circular(UsRadius.none),
-      // xs2: BorderRadius.circular(UsRadius.sm),
-      // xs: BorderRadius.circular(UsRadius.sm),
-      // sm: BorderRadius.circular(UsRadius.sm),
-      // md: BorderRadius.circular(UsRadius.md),
-      // lg: BorderRadius.circular(UsRadius.lg),
-      // xl: BorderRadius.circular(UsRadius.xl),
-      // xl2: BorderRadius.circular(UsRadius.xl),
-      // xl3: BorderRadius.circular(UsRadius.xl),
-      pill: BorderRadius.circular(UsRadius.sm),
-    ),
-    borderWidth: 2,
-    extensions: [const UsStyle()],
-  );
-}
-
-// ---------------------------------------------------------------------------
-// UsStyle — custom design system style tokens
-// ---------------------------------------------------------------------------
-
-/// Provides convenient access via `context.theme.style.us`.
-extension FStyleExtensions on FStyle {
-  UsStyle get us => extension<UsStyle>();
-}
-
-/// Additional style tokens specific to the UniStash design system.
-///
-/// Access through [FStyleExtensions]:
-/// ```dart
-/// final shadows = context.theme.style.us.elevationMd;
-/// final radius = context.theme.style.us.cardRadius;
-/// ```
-@immutable
-class UsStyle extends ThemeExtension<UsStyle> {
-  const UsStyle({
-    this.borderWidthStrong = 2,
-    this.borderWidthDefault = 1,
-  });
-
-  /// Heavy border width for buttons and brutalist elements.
-  final double borderWidthStrong;
-
-  /// Default border width for inputs and cards.
-  final double borderWidthDefault;
-
-  @override
-  UsStyle copyWith({double? borderWidthStrong, double? borderWidthDefault}) =>
-      UsStyle(
-        borderWidthStrong: borderWidthStrong ?? this.borderWidthStrong,
-        borderWidthDefault: borderWidthDefault ?? this.borderWidthDefault,
-      );
-
-  @override
-  UsStyle lerp(covariant UsStyle? other, double t) {
-    if (other is! UsStyle) return this;
-    return UsStyle(
-      borderWidthStrong: lerpDouble(
-        borderWidthStrong,
-        other.borderWidthStrong,
-        t,
-      )!,
-      borderWidthDefault: lerpDouble(
-        borderWidthDefault,
-        other.borderWidthDefault,
-        t,
-      )!,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is UsStyle &&
-          runtimeType == other.runtimeType &&
-          borderWidthStrong == other.borderWidthStrong &&
-          borderWidthDefault == other.borderWidthDefault;
-
-  @override
-  int get hashCode =>
-      Object.hash(runtimeType, borderWidthStrong, borderWidthDefault);
 }

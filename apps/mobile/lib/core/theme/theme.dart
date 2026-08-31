@@ -1,121 +1,343 @@
-import 'package:forui/forui.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/widgets.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
-import 'package:uni_stash_mobile/core/theme/colors.dart';
 import 'package:uni_stash_mobile/core/theme/style.dart';
-import 'package:uni_stash_mobile/core/theme/styles/button_style.dart';
-import 'package:uni_stash_mobile/core/theme/styles/text_field_style.dart';
-import 'package:uni_stash_mobile/core/theme/typography.dart';
+import 'package:uni_stash_mobile/core/theme/us_colors.dart';
+import 'package:uni_stash_mobile/core/theme/us_typography.dart';
 
-/// UniStash light theme.
+/// UniStash light theme built on top of [ShadThemeData].
 ///
 /// Usage:
 /// ```dart
-/// FTheme(
-///   data: usLightTheme,
-///   child: FToaster(child: FTooltipGroup(child: child!)),
+/// ShadApp(
+///   theme: usLightTheme,
 /// )
 /// ```
-FThemeData get usLightTheme {
-  const touch = true;
+ShadThemeData get usLightTheme {
+  const foreground = UsPrimitives.neutral900;
 
-  // ── Core tokens ──────────────────────────────────────────────────────────
-  final colors = usLightColors;
-  final typography = usTypography(colors: colors, touch: touch);
-  final style = usStyle(colors: colors, typography: typography);
+  // ── Color scheme ─────────────────────────────────────────────────────────
+  final colorScheme = UniStashColorScheme.light();
 
-  // ── Button styles ──────────────────────────────────────────────────────
-  // Custom primary variant with exact design-system colors + pill shape.
-  // Secondary/ghost/outline/destructive inherit from Forui defaults.
-  final buttonStyles = usButtonStyles(
-    colors: colors,
-    typography: typography,
-    style: style,
-    touch: touch,
-  );
+  // ── Typography ───────────────────────────────────────────────────────────
+  final textTheme = usTextTheme(foreground: foreground);
 
-  // ── Text field styles ──────────────────────────────────────────────────
-  final iconStyle = usIconStyle(colors: colors, typography: typography);
-  final ghostForTff = buttonStyles.ghost.sm.copyWith(
-    iconContentStyle: buttonStyles.ghost.sm.iconContentStyle.copyWith(
-      iconStyle: iconStyle.cast(),
+  // ── Global border radius: sm (4px) ──────────────────────────────────────
+  const effectiveRadius = BorderRadius.zero;
+
+  // ── Primary button theme — orange fill, white text, 4px radius ──────────
+  final primaryButtonTheme = ShadButtonTheme(
+    backgroundColor: UsPrimitives.orange500,
+    hoverBackgroundColor: UsPrimitives.orange200,
+    pressedBackgroundColor: UsPrimitives.brown500,
+    foregroundColor: UsPrimitives.neutralWhite,
+    hoverForegroundColor: UsPrimitives.neutralWhite,
+    pressedForegroundColor: UsPrimitives.neutralWhite,
+    textStyle: const TextStyle(
+      fontFamily: UsFontFamily.display,
+      fontSize: 16,
+      height: 24 / 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0,
+      color: UsPrimitives.neutralWhite,
     ),
-  );
-
-  final tffBase = usTextFieldStyle(
-    colors: colors,
-    style: style,
-    typography: typography,
-    iconStyle: iconStyle,
-    buttonStyle: ghostForTff,
-    constraints: const BoxConstraints(minHeight: 44),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-  );
-
-  // ── Assemble FThemeData ────────────────────────────────────────────────
-  return FThemeData(
-    colors: colors,
-    typography: typography,
-    icons: const FIcons.lucide(),
-    style: style,
-    touch: touch,
-
-    // Custom primary (pill, exact colors) + inherited secondary/ghost/outline
-    buttonStyles: buttonStyles,
-
-    // Text field styles — custom UniStash appearance
-    textFieldStyles: FTextFieldSizeStyles(
-      FVariants(
-        tffBase,
-        variants: {
-          [.sm]: tffBase.copyWith(
-            constraints: const BoxConstraints(minHeight: 40),
-            contentPadding: const EdgeInsetsGeometryDelta.value(
-              EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-          ),
-          [.md]: tffBase,
-          [.lg]: tffBase.copyWith(
-            constraints: const BoxConstraints(minHeight: 48),
-            contentPadding: const EdgeInsetsGeometryDelta.value(
-              EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            ),
-          ),
-        },
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 0,
+        color: UsPrimitives.orange500,
+        radius: effectiveRadius,
       ),
     ),
-
-    // Modal sheet — brutalist border + shadow
-    modalSheetStyle: FModalSheetStyle.inherit(),
   );
-}
 
-/// Icon style variant factory for text field clear/obscure buttons.
-FVariants<
-  FTextFieldVariantConstraint,
-  FTextFieldVariant,
-  IconThemeData,
-  IconThemeDataDelta
->
-usIconStyle({
-  required FColors colors,
-  required FTypography typography,
-}) {
-  return FVariants<
-    FTextFieldVariantConstraint,
-    FTextFieldVariant,
-    IconThemeData,
-    IconThemeDataDelta
-  >.from(
-    IconThemeData(
-      color: colors.mutedForeground,
-      size: typography.body.sm.fontSize,
-      weight: 200,
+  // ── Secondary button theme — dark brutalist fill ────────────────────────
+  final secondaryButtonTheme = ShadButtonTheme(
+    backgroundColor: UsPrimitives.neutral900,
+    hoverBackgroundColor: UsPrimitives.neutral800,
+    pressedBackgroundColor: UsPrimitives.neutral800,
+    foregroundColor: UsPrimitives.neutralWhite,
+    hoverForegroundColor: UsPrimitives.neutralWhite,
+    pressedForegroundColor: UsPrimitives.neutralWhite,
+    textStyle: const TextStyle(
+      fontFamily: UsFontFamily.display,
+      fontSize: 16,
+      height: 24 / 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0,
+      color: UsPrimitives.neutralWhite,
     ),
-    variants: {
-      [.disabled]: IconThemeDataDelta.delta(
-        color: colors.disable(colors.mutedForeground),
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 0,
+        color: UsPrimitives.neutral900,
+        radius: effectiveRadius,
       ),
-    },
+    ),
+  );
+
+  // ── Destructive button theme ────────────────────────────────────────────
+  final destructiveButtonTheme = ShadButtonTheme(
+    backgroundColor: UsPrimitives.red500,
+    hoverBackgroundColor: UsPrimitives.red500,
+    pressedBackgroundColor: UsPrimitives.red500,
+    foregroundColor: UsPrimitives.neutralWhite,
+    hoverForegroundColor: UsPrimitives.neutralWhite,
+    pressedForegroundColor: UsPrimitives.neutralWhite,
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 0,
+        color: UsPrimitives.red500,
+        radius: effectiveRadius,
+      ),
+    ),
+  );
+
+  // ── Outline button theme — transparent + border ─────────────────────────
+  final outlineButtonTheme = ShadButtonTheme(
+    backgroundColor: colorScheme.transparent,
+    hoverBackgroundColor: UsPrimitives.neutral100,
+    pressedBackgroundColor: UsPrimitives.neutral200,
+    foregroundColor: UsPrimitives.neutral900,
+    hoverForegroundColor: UsPrimitives.neutral900,
+    pressedForegroundColor: UsPrimitives.neutral900,
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 1,
+        color: UsPrimitives.neutral400,
+        radius: effectiveRadius,
+      ),
+    ),
+  );
+
+  // ── Ghost button theme — transparent, no border ─────────────────────────
+  final ghostButtonTheme = ShadButtonTheme(
+    backgroundColor: colorScheme.transparent,
+    hoverBackgroundColor: UsPrimitives.neutral100,
+    pressedBackgroundColor: UsPrimitives.neutral200,
+    foregroundColor: UsPrimitives.neutral900,
+    hoverForegroundColor: UsPrimitives.neutral900,
+    pressedForegroundColor: UsPrimitives.neutral900,
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 0,
+        color: colorScheme.transparent,
+        radius: effectiveRadius,
+      ),
+    ),
+  );
+
+  // ── Link button theme ───────────────────────────────────────────────────
+  final linkButtonTheme = ShadButtonTheme(
+    backgroundColor: colorScheme.transparent,
+    foregroundColor: UsPrimitives.blue500,
+    hoverForegroundColor: UsPrimitives.blue500,
+    pressedForegroundColor: UsPrimitives.blue500,
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 0,
+        color: colorScheme.transparent,
+        radius: effectiveRadius,
+      ),
+    ),
+  );
+
+  // ── Input theme ─────────────────────────────────────────────────────────
+  final inputTheme = ShadInputTheme(
+    cursorColor: UsPrimitives.orange500,
+    cursorWidth: 2,
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.neutral400,
+        radius: effectiveRadius,
+      ),
+      focusedBorder: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.orange500,
+        radius: effectiveRadius,
+      ),
+      errorBorder: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.red500,
+        radius: effectiveRadius,
+      ),
+      errorStyle: const TextStyle(
+        fontFamily: UsFontFamily.body,
+        fontSize: 11,
+        height: 16 / 11,
+        fontWeight: FontWeight.w400,
+        color: UsPrimitives.red500,
+      ),
+      shape: BoxShape.rectangle
+    ),
+  );
+
+  // ── Dialog theme ────────────────────────────────────────────────────────
+  final alertDialogTheme = ShadDialogTheme(
+    backgroundColor: UsPrimitives.neutralWhite,
+    titleStyle: const TextStyle(
+      fontFamily: UsFontFamily.display,
+      fontSize: 18,
+      height: 24 / 18,
+      fontWeight: FontWeight.w700,
+      color: UsPrimitives.neutral900,
+    ),
+    descriptionStyle: const TextStyle(
+      fontFamily: UsFontFamily.body,
+      fontSize: 14,
+      height: 20 / 14,
+      fontWeight: FontWeight.w400,
+      color: UsPrimitives.neutral700,
+    ),
+    border: Border.all(
+      width: 2,
+      color: UsPrimitives.neutral900,
+    ),
+    radius: effectiveRadius,
+  );
+
+  // ── Card theme ──────────────────────────────────────────────────────────
+  final cardTheme = ShadCardTheme(
+    border: ShadBorder.all(
+      width: 1,
+      color: UsPrimitives.neutral400,
+    ),
+    shadows: UsElevation.sm,
+    radius: effectiveRadius,
+  );
+
+  // ── Sheet (bottom drawer) theme ─────────────────────────────────────────
+  const sheetTheme = ShadSheetTheme(
+    backgroundColor: UsPrimitives.neutralWhite,
+    constraints: BoxConstraints(maxWidth: 400),
+  );
+
+  // ── Badge themes ────────────────────────────────────────────────────────
+  const primaryBadgeTheme = ShadBadgeTheme(
+    backgroundColor: UsPrimitives.neutral900,
+    foregroundColor: UsPrimitives.neutralWhite,
+    // textStyle: TextStyle(
+    //   fontFamily: UsFontFamily.mono,
+    //   fontSize: 10,
+    //   height: 14 / 10,
+    //   fontWeight: FontWeight.w400,
+    //   letterSpacing: 0.5,
+    // ),
+  );
+
+  const secondaryBadgeTheme = ShadBadgeTheme(
+    backgroundColor: UsPrimitives.neutral200,
+    foregroundColor: UsPrimitives.neutral700,
+    // textStyle: TextStyle(
+    //   fontFamily: UsFontFamily.mono,
+    //   fontSize: 10,
+    //   height: 14 / 10,
+    //   fontWeight: FontWeight.w400,
+    //   letterSpacing: 0.5,
+    // ),
+  );
+
+  const destructiveBadgeTheme = ShadBadgeTheme(
+    backgroundColor: UsPrimitives.red100,
+    foregroundColor: UsPrimitives.red500,
+    // textStyle: TextStyle(
+    //   fontFamily: UsFontFamily.mono,
+    //   fontSize: 10,
+    //   height: 14 / 10,
+    //   fontWeight: FontWeight.w400,
+    //   letterSpacing: 0.5,
+    // ),
+  );
+
+  // ── Checkbox theme ──────────────────────────────────────────────────────
+  final checkboxTheme = ShadCheckboxTheme(
+    decoration: ShadDecoration(
+      border: ShadBorder.all(
+        width: 1.5,
+        color: UsPrimitives.neutral400,
+        radius: .zero,
+      ),
+    ),
+    color: UsPrimitives.orange500,
+    uncheckedColor: UsPrimitives.neutral400,
+  );
+
+  // ── Switch theme ────────────────────────────────────────────────────────
+  const switchTheme = ShadSwitchTheme(
+    thumbColor: UsPrimitives.neutralWhite,
+    uncheckedTrackColor: UsPrimitives.neutral400,
+    checkedTrackColor: UsPrimitives.orange500,
+  );
+
+  // ── Avatar theme ────────────────────────────────────────────────────────
+  const avatarTheme = ShadAvatarTheme();
+
+  // ── Progress theme ──────────────────────────────────────────────────────
+  const progressTheme = ShadProgressTheme(
+    backgroundColor: UsPrimitives.neutral200,
+    color: UsPrimitives.orange500,
+  );
+
+  // ── Separator theme ─────────────────────────────────────────────────────
+  const separatorTheme = ShadSeparatorTheme(
+    thickness: 1,
+    color: UsPrimitives.neutral400,
+  );
+
+  // ── Tooltip theme ───────────────────────────────────────────────────────
+  final tooltipTheme = ShadTooltipTheme(
+    decoration: ShadDecoration(
+      color: UsPrimitives.neutral900,
+      border: ShadBorder.all(
+        width: 1.5,
+        color: UsPrimitives.neutral400,
+        radius: .zero,
+      ),
+      shadows: UsElevation.sm,
+      labelStyle: const TextStyle(
+        fontFamily: UsFontFamily.body,
+        fontSize: 12,
+        height: 18 / 12,
+        color: UsPrimitives.neutralWhite,
+      ),
+    ),
+  );
+
+  // ── Assemble ShadThemeData ──────────────────────────────────────────────
+  return ShadThemeData(
+    colorScheme: colorScheme,
+    brightness: Brightness.light,
+    radius: effectiveRadius,
+    textTheme: textTheme,
+    disableSecondaryBorder: true,
+
+    // Button themes
+    primaryButtonTheme: primaryButtonTheme,
+    secondaryButtonTheme: secondaryButtonTheme,
+    destructiveButtonTheme: destructiveButtonTheme,
+    outlineButtonTheme: outlineButtonTheme,
+    ghostButtonTheme: ghostButtonTheme,
+    linkButtonTheme: linkButtonTheme,
+
+    // Badge themes
+    primaryBadgeTheme: primaryBadgeTheme,
+    secondaryBadgeTheme: secondaryBadgeTheme,
+    destructiveBadgeTheme: destructiveBadgeTheme,
+
+    // Input / Form
+    inputTheme: inputTheme,
+    checkboxTheme: checkboxTheme,
+    switchTheme: switchTheme,
+
+    // Overlay surfaces
+    cardTheme: cardTheme,
+    alertDialogTheme: alertDialogTheme,
+    sheetTheme: sheetTheme,
+    tooltipTheme: tooltipTheme,
+
+    // Misc
+    avatarTheme: avatarTheme,
+    progressTheme: progressTheme,
+    separatorTheme: separatorTheme,
   );
 }
