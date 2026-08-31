@@ -144,6 +144,8 @@ class _LoginButton extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
+    final typography = context.theme.typography;
+
     final model = di<LoginViewModel>();
     final isBusy = model.isLoading.value;
 
@@ -157,7 +159,7 @@ class _LoginButton extends SignalWidget {
                 height: 20,
                 child: FCircularProgress(size: .sm),
               )
-            : const Text('Sign in'),
+            : const Text('PUBLISH LISTING'),
       ),
     );
   }
