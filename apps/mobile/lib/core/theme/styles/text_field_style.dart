@@ -51,11 +51,10 @@ import 'package:material_ui/material_ui.dart';
 /// ```
 ///
 /// See https://forui.dev/docs/guides/customizing-themes for more information.
-FTextFieldStyle textFieldStyle({
+FTextFieldStyle usTextFieldStyle({
   required FColors colors,
   required FStyle style,
-  required FLabelStyle labelStyle,
-  required TextStyle textStyle,
+  required FTypography typography,
   required FVariants<
     FTextFieldVariantConstraint,
     FTextFieldVariant,
@@ -66,84 +65,86 @@ FTextFieldStyle textFieldStyle({
   required FButtonStyle buttonStyle,
   required BoxConstraints constraints,
   required EdgeInsetsGeometry contentPadding,
-}) => FTextFieldStyle(
-  keyboardAppearance: colors.brightness,
-  color: FVariants(
-    colors.card,
-    variants: {
-      [.disabled]: colors.disable(colors.card),
-    },
-  ),
-  cursorColor: colors.primary,
-  constraints: constraints,
-  contentPadding: contentPadding,
-  iconStyle: iconStyle,
-  clearButtonStyle: buttonStyle,
-  obscureButtonStyle: buttonStyle.copyWith(
-    tappableStyle: const .delta(
-      motion: .delta(bounceTween: FTappableMotion.noBounceTween),
+}) {
+  final textStyle = typography.body.sm;
+  final labelStyle = FLabelStyles.inherit(style: style).verticalStyle;
+  return FTextFieldStyle(
+    keyboardAppearance: colors.brightness,
+    color: FVariants(
+      colors.card,
+      variants: {
+        [.disabled]: colors.disable(colors.card),
+      },
     ),
-  ),
-  contentTextStyle: FVariants.from(
-    textStyle.copyWith(color: colors.foreground),
-    variants: {
-      [.disabled]: .delta(color: colors.disable(colors.foreground)),
-    },
-  ),
-  hintTextStyle: FVariants.from(
-    textStyle.copyWith(color: colors.mutedForeground),
-    variants: {
-      [.disabled]: .delta(color: colors.disable(colors.mutedForeground)),
-    },
-  ),
-  counterTextStyle: FVariants.from(
-    textStyle.copyWith(color: colors.foreground),
-    variants: {
-      [.disabled]: .delta(color: colors.disable(colors.foreground)),
-    },
-  ),
-  border: FVariants(
-    OutlineInputBorder(
-      borderSide: BorderSide(color: Colors.pink, width: style.borderWidth),
-      borderRadius: style.borderRadius.md,
+    cursorColor: colors.primary,
+    constraints: constraints,
+    contentPadding: contentPadding,
+    iconStyle: iconStyle,
+    clearButtonStyle: buttonStyle,
+    obscureButtonStyle: buttonStyle.copyWith(
+      tappableStyle: const .delta(
+        motion: .delta(bounceTween: FTappableMotion.noBounceTween),
+      ),
     ),
-    variants: {
-      [.touch]:OutlineInputBorder(
-        borderSide: BorderSide(color: colors.primary, width: 10),
+    contentTextStyle: FVariants.from(
+      textStyle.copyWith(color: colors.foreground),
+      variants: {
+        [.disabled]: .delta(color: colors.disable(colors.foreground)),
+      },
+    ),
+    hintTextStyle: FVariants.from(
+      textStyle.copyWith(color: colors.mutedForeground),
+      variants: {
+        [.disabled]: .delta(color: colors.disable(colors.mutedForeground)),
+      },
+    ),
+    counterTextStyle: FVariants.from(
+      textStyle.copyWith(color: colors.foreground),
+      variants: {
+        [.disabled]: .delta(color: colors.disable(colors.foreground)),
+      },
+    ),
+    border: FVariants(
+      OutlineInputBorder(
+        borderSide: BorderSide(color: colors.border, width: style.borderWidth),
+        borderRadius: style.borderRadius.md,
       ),
-      [.focused]: OutlineInputBorder(
-        borderSide: BorderSide(color: colors.primary, width: 10),
-      ),
-      [.disabled]: OutlineInputBorder(
-        borderSide: BorderSide(
-          color: colors.disable(colors.border),
-          width: style.borderWidth,
+      variants: {
+        [.focused]: OutlineInputBorder(
+          borderSide: BorderSide(color: colors.primary, width: 3),
+          borderRadius: style.borderRadius.md
         ),
-        borderRadius: style.borderRadius.md,
-      ),
-      [.error]: OutlineInputBorder(
-        borderSide: BorderSide(color: colors.error, width: style.borderWidth),
-        borderRadius: style.borderRadius.md,
-      ),
-      [.error.and(.disabled)]: OutlineInputBorder(
-        borderSide: BorderSide(
-          color: colors.disable(colors.error),
-          width: style.borderWidth,
+        [.disabled]: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: colors.disable(colors.border),
+            width: style.borderWidth,
+          ),
+          borderRadius: style.borderRadius.md,
         ),
-        borderRadius: style.borderRadius.md,
-      ),
-    },
-  ),
-  labelTextStyle: style.formFieldStyle.labelTextStyle,
-  descriptionTextStyle: style.formFieldStyle.descriptionTextStyle,
-  errorTextStyle: style.formFieldStyle.errorTextStyle,
-  labelPadding: labelStyle.labelPadding,
-  descriptionPadding: labelStyle.descriptionPadding,
-  errorPadding: labelStyle.errorPadding,
-  childPadding: labelStyle.childPadding,
-  cursorWidth: 2,
-  clearButtonPadding: const .directional(end: 4),
-  obscureButtonPadding: const .directional(end: 4),
-  scrollPadding: const .all(20),
-  labelMotion: const FLabelMotion(),
-);
+        [.error]: OutlineInputBorder(
+          borderSide: BorderSide(color: colors.error, width: style.borderWidth),
+          borderRadius: style.borderRadius.md,
+        ),
+        [.error.and(.disabled)]: OutlineInputBorder(
+          borderSide: BorderSide(
+            color: colors.disable(colors.error),
+            width: style.borderWidth,
+          ),
+          borderRadius: style.borderRadius.md,
+        ),
+      },
+    ),
+    labelTextStyle: style.formFieldStyle.labelTextStyle,
+    descriptionTextStyle: style.formFieldStyle.descriptionTextStyle,
+    errorTextStyle: style.formFieldStyle.errorTextStyle,
+    labelPadding: labelStyle.labelPadding,
+    descriptionPadding: labelStyle.descriptionPadding,
+    errorPadding: labelStyle.errorPadding,
+    childPadding: labelStyle.childPadding,
+    cursorWidth: 2,
+    clearButtonPadding: const .directional(end: 4),
+    obscureButtonPadding: const .directional(end: 4),
+    scrollPadding: const .all(20),
+    labelMotion: const FLabelMotion(),
+  );
+}

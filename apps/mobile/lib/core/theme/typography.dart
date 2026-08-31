@@ -26,6 +26,13 @@ FTypography usTypography({
 /// * xl2  → Display/Large  32/38  Bold
 /// * xl   → Display/Medium 24/30  Bold
 /// * lg   → Heading/Large  20/26  Bold
+/// Archivo Narrow: condensed sans-serif for display titles & headings.
+///
+/// Design-system mapping (touch):
+/// * xl2  → Display/Large  32/38  Bold  +0.5px tracking
+/// * xl   → Display/Medium 24/30  Bold  +0.3px tracking
+/// * lg   → Heading/Large  20/26  Bold  0px tracking
+/// * md   → Heading/Small  18/24  Bold  0px tracking
 FTypeface _display({
   required FColors colors,
   required bool touch,
@@ -75,15 +82,17 @@ FTypeface _display({
         fontWeight: FontWeight.w400,
         leadingDistribution: .even,
       ),
+      // Heading/Small: 18/24 Bold
       md: TextStyle(
         color: color,
         fontFamily: fontFamily,
         fontFamilyFallback: fontFamilyFallback,
         fontSize: 18,
         height: 24 / 18,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w700,
         leadingDistribution: .even,
       ),
+      // Heading/Large: 20/26 Bold
       lg: TextStyle(
         color: color,
         fontFamily: fontFamily,
@@ -93,6 +102,7 @@ FTypeface _display({
         fontWeight: FontWeight.w700,
         leadingDistribution: .even,
       ),
+      // Display/Medium: 24/30 Bold +0.3px tracking
       xl: TextStyle(
         color: color,
         fontFamily: fontFamily,
@@ -100,8 +110,10 @@ FTypeface _display({
         fontSize: 24,
         height: 30 / 24,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.3,
         leadingDistribution: .even,
       ),
+      // Display/Large: 32/38 Bold +0.5px tracking
       xl2: TextStyle(
         color: color,
         fontFamily: fontFamily,
@@ -109,6 +121,7 @@ FTypeface _display({
         fontSize: 32,
         height: 38 / 32,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
         leadingDistribution: .even,
       ),
       xl3: TextStyle(
@@ -229,6 +242,7 @@ FTypeface _display({
         fontSize: 20,
         height: 1.75,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.3,
         leadingDistribution: .even,
       ),
       xl2: TextStyle(
@@ -238,6 +252,7 @@ FTypeface _display({
         fontSize: 22,
         height: 2,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
         leadingDistribution: .even,
       ),
       xl3: TextStyle(
@@ -605,25 +620,27 @@ class UsTypeface {
 
   String get _fontFamily => 'JetBrainsMono';
 
-  /// Label/Large  · JetBrains Mono Regular · 14/20
+  /// Label/Large  · JetBrains Mono Regular · 14/20 · +0.5px tracking
   TextStyle get lg => TextStyle(
         fontFamily: _fontFamily,
         fontSize: 14,
         height: 20 / 14,
         fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       );
 
-  /// Label/Medium · JetBrains Mono Regular · 12/18
+  /// Label/Medium · JetBrains Mono Regular · 12/18 · +0.5px tracking
   TextStyle get md => TextStyle(
         fontFamily: _fontFamily,
         fontSize: 12,
         height: 18 / 12,
         fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       );
 
-  /// Caption/Medium · JetBrains Mono Regular · 12/16
+  /// Caption/Medium · JetBrains Mono Regular · 12/16 · 0px tracking
   TextStyle get caption => TextStyle(
         fontFamily: _fontFamily,
         fontSize: 12,
@@ -632,12 +649,13 @@ class UsTypeface {
         leadingDistribution: TextLeadingDistribution.even,
       );
 
-  /// Label/Small · JetBrains Mono Regular · 10/14
+  /// Label/Small · JetBrains Mono Regular · 10/14 · +0.5px tracking
   TextStyle get sm => TextStyle(
         fontFamily: _fontFamily,
         fontSize: 10,
         height: 14 / 10,
         fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       );
 }
