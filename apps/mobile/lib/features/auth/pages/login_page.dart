@@ -144,8 +144,6 @@ class _LoginButton extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typography = context.theme.typography;
-
     final model = di<LoginViewModel>();
     final isBusy = model.isLoading.value;
 
