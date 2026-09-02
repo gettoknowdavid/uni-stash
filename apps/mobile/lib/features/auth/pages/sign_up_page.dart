@@ -10,13 +10,14 @@ import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
+import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 import 'package:uni_stash_mobile/theme/style.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
 import 'package:uni_stash_mobile/theme/us_typography.dart';
 
 class SignUpPage extends StatelessWidget {
-  const new({super.key});
+  const SignUpPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -27,63 +28,25 @@ class SignUpPage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            Container(
-              margin: const .fromLTRB(16, 0, 16, 0),
-              padding: const .fromLTRB(24, 24, 24, 24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceAccentSubtle,
-                borderRadius: .zero,
-                border: Border.all(
-                  color: theme.colorScheme.borderStrong,
-                  width: 2,
-                ),
-                boxShadow: UsElevation.brutalist,
-              ),
-              child: Column(
+            AuthPageShell(
+              footer: Row(
+                mainAxisAlignment: .center,
                 children: [
                   Text(
-                    'UNI·STASH',
-                    style: theme.textTheme.h1Large.copyWith(
-                      letterSpacing: -1.6,
-                    ),
+                    'Already have an account?',
+                    style: theme.textTheme.muted,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Campus Bulletin Board',
-                    style: TextStyle(
-                      fontFamily: UsFontFamily.mono,
-                      fontSize: 12,
-                      color: theme.colorScheme.primary,
-                      fontWeight: .bold,
-                      decoration: .underline,
-                      decorationColor: theme.colorScheme.primary,
-                      decorationThickness: 2,
-                      height: 1,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const _SignUpForm(),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: .center,
-                    children: [
-                      Text(
-                        'Already have an account?',
-                        style: theme.textTheme.muted,
-                      ),
-                      const SizedBox(width: 6),
-                      ShadButton.link(
-                        padding: .zero,
-                        foregroundColor: theme.colorScheme.textSecondary,
-                        textStyle: theme.textTheme.muted,
-                        child: const Text('LOG IN'),
-                        onPressed: () => context.pop(),
-                      ),
-                    ],
+                  const SizedBox(width: 6),
+                  ShadButton.link(
+                    padding: .zero,
+                    foregroundColor: theme.colorScheme.textSecondary,
+                    textStyle: theme.textTheme.muted,
+                    child: const Text('LOG IN'),
+                    onPressed: () => context.pop(),
                   ),
                 ],
               ),
+              child: const _SignUpForm(),
             ),
             const SizedBox(height: 24),
             Padding(
@@ -107,7 +70,7 @@ class SignUpPage extends StatelessWidget {
                     'CAMPUS VERIFICATION',
                     style: theme.textTheme.labelLg.copyWith(
                       color: UsPrimitives.sage500,
-                      fontWeight: .bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -130,7 +93,7 @@ class SignUpPage extends StatelessWidget {
 }
 
 class _SignUpForm extends SignalStatefulWidget {
-  const new();
+  const _SignUpForm();
 
   @override
   State<_SignUpForm> createState() => __SignUpFormState();
@@ -210,7 +173,7 @@ class __SignUpFormState extends State<_SignUpForm> {
 }
 
 class _DisplayNameField extends SignalWidget {
-  const new();
+  const _DisplayNameField();
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +220,7 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends StatefulWidget {
-  const new();
+  const _PasswordField();
 
   @override
   State<_PasswordField> createState() => __PasswordFieldState();

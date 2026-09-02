@@ -11,6 +11,7 @@ import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
+import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 
 class LoginPage extends SignalStatefulWidget {
@@ -77,38 +78,38 @@ class _LoginPageState extends State<LoginPage> {
     final theme = ShadTheme.of(context);
     return Scaffold(
       appBar: AppBar(),
-      body: Padding(
-        padding: const .fromLTRB(24, 0, 24, 0),
-        child: ShadForm(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: .min,
+      body: SingleChildScrollView(
+        child: AuthPageShell(
+          footer: Row(
+            mainAxisAlignment: .center,
             children: [
-              const _EmailField(),
-              const SizedBox(height: 24),
-              const _PasswordField(),
-              const SizedBox(height: 32),
-              const _LoginButton(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: .center,
-                children: [
-                  Text(
-                    'Already have an account?',
-                    style: theme.textTheme.muted,
-                  ),
-                  const SizedBox(width: 6),
-                  ShadButton.link(
-                    padding: .zero,
-                    textStyle: theme.textTheme.muted.copyWith(
-                      color: theme.colorScheme.secondary,
-                    ),
-                    child: const Text('Sign Up'),
-                    onPressed: () => context.push(UsRoutes.signup),
-                  ),
-                ],
+              Text(
+                'Already have an account?',
+                style: theme.textTheme.muted,
+              ),
+              const SizedBox(width: 6),
+              ShadButton.link(
+                padding: .zero,
+                textStyle: theme.textTheme.muted.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+                child: const Text('Sign Up'),
+                onPressed: () => context.push(UsRoutes.signup),
               ),
             ],
+          ),
+          child: ShadForm(
+            key: _formKey,
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _EmailField(),
+                SizedBox(height: 24),
+                _PasswordField(),
+                SizedBox(height: 32),
+                _LoginButton(),
+              ],
+            ),
           ),
         ),
       ),
@@ -145,11 +146,11 @@ class _PasswordField extends StatefulWidget {
   const _PasswordField();
 
   @override
-  State<_PasswordField> createState() => __PasswordFieldState();
+  State<_PasswordField> createState() => _PasswordFieldState();
 }
 
-class __PasswordFieldState extends State<_PasswordField> {
-  bool obscure = true;
+class _PasswordFieldState extends State<_PasswordField> {
+  bool _obscure = true;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +161,7 @@ class __PasswordFieldState extends State<_PasswordField> {
       label: const Text('PASSWORD'),
       enabled: !model.isLoading.value,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      obscureText: true,
+      obscureText: _obscure,
       onSaved: model.setPassword,
       trailing: SizedBox.square(
         dimension: 24,
@@ -170,9 +171,9 @@ class __PasswordFieldState extends State<_PasswordField> {
           child: ShadIconButton.ghost(
             iconSize: 20,
             padding: const .all(2),
-            icon: Icon(obscure ? LucideIcons.eyeOff : LucideIcons.eye),
+            icon: Icon(_obscure ? LucideIcons.eyeOff : LucideIcons.eye),
             onPressed: () {
-              setState(() => obscure = !obscure);
+              setState(() => _obscure = !_obscure);
             },
           ),
         ),
@@ -203,8 +204,7 @@ class _LoginButton extends SignalWidget {
   }
 
   Future<void> _handleLogin(BuildContext context) async {
-    if (!Form.of(context).validate()) return;
-    Form.of(context).save();
+    if (!ShadForm.of(context).saveAndValidate()) return;
     di<LoginViewModel>().submit();
   }
 }
