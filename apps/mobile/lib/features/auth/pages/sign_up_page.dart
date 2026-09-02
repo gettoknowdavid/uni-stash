@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
-import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -9,48 +8,47 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
-import 'package:uni_stash_mobile/router/us_routes.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 
-class LoginPage extends SignalStatefulWidget {
-  const LoginPage({super.key});
+class SignUpPage extends SignalStatefulWidget {
+  const new({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<ShadFormState>();
 
-  EffectCleanup? _onLogin;
+  EffectCleanup? _onSignUp;
   EffectCleanup? _onError;
 
   @override
   void initState() {
     super.initState();
     di.pushNewScope(
-      scopeName: 'login',
+      scopeName: 'signup',
       init: (getIt) => getIt.registerLazySingleton(
-        () => LoginViewModel(getIt<IAuthRepository>()),
+        () => SignUpViewModel(getIt<IAuthRepository>()),
       ),
     );
 
-    _onLogin = effect(() {
-      final response = di<LoginViewModel>().result.value;
+    _onSignUp = effect(() {
+      final response = di<SignUpViewModel>().result.value;
       if (response == null) return;
       final credentials = UserCredentials(
         user: response.user,
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-        expiresIn: response.expiresIn,
+        accessToken: response.accessToken ?? '',
+        refreshToken: response.refreshToken ?? '',
+        expiresIn: response.expiresIn ?? 0,
       );
       di<AuthViewModel>().authenticate(credentials);
-      di<LoginViewModel>().reset();
+      di<SignUpViewModel>().reset();
     });
 
     _onError = effect(() {
-      final error = di<LoginViewModel>().error.value;
+      final error = di<SignUpViewModel>().error.value;
       if (error == null) return;
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -66,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _onLogin?.call();
+    _onSignUp?.call();
     _onError?.call();
     unawaited(di.popScope());
     super.dispose();
@@ -74,44 +72,49 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
     return Scaffold(
       appBar: AppBar(),
       body: Padding(
         padding: const .fromLTRB(24, 0, 24, 0),
         child: ShadForm(
           key: _formKey,
-          child: Column(
+          child: const Column(
             mainAxisSize: .min,
             children: [
-              const _EmailField(),
-              const SizedBox(height: 24),
-              const _PasswordField(),
-              const SizedBox(height: 32),
-              const _LoginButton(),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: .center,
-                children: [
-                  Text(
-                    'Already have an account?',
-                    style: theme.textTheme.muted,
-                  ),
-                  const SizedBox(width: 6),
-                  ShadButton.link(
-                    padding: .zero,
-                    textStyle: theme.textTheme.muted.copyWith(
-                      color: theme.colorScheme.secondary,
-                    ),
-                    child: const Text('Sign Up'),
-                    onPressed: () => context.push(UsRoutes.signup),
-                  ),
-                ],
-              ),
+              SizedBox(height: 16),
+              _DisplayNameField(),
+              SizedBox(height: 24),
+              _EmailField(),
+              SizedBox(height: 24),
+              _PasswordField(),
+              SizedBox(height: 32),
+              _SignUpButton(),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DisplayNameField extends SignalWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context) {
+    final model = di<SignUpViewModel>();
+
+    return ShadInputFormField(
+      id: 'displayName',
+      label: const Text('DISPLAY NAME'),
+      enabled: !model.isLoading.value,
+      placeholder: const Text('John Doe'),
+      autovalidateMode: .onUserInteraction,
+      onSaved: model.setDisplayName,
+      validator: (value) {
+        if (value.trim().isEmpty) return 'Please enter your name';
+        return null;
+      },
     );
   }
 }
@@ -121,7 +124,7 @@ class _EmailField extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = di<LoginViewModel>();
+    final model = di<SignUpViewModel>();
 
     return ShadInputFormField(
       id: 'email',
@@ -142,7 +145,7 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends StatefulWidget {
-  const _PasswordField();
+  const new();
 
   @override
   State<_PasswordField> createState() => __PasswordFieldState();
@@ -153,14 +156,14 @@ class __PasswordFieldState extends State<_PasswordField> {
 
   @override
   Widget build(BuildContext context) {
-    final model = di<LoginViewModel>();
+    final model = di<SignUpViewModel>();
 
     return ShadInputFormField(
       id: 'password',
       label: const Text('PASSWORD'),
       enabled: !model.isLoading.value,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      obscureText: true,
+      obscureText: obscure,
       onSaved: model.setPassword,
       trailing: SizedBox.square(
         dimension: 24,
@@ -179,32 +182,32 @@ class __PasswordFieldState extends State<_PasswordField> {
       ),
       validator: (value) {
         if (value.isEmpty) return 'Please enter your password.';
+        if (value.length < 8) return 'Password must be at least 8 characters.';
         return null;
       },
     );
   }
 }
 
-class _LoginButton extends SignalWidget {
-  const _LoginButton();
+class _SignUpButton extends SignalWidget {
+  const _SignUpButton();
 
   @override
   Widget build(BuildContext context) {
-    final model = di<LoginViewModel>();
+    final model = di<SignUpViewModel>();
     final isBusy = model.isLoading.value;
 
     return SizedBox(
       width: double.infinity,
       child: ShadButton(
-        onPressed: isBusy ? null : () => _handleLogin(context),
-        child: isBusy ? const ShadSpinner() : const Text('LOG IN'),
+        onPressed: isBusy ? null : () => _handleSignUp(context),
+        child: isBusy ? const ShadSpinner() : const Text('SIGN UP'),
       ),
     );
   }
 
-  Future<void> _handleLogin(BuildContext context) async {
-    if (!Form.of(context).validate()) return;
-    Form.of(context).save();
-    di<LoginViewModel>().submit();
+  Future<void> _handleSignUp(BuildContext context) async {
+    if (!ShadForm.of(context).saveAndValidate()) return;
+    di<SignUpViewModel>().submit();
   }
 }

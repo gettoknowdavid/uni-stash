@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
+import 'package:uni_stash_mobile/features/auth/pages/sign_up_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
 import 'package:uni_stash_mobile/router/_router.dart';
@@ -18,10 +19,10 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       path: UsRoutes.login,
       builder: (context, state) => const LoginPage(),
-      onExit: (context, state) async {
-        await di.popScope();
-        return true;
-      },
+    ),
+    GoRoute(
+      path: UsRoutes.signup,
+      builder: (context, state) => const SignUpPage(),
     ),
     GoRoute(
       path: UsRoutes.home,
