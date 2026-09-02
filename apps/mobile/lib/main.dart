@@ -25,7 +25,12 @@ class UniStashApp extends StatelessWidget {
       theme: usLightTheme,
       appBuilder: (context) {
         final theme = Theme.of(context).copyWith(
-          appBarTheme: const AppBarTheme(leadingWidth: 72),
+          appBarTheme: AppBarTheme(
+            leadingWidth: 72,
+            scrolledUnderElevation: 0,
+            elevation: 0,
+            backgroundColor: ShadTheme.of(context).colorScheme.background,
+          ),
           actionIconTheme: ActionIconThemeData(
             backButtonIconBuilder: (_) => const UsBackButton(),
           ),

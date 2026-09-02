@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -10,15 +11,132 @@ import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
+import 'package:uni_stash_mobile/theme/style.dart';
+import 'package:uni_stash_mobile/theme/us_colors.dart';
+import 'package:uni_stash_mobile/theme/us_typography.dart';
 
-class SignUpPage extends SignalStatefulWidget {
+class SignUpPage extends StatelessWidget {
   const new({super.key});
 
   @override
-  State<SignUpPage> createState() => _SignUpPageState();
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Scaffold(
+      appBar: AppBar(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            Container(
+              margin: const .fromLTRB(16, 0, 16, 0),
+              padding: const .fromLTRB(24, 24, 24, 24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceAccentSubtle,
+                borderRadius: .zero,
+                border: Border.all(
+                  color: theme.colorScheme.borderStrong,
+                  width: 2,
+                ),
+                boxShadow: UsElevation.brutalist,
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'UNI·STASH',
+                    style: theme.textTheme.h1Large.copyWith(
+                      letterSpacing: -1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Campus Bulletin Board',
+                    style: TextStyle(
+                      fontFamily: UsFontFamily.mono,
+                      fontSize: 12,
+                      color: theme.colorScheme.primary,
+                      fontWeight: .bold,
+                      decoration: .underline,
+                      decorationColor: theme.colorScheme.primary,
+                      decorationThickness: 2,
+                      height: 1,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const _SignUpForm(),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: .center,
+                    children: [
+                      Text(
+                        'Already have an account?',
+                        style: theme.textTheme.muted,
+                      ),
+                      const SizedBox(width: 6),
+                      ShadButton.link(
+                        padding: .zero,
+                        foregroundColor: theme.colorScheme.textSecondary,
+                        textStyle: theme.textTheme.muted,
+                        child: const Text('LOG IN'),
+                        onPressed: () => context.pop(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const .symmetric(horizontal: 16),
+              child: ShadCard(
+                padding: const .all(14),
+                radius: const .all(.circular(UsRadius.lg)),
+                border: ShadBorder.all(
+                  color: theme.colorScheme.borderStrong,
+                  radius: const .all(.circular(UsRadius.lg)),
+                  width: 2,
+                ),
+                backgroundColor: theme.colorScheme.statusSuccessBg,
+                leading: const Icon(
+                  LucideIcons.shieldAlert,
+                  color: UsPrimitives.sage500,
+                ),
+                title: Padding(
+                  padding: const .only(left: 12),
+                  child: Text(
+                    'CAMPUS VERIFICATION',
+                    style: theme.textTheme.labelLg.copyWith(
+                      color: UsPrimitives.sage500,
+                      fontWeight: .bold,
+                    ),
+                  ),
+                ),
+                description: Padding(
+                  padding: const .only(left: 12),
+                  child: Text(
+                    '''We verify all new members against active recognized schooldomain lists (.edu, .edu.ng, etc.) to ensure a safe, closed community.''',
+                    style: theme.textTheme.small.copyWith(
+                      color: UsPrimitives.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpForm extends SignalStatefulWidget {
+  const new();
+
+  @override
+  State<_SignUpForm> createState() => __SignUpFormState();
+}
+
+class __SignUpFormState extends State<_SignUpForm> {
   final _formKey = GlobalKey<ShadFormState>();
 
   EffectCleanup? _onSignUp;
@@ -72,26 +190,20 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: Padding(
-        padding: const .fromLTRB(24, 0, 24, 0),
-        child: ShadForm(
-          key: _formKey,
-          child: const Column(
-            mainAxisSize: .min,
-            children: [
-              SizedBox(height: 16),
-              _DisplayNameField(),
-              SizedBox(height: 24),
-              _EmailField(),
-              SizedBox(height: 24),
-              _PasswordField(),
-              SizedBox(height: 32),
-              _SignUpButton(),
-            ],
-          ),
-        ),
+    return ShadForm(
+      key: _formKey,
+      child: const Column(
+        mainAxisSize: .min,
+        children: [
+          SizedBox(height: 16),
+          _DisplayNameField(),
+          SizedBox(height: 24),
+          _EmailField(),
+          SizedBox(height: 24),
+          _PasswordField(),
+          SizedBox(height: 40),
+          _SignUpButton(),
+        ],
       ),
     );
   }
@@ -161,6 +273,7 @@ class __PasswordFieldState extends State<_PasswordField> {
     return ShadInputFormField(
       id: 'password',
       label: const Text('PASSWORD'),
+      placeholder: const Text('•••••••••••'),
       enabled: !model.isLoading.value,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       obscureText: obscure,
