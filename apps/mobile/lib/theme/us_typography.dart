@@ -164,7 +164,6 @@ ShadTextTheme usTextTheme() {
         fontSize: 14,
         height: 20 / 14,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       ),
       'labelMd': TextStyle(
@@ -172,7 +171,6 @@ ShadTextTheme usTextTheme() {
         fontSize: 12,
         height: 18 / 12,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       ),
       'labelSm': TextStyle(
@@ -180,7 +178,6 @@ ShadTextTheme usTextTheme() {
         fontSize: 10,
         height: 14 / 10,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.5,
         leadingDistribution: TextLeadingDistribution.even,
       ),
       'captionMd': TextStyle(

@@ -37,6 +37,7 @@ abstract final class UsPrimitives {
   static const Color blue500 = Color(0xFF2563EB);
 
   static const Color transparent = Color(0x00000000);
+  static const Color textMuted = Color(0xFF121F0B);
 }
 
 /// UniStash light color scheme mapped to Shadcn's color roles.
