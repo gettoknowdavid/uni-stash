@@ -14,13 +14,11 @@ import 'package:uni_stash_mobile/theme/us_typography.dart';
 /// )
 /// ```
 ShadThemeData get usLightTheme {
-  const foreground = UsPrimitives.neutral900;
-
   // ── Color scheme ─────────────────────────────────────────────────────────
   final colorScheme = UniStashColorScheme.light();
 
   // ── Typography ───────────────────────────────────────────────────────────
-  final textTheme = usTextTheme(foreground: foreground);
+  final textTheme = usTextTheme();
 
   // ── Global border radius: sm (4px) ──────────────────────────────────────
   const effectiveRadius = BorderRadius.zero;
@@ -146,6 +144,10 @@ ShadThemeData get usLightTheme {
     cursorColor: UsPrimitives.orange500,
     cursorWidth: 2,
     decoration: ShadDecoration(
+      labelStyle: textTheme.custom['labelMd'],
+      errorLabelStyle: textTheme.custom['labelMd']?.copyWith(
+        color: colorScheme.destructive,
+      ),
       border: ShadBorder.all(
         width: 2,
         color: UsPrimitives.neutral400,
