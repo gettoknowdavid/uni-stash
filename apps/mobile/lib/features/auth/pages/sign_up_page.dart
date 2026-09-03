@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -35,8 +33,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<ShadFormState>();
 
   late final SignUpViewModel _model;
-  EffectCleanup? _onSignUp;
-  EffectCleanup? _onError;
 
   bool get _ownsModel => widget._viewModel == null;
 
@@ -44,39 +40,10 @@ class _SignUpPageState extends State<SignUpPage> {
   void initState() {
     super.initState();
     _model = widget._viewModel ?? SignUpViewModel(di<IAuthRepository>());
-
-    _onSignUp = effect(() {
-      final response = _model.result.value;
-      if (response == null) return;
-      final credentials = UserCredentials(
-        user: response.user,
-        accessToken: response.accessToken ?? '',
-        refreshToken: response.refreshToken ?? '',
-        expiresIn: response.expiresIn ?? 0,
-      );
-      di<AuthViewModel>().authenticate(credentials);
-      _model.reset();
-    });
-
-    _onError = effect(() {
-      final error = _model.error.value;
-      if (error == null) return;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ShadToaster.of(context).show(
-          ShadToast.destructive(
-            title: const Text('Authentication Error'),
-            description: Text(error),
-          ),
-        );
-      });
-    });
   }
 
   @override
   void dispose() {
-    _onSignUp?.call();
-    _onError?.call();
     if (_ownsModel) _model.dispose();
     super.dispose();
   }
@@ -84,90 +51,124 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return Scaffold(
-      appBar: AppBar(),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            AuthPageShell(
-              footer: Row(
-                mainAxisAlignment: .center,
-                children: [
-                  Text(
-                    'Already have an account?',
-                    style: theme.textTheme.muted,
-                  ),
-                  const SizedBox(width: 6),
-                  ShadButton.link(
-                    padding: .zero,
-                    foregroundColor: theme.colorScheme.textSecondary,
-                    textStyle: theme.textTheme.muted,
-                    child: const Text('LOG IN'),
-                    onPressed: () => context.pop(),
-                  ),
-                ],
+
+    // SignalEffect scopes the reactive side effects to this widget's
+    // lifecycle — no manual effect()/cleanup bookkeeping, and the context it
+    // hands us dies with the widget. Navigation after a successful sign-up is
+    // driven by the router reacting to AuthViewModel.status, not here.
+    return SignalEffect(
+      effect: (context) {
+        final response = _model.result.value;
+        if (response != null) {
+          di<AuthViewModel>().authenticate(
+            UserCredentials(
+              user: response.user,
+              accessToken: response.accessToken ?? '',
+              refreshToken: response.refreshToken ?? '',
+              expiresIn: response.expiresIn ?? 0,
+            ),
+          );
+          _model.reset();
+        }
+
+        final error = _model.error.value;
+        if (error != null) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            ShadToaster.of(context).show(
+              ShadToast.destructive(
+                title: const Text('Authentication Error'),
+                description: Text(error),
               ),
-              child: ShadForm(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+            );
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              AuthPageShell(
+                footer: Row(
+                  mainAxisAlignment: .center,
                   children: [
-                    const SizedBox(height: 16),
-                    _DisplayNameField(model: _model),
-                    const SizedBox(height: 24),
-                    _EmailField(model: _model),
-                    const SizedBox(height: 24),
-                    _PasswordField(model: _model),
-                    const SizedBox(height: 40),
-                    _SignUpButton(
-                      model: _model,
-                      formKey: _formKey,
+                    Text(
+                      'Already have an account?',
+                      style: theme.textTheme.muted,
+                    ),
+                    const SizedBox(width: 6),
+                    ShadButton.link(
+                      padding: .zero,
+                      foregroundColor: theme.colorScheme.textSecondary,
+                      textStyle: theme.textTheme.muted,
+                      child: const Text('LOG IN'),
+                      onPressed: () => context.pop(),
                     ),
                   ],
                 ),
+                child: ShadForm(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 16),
+                      _DisplayNameField(model: _model),
+                      const SizedBox(height: 24),
+                      _EmailField(model: _model),
+                      const SizedBox(height: 24),
+                      _PasswordField(model: _model),
+                      const SizedBox(height: 40),
+                      _SignUpButton(
+                        model: _model,
+                        formKey: _formKey,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const .symmetric(horizontal: 16),
-              child: ShadCard(
-                padding: const .all(14),
-                radius: const .all(.circular(UsRadius.lg)),
-                border: ShadBorder.all(
-                  color: theme.colorScheme.borderStrong,
+              const SizedBox(height: 24),
+              Padding(
+                padding: const .symmetric(horizontal: 16),
+                child: ShadCard(
+                  padding: const .all(14),
                   radius: const .all(.circular(UsRadius.lg)),
-                  width: 2,
-                ),
-                backgroundColor: theme.colorScheme.statusSuccessBg,
-                leading: const Icon(
-                  LucideIcons.shieldAlert,
-                  color: UsPrimitives.sage500,
-                ),
-                title: Padding(
-                  padding: const .only(left: 12),
-                  child: Text(
-                    'CAMPUS VERIFICATION',
-                    style: theme.textTheme.labelLg.copyWith(
-                      color: UsPrimitives.sage500,
-                      fontWeight: FontWeight.bold,
+                  border: ShadBorder.all(
+                    color: theme.colorScheme.borderStrong,
+                    radius: const .all(.circular(UsRadius.lg)),
+                    width: 2,
+                  ),
+                  backgroundColor: theme.colorScheme.statusSuccessBg,
+                  leading: const Icon(
+                    LucideIcons.shieldAlert,
+                    color: UsPrimitives.sage500,
+                  ),
+                  title: Padding(
+                    padding: const .only(left: 12),
+                    child: Text(
+                      'CAMPUS VERIFICATION',
+                      style: theme.textTheme.labelLg.copyWith(
+                        color: UsPrimitives.sage500,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                description: Padding(
-                  padding: const .only(left: 12),
-                  child: Text(
-                    'We verify all new members against active recognized '
-                    'school domain lists (.edu, .edu.ng, etc.) to ensure '
-                    'a safe, closed community.',
-                    style: theme.textTheme.small.copyWith(
-                      color: UsPrimitives.textMuted,
+                  description: Padding(
+                    padding: const .only(left: 12),
+                    child: Text(
+                      'We verify all new members against active recognized '
+                      'school domain lists (.edu, .edu.ng, etc.) to ensure '
+                      'a safe, closed community.',
+                      style: theme.textTheme.small.copyWith(
+                        color: UsPrimitives.textMuted,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
