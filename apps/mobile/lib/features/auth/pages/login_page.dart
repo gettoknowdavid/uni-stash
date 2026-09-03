@@ -8,8 +8,7 @@ import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
-import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
-import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
+import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({LoginViewModel? viewModel, super.key})
@@ -71,29 +70,43 @@ class _LoginPageState extends State<LoginPage> {
       child: Scaffold(
         appBar: AppBar(),
         body: SingleChildScrollView(
-          child: AuthPageShell(
-            body: ShadForm(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _EmailField(model: _model),
-                  const SizedBox(height: 24),
-                  _PasswordField(model: _model),
-                  const SizedBox(height: 32),
-                  _LoginButton(
-                    model: _model,
-                    formKey: _formKey,
+          child: Column(
+            children: [
+              AuthPageShell(
+                body: ShadForm(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _EmailField(model: _model),
+                      const SizedBox(height: 24),
+                      _PasswordField(model: _model),
+                      const SizedBox(height: 32),
+                      _LoginButton(
+                        model: _model,
+                        formKey: _formKey,
+                      ),
+                    ],
                   ),
-                ],
+                ),
+                footer: ShadButton.outline(
+                  width: double.infinity,
+                  child: const Text('SIGN UP'),
+                  onPressed: () => context.push(UsRoutes.signup),
+                ),
+                bodyFooterSpacing: 12,
               ),
-            ),
-            footer: ShadButton.outline(
-              width: double.infinity,
-              child: const Text('SIGN UP'),
-              onPressed: () => context.push(UsRoutes.signup),
-            ),
-            bodyFooterSpacing: 12,
+              const SizedBox(height: 24),
+              const GreenNoticeCard(
+                title: 'RESTRICTED ACCESS',
+                description:
+                    'UniStash is a closed ecosystem. We '
+                    'actively verify all accounts against '
+                    'recognized school email domains '
+                    '(.edu, .ac.ng, etc.) to ensure a '
+                    'trusted campus environment.',
+              ),
+            ],
           ),
         ),
       ),
