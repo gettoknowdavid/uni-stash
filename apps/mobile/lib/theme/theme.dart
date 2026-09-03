@@ -133,9 +133,9 @@ ShadThemeData get usLightTheme {
   // ── Link button theme ───────────────────────────────────────────────────
   final linkButtonTheme = ShadButtonTheme(
     backgroundColor: colorScheme.transparent,
-    foregroundColor: UsPrimitives.blue500,
-    hoverForegroundColor: UsPrimitives.blue500,
-    pressedForegroundColor: UsPrimitives.blue500,
+    foregroundColor: UsPrimitives.brown500,
+    hoverForegroundColor: UsPrimitives.brown500,
+    pressedForegroundColor: UsPrimitives.brown500,
     decoration: ShadDecoration(
       border: ShadBorder.all(
         width: 0,

@@ -9,6 +9,7 @@ import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart'
 import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
+import 'package:uni_stash_mobile/theme/_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({LoginViewModel? viewModel, super.key})
@@ -81,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
                       _EmailField(model: _model),
                       const SizedBox(height: 24),
                       _PasswordField(model: _model),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
                       _LoginButton(
                         model: _model,
                         formKey: _formKey,
@@ -151,32 +152,49 @@ class _PasswordFieldState extends State<_PasswordField> {
 
   @override
   Widget build(BuildContext context) {
-    return ShadInputFormField(
-      id: 'password',
-      label: const Text('PASSWORD'),
-      enabled: !widget.model.isLoading.value,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
-      obscureText: _obscure,
-      onSaved: widget.model.setPassword,
-      trailing: SizedBox.square(
-        dimension: 24,
-        child: OverflowBox(
-          maxWidth: 28,
-          maxHeight: 28,
-          child: ShadIconButton.ghost(
-            iconSize: 20,
-            padding: const .all(2),
-            icon: Icon(_obscure ? LucideIcons.eyeOff : LucideIcons.eye),
-            onPressed: () {
-              setState(() => _obscure = !_obscure);
-            },
+    final theme = ShadTheme.of(context);
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        ShadInputFormField(
+          id: 'password',
+          label: const Text('PASSWORD'),
+          placeholder: const Text('•••••••••••'),
+          enabled: !widget.model.isLoading.value,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          obscureText: _obscure,
+          onSaved: widget.model.setPassword,
+          trailing: SizedBox.square(
+            dimension: 24,
+            child: OverflowBox(
+              maxWidth: 28,
+              maxHeight: 28,
+              child: ShadIconButton.ghost(
+                iconSize: 20,
+                padding: const .all(2),
+                icon: Icon(_obscure ? LucideIcons.eyeOff : LucideIcons.eye),
+                onPressed: () {
+                  setState(() => _obscure = !_obscure);
+                },
+              ),
+            ),
+          ),
+          validator: (value) {
+            if (value.isEmpty) return 'Please enter your password.';
+            return null;
+          },
+        ),
+        Align(
+          alignment: .centerRight,
+          child: ShadButton.link(
+            size: .sm,
+            textStyle: theme.textTheme.captionMd,
+            padding: .zero,
+            onPressed: () => context.push(UsRoutes.forgotPw),
+            child: const Text('Forgot Password?'),
           ),
         ),
-      ),
-      validator: (value) {
-        if (value.isEmpty) return 'Please enter your password.';
-        return null;
-      },
+      ],
     );
   }
 }
