@@ -14,15 +14,10 @@ import 'package:uni_stash_mobile/theme/style.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
 import 'package:uni_stash_mobile/theme/us_typography.dart';
 
-/// Sign-up page.
-///
-/// Accepts an optional [SignUpViewModel] for testing. When omitted the
-/// ViewModel is created from the DI container and owned by this widget.
 class SignUpPage extends StatefulWidget {
   const SignUpPage({SignUpViewModel? viewModel, super.key})
     : _viewModel = viewModel;
 
-  /// Injected ViewModel — only set in tests.
   final SignUpViewModel? _viewModel;
 
   @override
@@ -34,6 +29,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   late final SignUpViewModel _model;
 
+  /// Whether this widget owns the ViewModel (and should dispose it).
   bool get _ownsModel => widget._viewModel == null;
 
   @override
@@ -52,10 +48,6 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
-    // SignalEffect scopes the reactive side effects to this widget's
-    // lifecycle — no manual effect()/cleanup bookkeeping, and the context it
-    // hands us dies with the widget. Navigation after a successful sign-up is
-    // driven by the router reacting to AuthViewModel.status, not here.
     return SignalEffect(
       effect: (context) {
         final response = _model.result.value;
@@ -175,10 +167,6 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-widgets — receive the ViewModel via constructor, no DI look-ups.
-// ---------------------------------------------------------------------------
-
 class _DisplayNameField extends SignalWidget {
   const _DisplayNameField({required this.model});
   final SignUpViewModel model;
@@ -224,7 +212,7 @@ class _EmailField extends SignalWidget {
   }
 }
 
-class _PasswordField extends StatefulWidget {
+class _PasswordField extends SignalStatefulWidget {
   const _PasswordField({required this.model});
   final SignUpViewModel model;
 
