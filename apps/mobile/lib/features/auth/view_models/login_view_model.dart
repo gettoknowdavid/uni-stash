@@ -50,6 +50,7 @@ class LoginViewModel implements Disposable {
     password.dispose();
     isLoading.dispose();
     error.dispose();
+    result.dispose();
   }
 
   @override

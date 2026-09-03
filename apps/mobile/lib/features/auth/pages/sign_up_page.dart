@@ -16,8 +16,70 @@ import 'package:uni_stash_mobile/theme/style.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
 import 'package:uni_stash_mobile/theme/us_typography.dart';
 
-class SignUpPage extends StatelessWidget {
-  const SignUpPage({super.key});
+/// Sign-up page.
+///
+/// Accepts an optional [SignUpViewModel] for testing. When omitted the
+/// ViewModel is created from the DI container and owned by this widget.
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({SignUpViewModel? viewModel, super.key})
+    : _viewModel = viewModel;
+
+  /// Injected ViewModel — only set in tests.
+  final SignUpViewModel? _viewModel;
+
+  @override
+  State<SignUpPage> createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends State<SignUpPage> {
+  final _formKey = GlobalKey<ShadFormState>();
+
+  late final SignUpViewModel _model;
+  EffectCleanup? _onSignUp;
+  EffectCleanup? _onError;
+
+  bool get _ownsModel => widget._viewModel == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _model = widget._viewModel ?? SignUpViewModel(di<IAuthRepository>());
+
+    _onSignUp = effect(() {
+      final response = _model.result.value;
+      if (response == null) return;
+      final credentials = UserCredentials(
+        user: response.user,
+        accessToken: response.accessToken ?? '',
+        refreshToken: response.refreshToken ?? '',
+        expiresIn: response.expiresIn ?? 0,
+      );
+      di<AuthViewModel>().authenticate(credentials);
+      _model.reset();
+    });
+
+    _onError = effect(() {
+      final error = _model.error.value;
+      if (error == null) return;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ShadToaster.of(context).show(
+          ShadToast.destructive(
+            title: const Text('Authentication Error'),
+            description: Text(error),
+          ),
+        );
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _onSignUp?.call();
+    _onError?.call();
+    if (_ownsModel) _model.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +108,25 @@ class SignUpPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const _SignUpForm(),
+              child: ShadForm(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 16),
+                    _DisplayNameField(model: _model),
+                    const SizedBox(height: 24),
+                    _EmailField(model: _model),
+                    const SizedBox(height: 24),
+                    _PasswordField(model: _model),
+                    const SizedBox(height: 40),
+                    _SignUpButton(
+                      model: _model,
+                      formKey: _formKey,
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Padding(
@@ -77,7 +157,9 @@ class SignUpPage extends StatelessWidget {
                 description: Padding(
                   padding: const .only(left: 12),
                   child: Text(
-                    '''We verify all new members against active recognized schooldomain lists (.edu, .edu.ng, etc.) to ensure a safe, closed community.''',
+                    'We verify all new members against active recognized '
+                    'school domain lists (.edu, .edu.ng, etc.) to ensure '
+                    'a safe, closed community.',
                     style: theme.textTheme.small.copyWith(
                       color: UsPrimitives.textMuted,
                     ),
@@ -92,93 +174,16 @@ class SignUpPage extends StatelessWidget {
   }
 }
 
-class _SignUpForm extends SignalStatefulWidget {
-  const _SignUpForm();
-
-  @override
-  State<_SignUpForm> createState() => __SignUpFormState();
-}
-
-class __SignUpFormState extends State<_SignUpForm> {
-  final _formKey = GlobalKey<ShadFormState>();
-
-  EffectCleanup? _onSignUp;
-  EffectCleanup? _onError;
-
-  @override
-  void initState() {
-    super.initState();
-    di.pushNewScope(
-      scopeName: 'signup',
-      init: (getIt) => getIt.registerLazySingleton(
-        () => SignUpViewModel(getIt<IAuthRepository>()),
-      ),
-    );
-
-    _onSignUp = effect(() {
-      final response = di<SignUpViewModel>().result.value;
-      if (response == null) return;
-      final credentials = UserCredentials(
-        user: response.user,
-        accessToken: response.accessToken ?? '',
-        refreshToken: response.refreshToken ?? '',
-        expiresIn: response.expiresIn ?? 0,
-      );
-      di<AuthViewModel>().authenticate(credentials);
-      di<SignUpViewModel>().reset();
-    });
-
-    _onError = effect(() {
-      final error = di<SignUpViewModel>().error.value;
-      if (error == null) return;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ShadToaster.of(context).show(
-          ShadToast.destructive(
-            title: const Text('Authentication Error'),
-            description: Text(error),
-          ),
-        );
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _onSignUp?.call();
-    _onError?.call();
-    unawaited(di.popScope());
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ShadForm(
-      key: _formKey,
-      child: const Column(
-        mainAxisSize: .min,
-        children: [
-          SizedBox(height: 16),
-          _DisplayNameField(),
-          SizedBox(height: 24),
-          _EmailField(),
-          SizedBox(height: 24),
-          _PasswordField(),
-          SizedBox(height: 40),
-          _SignUpButton(),
-        ],
-      ),
-    );
-  }
-}
+// ---------------------------------------------------------------------------
+// Sub-widgets — receive the ViewModel via constructor, no DI look-ups.
+// ---------------------------------------------------------------------------
 
 class _DisplayNameField extends SignalWidget {
-  const _DisplayNameField();
+  const _DisplayNameField({required this.model});
+  final SignUpViewModel model;
 
   @override
   Widget build(BuildContext context) {
-    final model = di<SignUpViewModel>();
-
     return ShadInputFormField(
       id: 'displayName',
       label: const Text('DISPLAY NAME'),
@@ -195,12 +200,11 @@ class _DisplayNameField extends SignalWidget {
 }
 
 class _EmailField extends SignalWidget {
-  const _EmailField();
+  const _EmailField({required this.model});
+  final SignUpViewModel model;
 
   @override
   Widget build(BuildContext context) {
-    final model = di<SignUpViewModel>();
-
     return ShadInputFormField(
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
@@ -220,27 +224,26 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends StatefulWidget {
-  const _PasswordField();
+  const _PasswordField({required this.model});
+  final SignUpViewModel model;
 
   @override
-  State<_PasswordField> createState() => __PasswordFieldState();
+  State<_PasswordField> createState() => _PasswordFieldState();
 }
 
-class __PasswordFieldState extends State<_PasswordField> {
-  bool obscure = true;
+class _PasswordFieldState extends State<_PasswordField> {
+  bool _obscure = true;
 
   @override
   Widget build(BuildContext context) {
-    final model = di<SignUpViewModel>();
-
     return ShadInputFormField(
       id: 'password',
       label: const Text('PASSWORD'),
       placeholder: const Text('•••••••••••'),
-      enabled: !model.isLoading.value,
+      enabled: !widget.model.isLoading.value,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      obscureText: obscure,
-      onSaved: model.setPassword,
+      obscureText: _obscure,
+      onSaved: widget.model.setPassword,
       trailing: SizedBox.square(
         dimension: 24,
         child: OverflowBox(
@@ -249,16 +252,18 @@ class __PasswordFieldState extends State<_PasswordField> {
           child: ShadIconButton.ghost(
             iconSize: 20,
             padding: const .all(2),
-            icon: Icon(obscure ? LucideIcons.eyeOff : LucideIcons.eye),
+            icon: Icon(_obscure ? LucideIcons.eyeOff : LucideIcons.eye),
             onPressed: () {
-              setState(() => obscure = !obscure);
+              setState(() => _obscure = !_obscure);
             },
           ),
         ),
       ),
       validator: (value) {
         if (value.isEmpty) return 'Please enter your password.';
-        if (value.length < 8) return 'Password must be at least 8 characters.';
+        if (value.length < 8) {
+          return 'Password must be at least 8 characters.';
+        }
         return null;
       },
     );
@@ -266,11 +271,12 @@ class __PasswordFieldState extends State<_PasswordField> {
 }
 
 class _SignUpButton extends SignalWidget {
-  const _SignUpButton();
+  const _SignUpButton({required this.model, required this.formKey});
+  final SignUpViewModel model;
+  final GlobalKey<ShadFormState> formKey;
 
   @override
   Widget build(BuildContext context) {
-    final model = di<SignUpViewModel>();
     final isBusy = model.isLoading.value;
 
     return SizedBox(
@@ -284,6 +290,6 @@ class _SignUpButton extends SignalWidget {
 
   Future<void> _handleSignUp(BuildContext context) async {
     if (!ShadForm.of(context).saveAndValidate()) return;
-    di<SignUpViewModel>().submit();
+    model.submit();
   }
 }
