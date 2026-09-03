@@ -1,4 +1,3 @@
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -64,15 +63,12 @@ class _LoginPageState extends State<LoginPage> {
 
         final error = _model.error.value;
         if (error != null) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (!context.mounted) return;
-            ShadToaster.of(context).show(
-              ShadToast.destructive(
-                title: const Text('Authentication Error'),
-                description: Text(error),
-              ),
-            );
-          });
+          ShadToaster.of(context).show(
+            ShadToast.destructive(
+              title: const Text('Authentication Error'),
+              description: Text(error),
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -82,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
             footer: Row(
               mainAxisAlignment: .center,
               children: [
-                Text("Dont't have an account?", style: theme.textTheme.muted),
+                Text("Don't have an account?", style: theme.textTheme.muted),
                 const SizedBox(width: 6),
                 ShadButton.link(
                   padding: .zero,
