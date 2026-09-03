@@ -37,7 +37,6 @@ ShadThemeData get usLightTheme {
       height: 24 / 16,
       fontWeight: FontWeight.bold,
       letterSpacing: 0,
-      color: UsPrimitives.neutralWhite,
     ),
     decoration: ShadDecoration(
       border: ShadBorder.all(
@@ -98,9 +97,16 @@ ShadThemeData get usLightTheme {
     foregroundColor: UsPrimitives.neutral900,
     hoverForegroundColor: UsPrimitives.neutral900,
     pressedForegroundColor: UsPrimitives.neutral900,
+    textStyle: const TextStyle(
+      fontFamily: UsFontFamily.display,
+      fontSize: 16,
+      height: 24 / 16,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0,
+    ),
     decoration: ShadDecoration(
       border: ShadBorder.all(
-        width: 1,
+        width: 2,
         color: UsPrimitives.neutral400,
         radius: effectiveRadius,
       ),

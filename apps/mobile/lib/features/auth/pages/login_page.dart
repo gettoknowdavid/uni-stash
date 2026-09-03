@@ -10,7 +10,6 @@ import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
-import 'package:uni_stash_mobile/theme/us_colors.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({LoginViewModel? viewModel, super.key})
@@ -44,8 +43,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-
     return SignalEffect(
       effect: (context) {
         final response = _model.result.value;
@@ -75,21 +72,7 @@ class _LoginPageState extends State<LoginPage> {
         appBar: AppBar(),
         body: SingleChildScrollView(
           child: AuthPageShell(
-            footer: Row(
-              mainAxisAlignment: .center,
-              children: [
-                Text("Don't have an account?", style: theme.textTheme.muted),
-                const SizedBox(width: 6),
-                ShadButton.link(
-                  padding: .zero,
-                  foregroundColor: theme.colorScheme.textSecondary,
-                  textStyle: theme.textTheme.muted,
-                  child: const Text('SIGN UP'),
-                  onPressed: () => context.push(UsRoutes.signup),
-                ),
-              ],
-            ),
-            child: ShadForm(
+            body: ShadForm(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -105,6 +88,12 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
             ),
+            footer: ShadButton.outline(
+              width: double.infinity,
+              child: const Text('SIGN UP'),
+              onPressed: () => context.push(UsRoutes.signup),
+            ),
+            bodyFooterSpacing: 12,
           ),
         ),
       ),

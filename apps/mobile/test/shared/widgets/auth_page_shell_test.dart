@@ -10,7 +10,7 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('form content'),
+            body: Text('form content'),
           ),
         ),
       );
@@ -24,7 +24,7 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('custom child'),
+            body: Text('custom child'),
           ),
         ),
       );
@@ -37,7 +37,7 @@ void main() {
         buildTestApp(
           child: const AuthPageShell(
             footer: Text('footer content'),
-            child: Text('form content'),
+            body: Text('form content'),
           ),
         ),
       );
@@ -50,7 +50,7 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('form content'),
+            body: Text('form content'),
           ),
         ),
       );
@@ -64,16 +64,18 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('content'),
+            body: Text('content'),
           ),
         ),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(AuthPageShell),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(AuthPageShell),
+              matching: find.byType(Container),
+            )
+            .first,
       );
 
       final decoration = container.decoration as BoxDecoration?;
@@ -86,16 +88,18 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('content'),
+            body: Text('content'),
           ),
         ),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(AuthPageShell),
-          matching: find.byType(Container),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(AuthPageShell),
+              matching: find.byType(Container),
+            )
+            .first,
       );
 
       expect(container.margin, const EdgeInsets.fromLTRB(16, 0, 16, 0));
@@ -106,7 +110,7 @@ void main() {
       await tester.pumpWidget(
         buildTestApp(
           child: const AuthPageShell(
-            child: Text('content'),
+            body: Text('content'),
           ),
         ),
       );
