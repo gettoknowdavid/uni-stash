@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
-import 'package:uni_stash_mobile/features/auth/pages/sign_up_page.dart';
+import 'package:uni_stash_mobile/features/auth/pages/signup_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
 
 import '../../../helpers/test_helpers.dart';
@@ -25,8 +25,9 @@ void main() {
 
   group('SignUpPage', () {
     group('rendering', () {
-      testWidgets('renders the auth shell with title and subtitle',
-          (tester) async {
+      testWidgets('renders the auth shell with title and subtitle', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           buildTestApp(child: SignUpPage(viewModel: model)),
         );
@@ -138,8 +139,6 @@ void main() {
         expect(find.text('Please enter your email.'), findsOneWidget);
       });
 
-
-
       testWidgets('does not submit when validation fails', (tester) async {
         await tester.pumpWidget(
           buildTestApp(child: SignUpPage(viewModel: model)),
@@ -171,8 +170,9 @@ void main() {
     });
 
     group('lifecycle', () {
-      testWidgets('does not dispose externally-provided ViewModel',
-          (tester) async {
+      testWidgets('does not dispose externally-provided ViewModel', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           buildTestApp(child: SignUpPage(viewModel: model)),
         );
@@ -191,8 +191,9 @@ void main() {
     });
 
     group('error toast', () {
-      testWidgets('shows a destructive toast when an error is set',
-          (tester) async {
+      testWidgets('shows a destructive toast when an error is set', (
+        tester,
+      ) async {
         await tester.pumpWidget(
           buildTestApp(child: SignUpPage(viewModel: model)),
         );
