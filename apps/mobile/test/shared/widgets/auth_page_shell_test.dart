@@ -1,21 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
-import 'package:uni_stash_mobile/theme/us_colors.dart';
 
-Widget buildTestApp({required Widget child}) {
-  return ShadTheme(
-    data: ShadThemeData(
-      colorScheme: UniStashColorScheme.light(),
-    ),
-    child: MaterialApp(
-      home: Scaffold(
-        body: child,
-      ),
-    ),
-  );
-}
+import '../../helpers/test_helpers.dart';
 
 void main() {
   group('AuthPageShell', () {

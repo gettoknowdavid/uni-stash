@@ -1,3 +1,5 @@
+// False positive: final locals can't be const
+// ignore_for_file: prefer_const_constructors
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
@@ -149,6 +151,7 @@ void main() {
       viewModel.setEmail('test@university.edu');
       viewModel.setPassword('password123');
       viewModel.submit();
+
       await Future<void>.delayed(Duration.zero);
 
       expect(viewModel.result.value, equals(signUpResponse));
@@ -192,6 +195,7 @@ void main() {
       viewModel.setEmail('test@university.edu');
       viewModel.setPassword('password123');
       viewModel.submit();
+
       await Future<void>.delayed(Duration.zero);
 
       expect(viewModel.result.value, equals(signUpResponse));
