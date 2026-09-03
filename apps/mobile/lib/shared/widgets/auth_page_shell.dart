@@ -11,17 +11,21 @@ import 'package:uni_stash_mobile/theme/us_typography.dart';
 /// optional [footer] widget (e.g. "Already have an account?" link).
 class AuthPageShell extends StatelessWidget {
   const AuthPageShell({
-    required this.child,
+    required this.body,
     this.footer,
+    this.bodyFooterSpacing = 16,
     super.key,
   });
 
   /// The form content displayed below the title/subtitle.
-  final Widget child;
+  final Widget body;
 
   /// Optional footer widget (e.g. a navigation row) displayed at the bottom
   /// of the shell, separated by a spacer.
   final Widget? footer;
+
+  /// The spacing between the body and footer widgets.
+  final double bodyFooterSpacing;
 
   @override
   Widget build(BuildContext context) {
@@ -63,9 +67,9 @@ class AuthPageShell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          child,
+          body,
           if (footer != null) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: bodyFooterSpacing),
             footer!,
           ],
         ],

@@ -79,24 +79,7 @@ class _SignUpPageState extends State<SignUpPage> {
             children: [
               const SizedBox(height: 16),
               AuthPageShell(
-                footer: Row(
-                  mainAxisAlignment: .center,
-                  children: [
-                    Text(
-                      'Already have an account?',
-                      style: theme.textTheme.muted,
-                    ),
-                    const SizedBox(width: 6),
-                    ShadButton.link(
-                      padding: .zero,
-                      foregroundColor: theme.colorScheme.textSecondary,
-                      textStyle: theme.textTheme.muted,
-                      child: const Text('LOG IN'),
-                      onPressed: () => context.pop(),
-                    ),
-                  ],
-                ),
-                child: ShadForm(
+                body: ShadForm(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -114,6 +97,23 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                     ],
                   ),
+                ),
+                footer: Row(
+                  mainAxisAlignment: .center,
+                  children: [
+                    Text(
+                      'Already have an account?',
+                      style: theme.textTheme.muted,
+                    ),
+                    const SizedBox(width: 6),
+                    ShadButton.link(
+                      padding: .zero,
+                      foregroundColor: theme.colorScheme.textSecondary,
+                      textStyle: theme.textTheme.muted,
+                      child: const Text('LOG IN'),
+                      onPressed: () => context.pop(),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
