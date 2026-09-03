@@ -78,4 +78,15 @@ class AuthViewModel {
       _storage.delete(key: _refreshTokenKey),
     ]);
   }
+
+  /// Disposes the signals owned by this instance.
+  ///
+  /// AuthViewModel is registered as an app-lifetime singleton, so this is
+  /// never called during normal operation — it exists so the type matches
+  /// the disposal contract of the page-scoped view models and so tests that
+  /// construct an instance directly can clean it up.
+  void dispose() {
+    _status.dispose();
+    _user.dispose();
+  }
 }

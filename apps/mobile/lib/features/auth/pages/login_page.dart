@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -33,8 +31,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<ShadFormState>();
 
   late final LoginViewModel _model;
-  EffectCleanup? _onLogin;
-  EffectCleanup? _onError;
 
   /// Whether this widget owns the ViewModel (and should dispose it).
   bool get _ownsModel => widget._viewModel == null;
@@ -43,39 +39,10 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _model = widget._viewModel ?? LoginViewModel(di<IAuthRepository>());
-
-    _onLogin = effect(() {
-      final response = _model.result.value;
-      if (response == null) return;
-      final credentials = UserCredentials(
-        user: response.user,
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-        expiresIn: response.expiresIn,
-      );
-      di<AuthViewModel>().authenticate(credentials);
-      _model.reset();
-    });
-
-    _onError = effect(() {
-      final error = _model.error.value;
-      if (error == null) return;
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ShadToaster.of(context).show(
-          ShadToast.destructive(
-            title: const Text('Authentication Error'),
-            description: Text(error),
-          ),
-        );
-      });
-    });
   }
 
   @override
   void dispose() {
-    _onLogin?.call();
-    _onError?.call();
     if (_ownsModel) _model.dispose();
     super.dispose();
   }
@@ -83,42 +50,76 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return Scaffold(
-      appBar: AppBar(),
-      body: SingleChildScrollView(
-        child: AuthPageShell(
-          footer: Row(
-            mainAxisAlignment: .center,
-            children: [
-              Text(
-                'Already have an account?',
-                style: theme.textTheme.muted,
+
+    // SignalEffect scopes the reactive side effects to this widget's
+    // lifecycle — no manual effect()/cleanup bookkeeping, and the context it
+    // hands us dies with the widget. Navigation after a successful login is
+    // driven by the router reacting to AuthViewModel.status, not here.
+    return SignalEffect(
+      effect: (context) {
+        final response = _model.result.value;
+        if (response != null) {
+          di<AuthViewModel>().authenticate(
+            UserCredentials(
+              user: response.user,
+              accessToken: response.accessToken,
+              refreshToken: response.refreshToken,
+              expiresIn: response.expiresIn,
+            ),
+          );
+          _model.reset();
+        }
+
+        final error = _model.error.value;
+        if (error != null) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            ShadToaster.of(context).show(
+              ShadToast.destructive(
+                title: const Text('Authentication Error'),
+                description: Text(error),
               ),
-              const SizedBox(width: 6),
-              ShadButton.link(
-                padding: .zero,
-                textStyle: theme.textTheme.muted.copyWith(
-                  color: theme.colorScheme.secondary,
-                ),
-                child: const Text('Sign Up'),
-                onPressed: () => context.push(UsRoutes.signup),
-              ),
-            ],
-          ),
-          child: ShadForm(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            );
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(),
+        body: SingleChildScrollView(
+          child: AuthPageShell(
+            footer: Row(
+              mainAxisAlignment: .center,
               children: [
-                _EmailField(model: _model),
-                const SizedBox(height: 24),
-                _PasswordField(model: _model),
-                const SizedBox(height: 32),
-                _LoginButton(
-                  model: _model,
-                  formKey: _formKey,
+                Text(
+                  'Already have an account?',
+                  style: theme.textTheme.muted,
+                ),
+                const SizedBox(width: 6),
+                ShadButton.link(
+                  padding: .zero,
+                  textStyle: theme.textTheme.muted.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                  child: const Text('Sign Up'),
+                  onPressed: () => context.push(UsRoutes.signup),
                 ),
               ],
+            ),
+            child: ShadForm(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _EmailField(model: _model),
+                  const SizedBox(height: 24),
+                  _PasswordField(model: _model),
+                  const SizedBox(height: 32),
+                  _LoginButton(
+                    model: _model,
+                    formKey: _formKey,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
