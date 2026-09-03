@@ -189,5 +189,30 @@ void main() {
         model.dispose();
       });
     });
+
+    group('error toast', () {
+      testWidgets('shows a destructive toast when an error is set',
+          (tester) async {
+        await tester.pumpWidget(
+          buildTestApp(child: SignUpPage(viewModel: model)),
+        );
+        await tester.pumpAndSettle();
+
+        model.error.value = 'Account already exists';
+
+        // The page effect reacts on a microtask and defers showing the toast
+        // to a post-frame callback, so pump a few times to let it surface.
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Authentication Error'), findsOneWidget);
+        expect(find.text('Account already exists'), findsOneWidget);
+
+        // Let the toast's default 5s display timer elapse before the test ends.
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+      });
+    });
   });
 }

@@ -71,8 +71,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Already have an account?'), findsOneWidget);
-        expect(find.text('Sign Up'), findsOneWidget);
+        expect(find.text("Don't have an account?"), findsOneWidget);
+        expect(find.text('SIGN UP'), findsOneWidget);
       });
     });
 
@@ -182,6 +182,31 @@ void main() {
         model.setEmail('test@example.com');
         expect(model.email.value, 'test@example.com');
         model.dispose();
+      });
+    });
+
+    group('error toast', () {
+      testWidgets('shows a destructive toast when an error is set',
+          (tester) async {
+        await tester.pumpWidget(
+          buildTestApp(child: LoginPage(viewModel: model)),
+        );
+        await tester.pumpAndSettle();
+
+        model.error.value = 'Invalid credentials';
+
+        // The page effect reacts on a microtask and defers showing the toast
+        // to a post-frame callback, so pump a few times to let it surface.
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Authentication Error'), findsOneWidget);
+        expect(find.text('Invalid credentials'), findsOneWidget);
+
+        // Let the toast's default 5s display timer elapse before the test ends.
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
       });
     });
   });
