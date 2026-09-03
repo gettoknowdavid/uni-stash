@@ -57,8 +57,7 @@ class SignUpViewModel implements Disposable {
     result.value = null;
   }
 
-  @override
-  FutureOr<dynamic> onDispose() {
+  void dispose() {
     displayName.dispose();
     email.dispose();
     password.dispose();
@@ -66,5 +65,10 @@ class SignUpViewModel implements Disposable {
     isLoading.dispose();
     error.dispose();
     result.dispose();
+  }
+
+  @override
+  FutureOr<dynamic> onDispose() {
+    dispose();
   }
 }
