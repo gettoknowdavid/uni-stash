@@ -7,11 +7,8 @@ import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
-import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
-import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
-import 'package:uni_stash_mobile/theme/style.dart';
+import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
-import 'package:uni_stash_mobile/theme/us_typography.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({SignUpViewModel? viewModel, super.key})
@@ -117,43 +114,12 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              Padding(
-                padding: const .symmetric(horizontal: 16),
-                child: ShadCard(
-                  padding: const .all(14),
-                  radius: const .all(.circular(UsRadius.lg)),
-                  border: ShadBorder.all(
-                    color: theme.colorScheme.borderStrong,
-                    radius: const .all(.circular(UsRadius.lg)),
-                    width: 2,
-                  ),
-                  backgroundColor: theme.colorScheme.statusSuccessBg,
-                  leading: const Icon(
-                    LucideIcons.shieldAlert,
-                    color: UsPrimitives.sage500,
-                  ),
-                  title: Padding(
-                    padding: const .only(left: 12),
-                    child: Text(
-                      'CAMPUS VERIFICATION',
-                      style: theme.textTheme.labelLg.copyWith(
-                        color: UsPrimitives.sage500,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  description: Padding(
-                    padding: const .only(left: 12),
-                    child: Text(
-                      'We verify all new members against active recognized '
-                      'school domain lists (.edu, .edu.ng, etc.) to ensure '
-                      'a safe, closed community.',
-                      style: theme.textTheme.small.copyWith(
-                        color: UsPrimitives.textMuted,
-                      ),
-                    ),
-                  ),
-                ),
+              const GreenNoticeCard(
+                title: 'CAMPUS VERIFICATION',
+                description:
+                    'We verify all new members against active recognized '
+                    'school domain lists (.edu, .edu.ng, etc.) to ensure '
+                    'a safe, closed community.',
               ),
             ],
           ),
