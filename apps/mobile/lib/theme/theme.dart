@@ -305,6 +305,17 @@ ShadThemeData get usLightTheme {
     ),
   );
 
+  final destructiveToastTheme = ShadToastTheme(
+    alignment: .bottomCenter,
+    backgroundColor: UsPrimitives.red500,
+    border: ShadBorder.all(
+      width: 2,
+      color: UsPrimitives.neutral900,
+      radius: .zero,
+    ),
+    shadows: UsElevation.brutalist,
+  );
+
   // ── Assemble ShadThemeData ──────────────────────────────────────────────
   return ShadThemeData(
     colorScheme: colorScheme,
@@ -341,5 +352,6 @@ ShadThemeData get usLightTheme {
     avatarTheme: avatarTheme,
     progressTheme: progressTheme,
     separatorTheme: separatorTheme,
+    destructiveToastTheme: destructiveToastTheme,
   );
 }

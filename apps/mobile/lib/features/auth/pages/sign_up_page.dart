@@ -1,4 +1,3 @@
-import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -65,15 +64,12 @@ class _SignUpPageState extends State<SignUpPage> {
 
         final error = _model.error.value;
         if (error != null) {
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (!context.mounted) return;
-            ShadToaster.of(context).show(
-              ShadToast.destructive(
-                title: const Text('Authentication Error'),
-                description: Text(error),
-              ),
-            );
-          });
+          ShadToaster.of(context).show(
+            ShadToast.destructive(
+              title: const Text('Authentication Error'),
+              description: Text(error),
+            ),
+          );
         }
       },
       child: Scaffold(

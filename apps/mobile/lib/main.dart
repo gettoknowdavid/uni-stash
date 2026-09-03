@@ -47,7 +47,7 @@ class UniStashApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
           ],
           supportedLocales: const [Locale('en')],
-          builder: (context, child) => child!,
+          builder: (context, child) => ShadToaster(child: child!),
           routerConfig: routerConfig,
         );
       },
