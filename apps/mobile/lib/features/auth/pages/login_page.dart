@@ -11,16 +11,12 @@ import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/auth_page_shell.dart';
 import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
+import 'package:uni_stash_mobile/theme/us_colors.dart';
 
-/// Login page.
-///
-/// Accepts an optional [LoginViewModel] for testing. When omitted the
-/// ViewModel is created from the DI container and owned by this widget.
 class LoginPage extends StatefulWidget {
   const LoginPage({LoginViewModel? viewModel, super.key})
     : _viewModel = viewModel;
 
-  /// Injected ViewModel — only set in tests.
   final LoginViewModel? _viewModel;
 
   @override
@@ -51,10 +47,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
-    // SignalEffect scopes the reactive side effects to this widget's
-    // lifecycle — no manual effect()/cleanup bookkeeping, and the context it
-    // hands us dies with the widget. Navigation after a successful login is
-    // driven by the router reacting to AuthViewModel.status, not here.
     return SignalEffect(
       effect: (context) {
         final response = _model.result.value;
@@ -90,17 +82,13 @@ class _LoginPageState extends State<LoginPage> {
             footer: Row(
               mainAxisAlignment: .center,
               children: [
-                Text(
-                  'Already have an account?',
-                  style: theme.textTheme.muted,
-                ),
+                Text("Dont't have an account?", style: theme.textTheme.muted),
                 const SizedBox(width: 6),
                 ShadButton.link(
                   padding: .zero,
-                  textStyle: theme.textTheme.muted.copyWith(
-                    color: theme.colorScheme.secondary,
-                  ),
-                  child: const Text('Sign Up'),
+                  foregroundColor: theme.colorScheme.textSecondary,
+                  textStyle: theme.textTheme.muted,
+                  child: const Text('SIGN UP'),
                   onPressed: () => context.push(UsRoutes.signup),
                 ),
               ],
@@ -128,10 +116,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-widgets — receive the ViewModel via constructor, no DI look-ups.
-// ---------------------------------------------------------------------------
-
 class _EmailField extends SignalWidget {
   const _EmailField({required this.model});
   final LoginViewModel model;
@@ -156,7 +140,7 @@ class _EmailField extends SignalWidget {
   }
 }
 
-class _PasswordField extends StatefulWidget {
+class _PasswordField extends SignalStatefulWidget {
   const _PasswordField({required this.model});
   final LoginViewModel model;
 
