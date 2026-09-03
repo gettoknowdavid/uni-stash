@@ -28,8 +28,10 @@ void _registerCore() {
     () => initDio(
       logger: di<Logger>(),
       storage: di<FlutterSecureStorage>(),
-      onSessionRefreshed: di<AuthViewModel>().authenticate,
-      onSessionExpired: di<AuthViewModel>().unauthenticate,
+      onSessionExpired: () => di<AuthViewModel>().unauthenticate(),
+      onSessionRefreshed: (credentials) => di<AuthViewModel>().authenticate(
+        credentials,
+      ),
     ),
   );
 }
