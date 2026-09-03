@@ -1,19 +1,32 @@
-import 'dart:async';
-import 'dart:collection';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
-import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/env.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 
+/// Builds the app's shared [Dio] instance.
+///
+/// [onSessionRefreshed] is called with the new credentials after a 401
+/// triggers a successful token refresh; [onSessionExpired] fires when a
+/// refresh fails and the session must be treated as logged out.
+///
+/// Both are plain callbacks that the DI container wires to lazy closures
+/// over the auth stack. `initDio` therefore never reaches into the service
+/// locator itself, keeping the Dio -> interceptor -> AuthViewModel graph
+/// acyclic and the interceptor unit-testable without a GetIt scope.
+///
+/// [httpClientAdapter] is optional and only used by tests to script
+/// responses; production leaves it unset so Dio's default adapter is used.
 Future<Dio> initDio({
   required Logger logger,
   required FlutterSecureStorage storage,
+  required void Function(UserCredentials credentials) onSessionRefreshed,
+  required void Function() onSessionExpired,
+  HttpClientAdapter? httpClientAdapter,
 }) async {
   final options = BaseOptions(
     baseUrl: Env.baseUrl,
@@ -27,9 +40,18 @@ Future<Dio> initDio({
   );
 
   final dio = Dio(options);
+  if (httpClientAdapter != null) {
+    dio.httpClientAdapter = httpClientAdapter;
+  }
 
   dio.interceptors.addAll([
-    _AuthInterceptor(storage, logger),
+    _AuthInterceptor(
+      storage: storage,
+      logger: logger,
+      onSessionRefreshed: onSessionRefreshed,
+      onSessionExpired: onSessionExpired,
+      httpClientAdapter: httpClientAdapter,
+    ),
     _LoggingInterceptor(logger),
   ]);
 
@@ -37,17 +59,31 @@ Future<Dio> initDio({
 }
 
 class _AuthInterceptor extends Interceptor {
-  _AuthInterceptor(this._storage, this._logger);
+  _AuthInterceptor({
+    required FlutterSecureStorage storage,
+    required Logger logger,
+    required void Function(UserCredentials credentials) onSessionRefreshed,
+    required void Function() onSessionExpired,
+    HttpClientAdapter? httpClientAdapter,
+  })  : _storage = storage,
+        _logger = logger,
+        _onSessionRefreshed = onSessionRefreshed,
+        _onSessionExpired = onSessionExpired,
+        _httpClientAdapter = httpClientAdapter;
 
   final FlutterSecureStorage _storage;
   final Logger _logger;
+  final void Function(UserCredentials credentials) _onSessionRefreshed;
+  final void Function() _onSessionExpired;
+  final HttpClientAdapter? _httpClientAdapter;
 
-  AuthViewModel get _auth => di<AuthViewModel>();
+  /// Non-null while a token refresh is in flight. Concurrent 401s await this
+  /// same future rather than starting their own refresh, so at most one
+  /// refresh request is ever issued per batch of 401s and no caller can be
+  /// left waiting on a completer that never fires.
+  Future<bool>? _inFlightRefresh;
 
-  Completer<void>? _refreshCompleter;
-  final Queue<_PendingRequest> _pendingQueue = Queue<_PendingRequest>();
-
-  final _publicEndpoints = <String>[
+  static const _publicEndpoints = <String>[
     '/auth/refresh',
     '/auth/login',
     '/auth/register',
@@ -81,36 +117,36 @@ class _AuthInterceptor extends Interceptor {
       return;
     }
 
-    if (_refreshCompleter != null) {
-      final completer = Completer<void>();
-      _pendingQueue.add(
-        _PendingRequest(err.requestOptions, handler, completer),
-      );
-      await completer.future;
-      return;
+    // Share a single refresh across all concurrent 401s. `_refreshSession`
+    // always completes (failures become `false`), so awaiting it can never
+    // hang; `whenComplete` clears the slot for the next batch of 401s.
+    final refresh = _inFlightRefresh ??= _refreshSession().whenComplete(
+      () => _inFlightRefresh = null,
+    );
+    final refreshed = await refresh;
+
+    if (refreshed) {
+      handler.resolve(await _retryRequest(err.requestOptions));
+    } else {
+      handler.next(err);
     }
+  }
 
-    _refreshCompleter = Completer<void>();
-
+  /// Runs one token-refresh attempt and reports the outcome.
+  ///
+  /// [_onSessionExpired] is invoked exactly once per attempt (from whichever
+  /// caller started the shared refresh) so a batch of concurrent 401s does
+  /// not clear the session repeatedly.
+  Future<bool> _refreshSession() async {
     try {
       final refreshed = await _attemptRefresh();
-
-      if (refreshed) {
-        final retryResponse = await _retryRequest(err.requestOptions);
-        handler.resolve(retryResponse);
-        await _drainPendingQueue();
-      } else {
-        _auth.unauthenticate();
-        handler.next(err);
-        _drainPendingQueueWithError(err);
+      if (!refreshed) {
+        _onSessionExpired();
       }
-    } on Object catch (_) {
-      _auth.unauthenticate();
-      handler.next(err);
-      _drainPendingQueueWithError(err);
-    } finally {
-      _refreshCompleter!.complete();
-      _refreshCompleter = null;
+      return refreshed;
+    } on Object {
+      _onSessionExpired();
+      return false;
     }
   }
 
@@ -132,26 +168,43 @@ class _AuthInterceptor extends Interceptor {
         },
       ),
     );
+    if (_httpClientAdapter != null) {
+      refreshDio.httpClientAdapter = _httpClientAdapter;
+    }
 
     try {
-      final response = await refreshDio.post<ApiResponse<RefreshResponse>>(
+      // Request the raw body and decode it explicitly: Dio only type-casts
+      // generic responses (`post<T>` asserts the decoded JSON is already a
+      // `T`), so asking it to build an `ApiResponse<RefreshResponse>` would
+      // always throw before the payload could be inspected.
+      final response = await refreshDio.post<String>(
         '/api/v1/auth/refresh',
         data: <String, dynamic>{'refresh_token': refreshToken},
       );
       if (response.statusCode == 200 && response.data != null) {
-        final data = response.data?.data;
+        final decoded = jsonDecode(response.data!);
+        final envelope = ApiResponse<RefreshResponse>.fromJson(
+          decoded as Map<String, dynamic>,
+          (json) => RefreshResponse.fromJson(
+            json! as Map<String, dynamic>,
+          ),
+        );
+        final data = envelope.data;
         final newAccess = data?.accessToken;
         final newRefresh = data?.refreshToken;
         final user = data?.user;
 
-        if (newAccess != null && newRefresh != null && user != null) {
+        if (data != null &&
+            newAccess != null &&
+            newRefresh != null &&
+            user != null) {
           final credentials = UserCredentials(
             user: user,
             accessToken: newAccess,
             refreshToken: newRefresh,
-            expiresIn: data?.expiresIn ?? 0,
+            expiresIn: data.expiresIn,
           );
-          _auth.authenticate(credentials);
+          _onSessionRefreshed(credentials);
           _logger.d('[Auth] Token refresh succeeded');
           return true;
         }
@@ -183,39 +236,11 @@ class _AuthInterceptor extends Interceptor {
         receiveTimeout: const Duration(seconds: 15),
       ),
     );
+    if (_httpClientAdapter != null) {
+      retryDio.httpClientAdapter = _httpClientAdapter;
+    }
 
     return retryDio.fetch<dynamic>(requestOptions);
-  }
-
-  Future<void> _drainPendingQueue() async {
-    while (_pendingQueue.isNotEmpty) {
-      final pending = _pendingQueue.removeFirst();
-
-      try {
-        final token = await _storage.read(key: 'access_token');
-        if (token != null && token.isNotEmpty) {
-          pending.requestOptions.headers['Authorization'] = 'Bearer $token';
-        }
-
-        final retryDio = Dio(
-          BaseOptions(baseUrl: pending.requestOptions.baseUrl),
-        );
-        final response = await retryDio.fetch<dynamic>(pending.requestOptions);
-        pending.handler.resolve(response);
-      } on DioException catch (e) {
-        pending.handler.next(e);
-      } finally {
-        pending.completer.complete();
-      }
-    }
-  }
-
-  void _drainPendingQueueWithError(DioException error) {
-    while (_pendingQueue.isNotEmpty) {
-      final pending = _pendingQueue.removeFirst();
-      pending.handler.next(error);
-      pending.completer.complete();
-    }
   }
 }
 
@@ -250,12 +275,4 @@ class _LoggingInterceptor extends Interceptor {
     );
     handler.next(err);
   }
-}
-
-class _PendingRequest {
-  _PendingRequest(this.requestOptions, this.handler, this.completer);
-
-  final RequestOptions requestOptions;
-  final ErrorInterceptorHandler handler;
-  final Completer<void> completer;
 }
