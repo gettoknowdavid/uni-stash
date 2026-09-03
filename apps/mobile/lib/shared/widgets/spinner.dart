@@ -18,10 +18,9 @@ class ShadSpinner extends StatelessWidget {
     return SizedBox(
       height: height,
       width: width,
-      child: Icon(
-        LucideIcons.loader2,
-        size: iconSize,
-      ).animate().rotate(duration: 1.seconds),
+      child: Icon(LucideIcons.loader2, size: iconSize)
+          .animate(onPlay: (controller) => controller.repeat())
+          .rotate(duration: 1.seconds, curve: Curves.linear),
     );
   }
 }
