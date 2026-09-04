@@ -39,7 +39,6 @@ LoginResponse makeLoginResponse() {
 void main() {
   late MockAuthRepository mockRepo;
   late MockFlutterSecureStorage mockStorage;
-  late LoginViewModel model;
 
   setUpAll(() {
     registerFallbackValue(const LoginRequest(email: '', password: ''));
@@ -49,9 +48,11 @@ void main() {
     mockRepo = MockAuthRepository();
     mockStorage = MockFlutterSecureStorage();
 
-    // The pages resolve their view models through GetIt, so tests register
-    // mocks in a dedicated scope that is popped (and disposed) in tearDown.
+    // The page pushes its own scope and registers its view model there, so
+    // this scope only supplies the mocks it depends on. It is popped in
+    // tearDown; the page scope is popped by the page itself on dispose.
     di.pushNewScope(
+      scopeName: 'test',
       init: (getIt) {
         getIt.registerSingleton<IAuthRepository>(mockRepo);
         getIt.registerSingleton<FlutterSecureStorage>(mockStorage);
@@ -61,12 +62,8 @@ void main() {
             getIt<FlutterSecureStorage>(),
           ),
         );
-        getIt.registerLazySingleton<LoginViewModel>(
-          () => LoginViewModel(getIt<IAuthRepository>()),
-        );
       },
     );
-    model = di<LoginViewModel>();
 
     when(
       () => mockStorage.write(
@@ -74,22 +71,33 @@ void main() {
         value: any(named: 'value'),
       ),
     ).thenAnswer((_) async {});
-    when(() => mockStorage.delete(key: any(named: 'key')))
-        .thenAnswer((_) async {});
+    when(
+      () => mockStorage.delete(key: any(named: 'key')),
+    ).thenAnswer((_) async {});
   });
 
   tearDown(() async {
-    // Pops the scope, which disposes the registered Disposable view models.
+    // Pop every scope above the test scope (e.g. a page scope left behind
+    // after a failed test), then the test scope itself.
+    while (di.currentScopeName != 'test') {
+      await di.popScope();
+    }
     await di.popScope();
   });
+
+  /// Pumps the page and returns the page-scoped [LoginViewModel] it created.
+  Future<LoginViewModel> pumpLoginPage(WidgetTester tester) async {
+    await tester.pumpWidget(buildTestApp(child: const LoginPage()));
+    await tester.pumpAndSettle();
+    return di<LoginViewModel>();
+  }
 
   group('LoginPage', () {
     group('rendering', () {
       testWidgets('renders the auth shell with title and subtitle', (
         tester,
       ) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.text('UNI\u00b7STASH'), findsOneWidget);
         expect(find.text('Campus Bulletin Board'), findsOneWidget);
@@ -98,30 +106,26 @@ void main() {
       testWidgets('renders email field with correct label and placeholder', (
         tester,
       ) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.text('SCHOOL EMAIL'), findsOneWidget);
         expect(find.text('you@university.edu'), findsOneWidget);
       });
 
       testWidgets('renders password field with correct label', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.text('PASSWORD'), findsOneWidget);
       });
 
       testWidgets('renders the LOG IN button', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.text('LOG IN'), findsOneWidget);
       });
 
       testWidgets('renders the sign-up footer link', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.widgetWithText(ShadButton, 'SIGN UP'), findsOneWidget);
       });
@@ -129,16 +133,14 @@ void main() {
 
     group('password visibility', () {
       testWidgets('password starts obscured with eye-off icon', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         expect(find.byIcon(LucideIcons.eyeOff), findsOneWidget);
         expect(find.byIcon(LucideIcons.eye), findsNothing);
       });
 
       testWidgets('tapping toggle reveals password', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         await tester.tap(find.byIcon(LucideIcons.eyeOff));
         await tester.pumpAndSettle();
@@ -148,8 +150,7 @@ void main() {
       });
 
       testWidgets('tapping toggle again hides password', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         await tester.tap(find.byIcon(LucideIcons.eyeOff));
         await tester.pumpAndSettle();
@@ -162,8 +163,7 @@ void main() {
 
     group('validation', () {
       testWidgets('shows error for empty email and password', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         await tester.tap(find.text('LOG IN'));
         await tester.pumpAndSettle();
@@ -173,8 +173,7 @@ void main() {
       });
 
       testWidgets('does not submit when validation fails', (tester) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        final model = await pumpLoginPage(tester);
 
         await tester.tap(find.text('LOG IN'));
         await tester.pumpAndSettle();
@@ -195,8 +194,7 @@ void main() {
           (_) async => Result.success(response),
         );
 
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        final model = await pumpLoginPage(tester);
 
         await tester.enterText(
           find.byType(ShadInputFormField).at(0),
@@ -231,8 +229,7 @@ void main() {
           (_) async => const Result.failure('Invalid credentials'),
         );
 
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        await pumpLoginPage(tester);
 
         await tester.enterText(
           find.byType(ShadInputFormField).at(0),
@@ -261,8 +258,7 @@ void main() {
         final completer = Completer<Result<LoginResponse>>();
         when(() => mockRepo.login(any())).thenAnswer((_) => completer.future);
 
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        final model = await pumpLoginPage(tester);
 
         await tester.enterText(
           find.byType(ShadInputFormField).at(0),
@@ -289,20 +285,18 @@ void main() {
     });
 
     group('lifecycle', () {
-      testWidgets('does not dispose the DI-provided ViewModel when removed', (
+      testWidgets('disposes the page-scoped ViewModel when removed', (
         tester,
       ) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        final model = await pumpLoginPage(tester);
 
-        // Remove the widget — the page must NOT dispose the model; GetIt owns
-        // its lifecycle and disposes it when the test scope is popped.
+        // Remove the widget — the page pops its GetIt scope on dispose, which
+        // disposes the view model it created.
         await tester.pumpWidget(buildTestApp(child: const SizedBox()));
         await tester.pumpAndSettle();
 
-        expect(model.email.value, '');
-        model.setEmail('test@example.com');
-        expect(model.email.value, 'test@example.com');
+        expect(model.email.disposed, isTrue);
+        expect(model.password.disposed, isTrue);
       });
     });
 
@@ -310,8 +304,7 @@ void main() {
       testWidgets('shows a destructive toast when an error is set', (
         tester,
       ) async {
-        await tester.pumpWidget(buildTestApp(child: const LoginPage()));
-        await tester.pumpAndSettle();
+        final model = await pumpLoginPage(tester);
 
         model.error.value = 'Invalid credentials';
 

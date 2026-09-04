@@ -54,15 +54,9 @@ void _registerAuth() {
     dependsOn: [IAuthRepository],
   );
 
-  di.registerCachedFactory<LoginViewModel>(
-    () => LoginViewModel(di<IAuthRepository>()),
-  );
-
-  di.registerCachedFactory<SignUpViewModel>(
-    () => SignUpViewModel(di<IAuthRepository>()),
-  );
-
-  di.registerCachedFactory<ForgotPasswordViewModel>(
-    () => ForgotPasswordViewModel(di<IAuthRepository>()),
-  );
+  // LoginViewModel / SignUpViewModel / ForgotPasswordViewModel are intentionally
+  // NOT registered here. Each auth page pushes its own GetIt scope in
+  // initState, registers its view model there, and pops the scope in dispose,
+  // so every visit gets a fresh instance whose lifecycle (and disposal) is
+  // owned by GetIt — see login_page.dart / signup_page.dart.
 }
