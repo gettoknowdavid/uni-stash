@@ -4,7 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/pages/signup_page.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/signup_view_model.dart';
 
 import '../../../helpers/test_helpers.dart';
 

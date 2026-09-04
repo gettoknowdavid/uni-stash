@@ -74,6 +74,8 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             children: [
               AuthPageShell(
+                title: const Text('UNI·STASH'),
+                subtitle: const Text('Campus Bulletin Board'),
                 body: ShadForm(
                   key: _formKey,
                   child: Column(
@@ -121,11 +123,17 @@ class _EmailField extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     return ShadInputFormField(
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
       enabled: !model.isLoading.value,
       placeholder: const Text('you@university.edu'),
+      trailing: Icon(
+        LucideIcons.atSign,
+        size: 16,
+        color: theme.colorScheme.mutedForeground,
+      ),
       autovalidateMode: .onUserInteraction,
       onSaved: model.setEmail,
       validator: (value) {

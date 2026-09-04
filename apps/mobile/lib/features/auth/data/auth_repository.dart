@@ -16,6 +16,8 @@ abstract interface class IAuthRepository {
 
   Future<Result<SignUpResponse>> signUp(SignUpRequest request);
 
+  Future<Result<void>> forgotPassword(ForgotPasswordRequest request);
+
   Future<Result<User>> me();
 }
 
@@ -59,6 +61,24 @@ class AuthRepository implements IAuthRepository {
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] signUp unexpected error',
+        error: e,
+      );
+      return const Result.failure('An unexpected error occurred.');
+    }
+  }
+
+  @override
+  Future<Result<void>> forgotPassword(ForgotPasswordRequest request) async {
+    try {
+      final response = await _client.forgotPassword(request);
+      if (!response.status) return Result.failure(response.message);
+      return const Result.success(null);
+    } on DioException catch (e) {
+      _logger.e('[AuthRepository] forgotPassword failed', error: e);
+      return Result.failure(_humanize(e));
+    } on Object catch (e) {
+      _logger.e(
+        '[AuthRepository] forgotPassword unexpected error',
         error: e,
       );
       return const Result.failure('An unexpected error occurred.');

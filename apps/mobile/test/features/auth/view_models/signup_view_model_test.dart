@@ -6,7 +6,7 @@ import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/signup_view_model.dart';
 
 class MockAuthRepository extends Mock implements IAuthRepository {}
 
