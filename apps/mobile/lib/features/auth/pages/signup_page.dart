@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
@@ -23,7 +26,24 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   void initState() {
     super.initState();
+    // Each visit gets its own page-scoped ViewModel: the scope gives sub-
+    // widgets a single shared instance and makes GetIt dispose it (via the
+    // model's Disposable contract) when the scope is popped in dispose().
+    di.pushNewScope(
+      scopeName: 'signupPage',
+      init: (getIt) {
+        getIt.registerLazySingleton<SignUpViewModel>(
+          () => SignUpViewModel(di<IAuthRepository>()),
+        );
+      },
+    );
     _model = di<SignUpViewModel>();
+  }
+
+  @override
+  void dispose() {
+    unawaited(di.popScope());
+    super.dispose();
   }
 
   @override
