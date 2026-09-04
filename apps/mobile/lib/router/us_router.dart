@@ -28,6 +28,10 @@ final GoRouter routerConfig = GoRouter(
       builder: (context, state) => const ForgotPasswordPage(),
     ),
     GoRoute(
+      path: UsRoutes.resetPw,
+      builder: (context, state) => const ResetPasswordPage(),
+    ),
+    GoRoute(
       path: UsRoutes.home,
       builder: (context, state) => const HomePage(),
     ),

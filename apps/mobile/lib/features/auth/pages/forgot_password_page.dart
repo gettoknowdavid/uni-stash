@@ -25,9 +25,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   void initState() {
     super.initState();
-    // Each visit gets its own page-scoped ViewModel: the scope gives sub-
-    // widgets a single shared instance and makes GetIt dispose it (via the
-    // model's Disposable contract) when the scope is popped in dispose().
     di.pushNewScope(
       scopeName: 'forgotPasswordPage',
       init: (getIt) {

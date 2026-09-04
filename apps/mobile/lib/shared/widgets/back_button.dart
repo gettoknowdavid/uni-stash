@@ -22,8 +22,8 @@ class UsBackButton extends StatelessWidget {
             radius: .zero,
           ),
         ),
-        onPressed: () => ModalRoute.of(context)?.canPop == true
-            ? Navigator.pop(context)
+        onPressed: () => ModalRoute.canPopOf(context) == true
+            ? Navigator.maybePop(context)
             : null,
         icon: const Icon(LucideIcons.chevronLeft),
       ),
