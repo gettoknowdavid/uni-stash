@@ -3,17 +3,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
 
 class SignUpPage extends StatefulWidget {
-  const SignUpPage({SignUpViewModel? viewModel, super.key})
-    : _viewModel = viewModel;
-
-  final SignUpViewModel? _viewModel;
+  const new({super.key});
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
@@ -24,18 +20,15 @@ class _SignUpPageState extends State<SignUpPage> {
 
   late final SignUpViewModel _model;
 
-  /// Whether this widget owns the ViewModel (and should dispose it).
-  bool get _ownsModel => widget._viewModel == null;
-
   @override
   void initState() {
     super.initState();
-    _model = widget._viewModel ?? SignUpViewModel(di<IAuthRepository>());
+    _model = di<SignUpViewModel>();
   }
 
   @override
   void dispose() {
-    if (_ownsModel) _model.dispose();
+    _model.dispose();
     super.dispose();
   }
 
@@ -79,20 +72,17 @@ class _SignUpPageState extends State<SignUpPage> {
                 subtitle: const Text('Campus Bulletin Board'),
                 body: ShadForm(
                   key: _formKey,
-                  child: Column(
+                  child: const Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(height: 16),
-                      _DisplayNameField(model: _model),
-                      const SizedBox(height: 24),
-                      _EmailField(model: _model),
-                      const SizedBox(height: 24),
-                      _PasswordField(model: _model),
-                      const SizedBox(height: 40),
-                      _SignUpButton(
-                        model: _model,
-                        formKey: _formKey,
-                      ),
+                      SizedBox(height: 16),
+                      _DisplayNameField(),
+                      SizedBox(height: 24),
+                      _EmailField(),
+                      SizedBox(height: 24),
+                      _PasswordField(),
+                      SizedBox(height: 40),
+                      _SignUpButton(),
                     ],
                   ),
                 ),
@@ -131,11 +121,11 @@ class _SignUpPageState extends State<SignUpPage> {
 }
 
 class _DisplayNameField extends SignalWidget {
-  const _DisplayNameField({required this.model});
-  final SignUpViewModel model;
+  const new();
 
   @override
   Widget build(BuildContext context) {
+    final model = di<SignUpViewModel>();
     return ShadInputFormField(
       id: 'displayName',
       label: const Text('DISPLAY NAME'),
@@ -152,12 +142,12 @@ class _DisplayNameField extends SignalWidget {
 }
 
 class _EmailField extends SignalWidget {
-  const _EmailField({required this.model});
-  final SignUpViewModel model;
+  const new();
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final model = di<SignUpViewModel>();
     return ShadInputFormField(
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
@@ -182,8 +172,7 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends SignalStatefulWidget {
-  const _PasswordField({required this.model});
-  final SignUpViewModel model;
+  const new();
 
   @override
   State<_PasswordField> createState() => _PasswordFieldState();
@@ -194,14 +183,15 @@ class _PasswordFieldState extends State<_PasswordField> {
 
   @override
   Widget build(BuildContext context) {
+    final model = di<SignUpViewModel>();
     return ShadInputFormField(
       id: 'password',
       label: const Text('PASSWORD'),
       placeholder: const Text('•••••••••••'),
-      enabled: !widget.model.isLoading.value,
+      enabled: !model.isLoading.value,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       obscureText: _obscure,
-      onSaved: widget.model.setPassword,
+      onSaved: model.setPassword,
       trailing: SizedBox.square(
         dimension: 24,
         child: OverflowBox(
@@ -229,12 +219,11 @@ class _PasswordFieldState extends State<_PasswordField> {
 }
 
 class _SignUpButton extends SignalWidget {
-  const _SignUpButton({required this.model, required this.formKey});
-  final SignUpViewModel model;
-  final GlobalKey<ShadFormState> formKey;
+  const new();
 
   @override
   Widget build(BuildContext context) {
+    final model = di<SignUpViewModel>();
     final isBusy = model.isLoading.value;
 
     return SizedBox(
@@ -248,6 +237,6 @@ class _SignUpButton extends SignalWidget {
 
   Future<void> _handleSignUp(BuildContext context) async {
     if (!ShadForm.of(context).saveAndValidate()) return;
-    model.submit();
+    di<SignUpViewModel>().submit();
   }
 }

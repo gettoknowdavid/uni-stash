@@ -3,19 +3,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/login_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({LoginViewModel? viewModel, super.key})
-    : _viewModel = viewModel;
-
-  final LoginViewModel? _viewModel;
+class LoginPage extends SignalStatefulWidget {
+  const new({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -26,18 +21,15 @@ class _LoginPageState extends State<LoginPage> {
 
   late final LoginViewModel _model;
 
-  /// Whether this widget owns the ViewModel (and should dispose it).
-  bool get _ownsModel => widget._viewModel == null;
-
   @override
   void initState() {
     super.initState();
-    _model = widget._viewModel ?? LoginViewModel(di<IAuthRepository>());
+    _model = di<LoginViewModel>();
   }
 
   @override
   void dispose() {
-    if (_ownsModel) _model.dispose();
+    _model.dispose();
     super.dispose();
   }
 
@@ -78,17 +70,14 @@ class _LoginPageState extends State<LoginPage> {
                 subtitle: const Text('Campus Bulletin Board'),
                 body: ShadForm(
                   key: _formKey,
-                  child: Column(
+                  child: const Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _EmailField(model: _model),
-                      const SizedBox(height: 24),
-                      _PasswordField(model: _model),
-                      const SizedBox(height: 24),
-                      _LoginButton(
-                        model: _model,
-                        formKey: _formKey,
-                      ),
+                      _EmailField(),
+                      SizedBox(height: 24),
+                      _PasswordField(),
+                      SizedBox(height: 24),
+                      _LoginButton(),
                     ],
                   ),
                 ),
@@ -118,16 +107,18 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _EmailField extends SignalWidget {
-  const _EmailField({required this.model});
-  final LoginViewModel model;
+  const new();
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final model = di<LoginViewModel>();
     return ShadInputFormField(
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
       enabled: !model.isLoading.value,
+      keyboardType:.emailAddress,
+      autocorrect: false,
       placeholder: const Text('you@university.edu'),
       trailing: Icon(
         LucideIcons.atSign,
@@ -148,8 +139,7 @@ class _EmailField extends SignalWidget {
 }
 
 class _PasswordField extends SignalStatefulWidget {
-  const _PasswordField({required this.model});
-  final LoginViewModel model;
+  const new();
 
   @override
   State<_PasswordField> createState() => _PasswordFieldState();
@@ -161,6 +151,8 @@ class _PasswordFieldState extends State<_PasswordField> {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final model = di<LoginViewModel>();
+
     return Column(
       mainAxisSize: .min,
       children: [
@@ -168,10 +160,10 @@ class _PasswordFieldState extends State<_PasswordField> {
           id: 'password',
           label: const Text('PASSWORD'),
           placeholder: const Text('•••••••••••'),
-          enabled: !widget.model.isLoading.value,
+          enabled: !model.isLoading.value,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           obscureText: _obscure,
-          onSaved: widget.model.setPassword,
+          onSaved: model.setPassword,
           trailing: SizedBox.square(
             dimension: 24,
             child: OverflowBox(
@@ -208,12 +200,11 @@ class _PasswordFieldState extends State<_PasswordField> {
 }
 
 class _LoginButton extends SignalWidget {
-  const _LoginButton({required this.model, required this.formKey});
-  final LoginViewModel model;
-  final GlobalKey<ShadFormState> formKey;
+  const new();
 
   @override
   Widget build(BuildContext context) {
+    final model = di<LoginViewModel>();
     final isBusy = model.isLoading.value;
 
     return SizedBox(
@@ -227,6 +218,6 @@ class _LoginButton extends SignalWidget {
 
   Future<void> _handleLogin(BuildContext context) async {
     if (!ShadForm.of(context).saveAndValidate()) return;
-    model.submit();
+    di<LoginViewModel>().submit();
   }
 }
