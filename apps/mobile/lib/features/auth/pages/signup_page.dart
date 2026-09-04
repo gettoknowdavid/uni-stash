@@ -5,8 +5,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/sign_up_view_model.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/us_colors.dart';
 
@@ -76,6 +75,8 @@ class _SignUpPageState extends State<SignUpPage> {
             children: [
               const SizedBox(height: 16),
               AuthPageShell(
+                title: const Text('UNI·STASH'),
+                subtitle: const Text('Campus Bulletin Board'),
                 body: ShadForm(
                   key: _formKey,
                   child: Column(
@@ -156,11 +157,17 @@ class _EmailField extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     return ShadInputFormField(
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
       enabled: !model.isLoading.value,
       placeholder: const Text('you@university.edu'),
+      trailing: Icon(
+        LucideIcons.atSign,
+        size: 16,
+        color: theme.colorScheme.mutedForeground,
+      ),
       autovalidateMode: .onUserInteraction,
       onSaved: model.setEmail,
       validator: (value) {

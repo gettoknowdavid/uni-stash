@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 
 final GetIt di = GetIt.instance;
@@ -52,5 +53,9 @@ void _registerAuth() {
   di.registerSingletonWithDependencies<AuthViewModel>(
     () => AuthViewModel(di<IAuthRepository>(), di<FlutterSecureStorage>()),
     dependsOn: [IAuthRepository],
+  );
+
+  di.registerFactory<ForgotPasswordViewModel>(
+    () => ForgotPasswordViewModel(di<IAuthRepository>()),
   );
 }

@@ -10,6 +10,7 @@ String? usRedirect(BuildContext context, GoRouterState state) {
     UsRoutes.login,
     UsRoutes.signup,
     UsRoutes.verify,
+    UsRoutes.forgotPw,
   ].contains(state.matchedLocation);
 
   if (status == .loading) return null;
