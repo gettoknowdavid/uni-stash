@@ -21,8 +21,10 @@ class UsPageHeader extends StatelessWidget implements PreferredSizeWidget {
     this.actions = const [],
     this.centerTitle = false,
     this.height = kUsPageHeaderHeight,
-    this.border = false,
+    this.border = true,
+    this.titleStyle,
     this.backgroundColor,
+    this.foregroundColor,
     this.padding = const .symmetric(horizontal: 16),
     this.onBack,
   });
@@ -51,8 +53,13 @@ class UsPageHeader extends StatelessWidget implements PreferredSizeWidget {
   /// Whether to draw the bottom hairline border.
   final bool border;
 
+  final TextStyle? titleStyle;
+
   /// The background color of the app bar.
   final Color? backgroundColor;
+
+  /// The foreground color of the app bar.
+  final Color? foregroundColor;
 
   /// The padding of the app bar.
   final EdgeInsetsGeometry padding;
@@ -75,18 +82,22 @@ class UsPageHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     final resolvedLeading = _resolveLeading(context);
+    final effBackgroundColor = backgroundColor ?? theme.colorScheme.background;
+    final effForegroundColor = foregroundColor ?? theme.colorScheme.foreground;
+    final effTitleStyle =
+        titleStyle ?? theme.textTheme.h1.copyWith(color: effForegroundColor);
 
     var titleWidget = title ?? const SizedBox.shrink();
     if (title is Text) {
       titleWidget = DefaultTextStyle.merge(
-        style: theme.textTheme.h4,
+        style: effTitleStyle,
         child: title! as Text,
       );
     }
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: backgroundColor ?? theme.colorScheme.background,
+        color: effBackgroundColor,
         border: border
             ? Border(bottom: BorderSide(color: theme.colorScheme.border))
             : null,
