@@ -110,6 +110,7 @@ class _EmailField extends SignalWidget {
       enabled: !model.isLoading.value,
       placeholder: const Text('you@university.edu'),
       autovalidateMode: .onUserInteraction,
+      autocorrect: false,
       trailing: Icon(
         LucideIcons.atSign,
         size: 16,
