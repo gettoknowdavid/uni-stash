@@ -60,27 +60,6 @@ abstract class ListListingsResponse with _$ListListingsResponse {
 }
 
 @freezed
-abstract class ListingResponse with _$ListingResponse {
-  const factory ListingResponse({
-    required String id,
-    @JsonKey(name: 'seller_id') required String sellerId,
-    @JsonKey(name: 'category_id') required int categoryId,
-    required String title,
-    required String description,
-    required Condition condition,
-    required ListingStatus status,
-    @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
-    double? price,
-    @JsonKey(name: 'reserved_by') String? reservedBy,
-    @JsonKey(name: 'reserved_at') DateTime? reservedAt,
-  }) = _ListingResponse;
-
-  factory ListingResponse.fromJson(Map<String, dynamic> json) =>
-      _$ListingResponseFromJson(json);
-}
-
-@freezed
 abstract class ListingDetailResponse with _$ListingDetailResponse {
   const factory ListingDetailResponse({
     required String id,
