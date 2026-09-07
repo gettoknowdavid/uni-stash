@@ -73,9 +73,18 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         }
+
+        // Credentials were right but the account's email isn't verified yet
+        // (backend 403 `email_not_verified`): send the user to the OTP flow
+        // so they can finish activation and sign in with fresh tokens.
+        if (_model.needsVerification.value) {
+          final email = _model.email.value;
+          _model.reset();
+          context.go(UsRoutes.verifyRoute(email: email));
+        }
       },
-      child: Scaffold(
-        appBar: AppBar(),
+      child: UsPage(
+        header: const UsPageHeader(),
         body: SingleChildScrollView(
           child: Column(
             children: [

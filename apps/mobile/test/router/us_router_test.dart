@@ -4,9 +4,12 @@ import 'package:material_ui/material_ui.dart' hide GlobalMaterialLocalizations;
 import 'package:mocktail/mocktail.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
+import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
+import 'package:uni_stash_mobile/features/auth/pages/verify_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
 import 'package:uni_stash_mobile/features/profile/pages/profile_page.dart';
@@ -19,22 +22,39 @@ class MockAuthRepository extends Mock implements IAuthRepository {}
 class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
 
 void main() {
+  const verifiedUser = User(
+    id: 'test-uuid-123',
+    email: 'test@example.com',
+    displayName: 'Test User',
+    emailVerified: true,
+    role: 'student',
+  );
+
+  const unverifiedUser = User(
+    id: 'test-uuid-456',
+    email: 'unverified@example.com',
+    displayName: 'New User',
+    emailVerified: false,
+    role: 'student',
+  );
+
   const credentials = UserCredentials(
-    user: User(
-      id: 'test-uuid-123',
-      email: 'test@example.com',
-      displayName: 'Test User',
-      emailVerified: true,
-      role: 'student',
-    ),
+    user: verifiedUser,
     accessToken: 'test_access_token',
     refreshToken: 'test_refresh_token',
     expiresIn: 900,
   );
 
+  late MockAuthRepository mockRepo;
+  late MockFlutterSecureStorage mockStorage;
+
   setUpAll(() {
-    final mockRepo = MockAuthRepository();
-    final mockStorage = MockFlutterSecureStorage();
+    registerFallbackValue(
+      const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
+    );
+
+    mockRepo = MockAuthRepository();
+    mockStorage = MockFlutterSecureStorage();
 
     when(
       () => mockStorage.write(
@@ -76,6 +96,24 @@ void main() {
     }
     await di.popScope();
   });
+
+  /// Simulates an app start/restart with a stored session by bootstrapping
+  /// the shared AuthViewModel against the given stored profile.
+  Future<void> bootstrapStoredSession(
+    WidgetTester tester, {
+    required String? storedAccessToken,
+    required User profile,
+  }) async {
+    when(() => mockStorage.read(key: 'access_token')).thenAnswer(
+      (_) async => storedAccessToken,
+    );
+    when(() => mockRepo.me()).thenAnswer(
+      (_) async => Result.success(profile),
+    );
+
+    await di<AuthViewModel>().bootstrap();
+    await tester.pumpAndSettle();
+  }
 
   Future<void> pumpRouterApp(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -126,5 +164,102 @@ void main() {
         expect(find.byType(UsBottomNavBar), findsNothing);
       },
     );
+
+    group('verification-aware routing', () {
+      testWidgets(
+        'restarting with an unverified stored session lands on /verify, '
+        'not the shell',
+        (tester) async {
+          await pumpRouterApp(tester);
+          expect(find.byType(LoginPage), findsOneWidget);
+
+          await bootstrapStoredSession(
+            tester,
+            storedAccessToken: 'stored_access_token',
+            profile: unverifiedUser,
+          );
+
+          expect(find.byType(VerifyPage), findsOneWidget);
+          expect(find.byType(HomePage), findsNothing);
+          expect(find.byType(LoginPage), findsNothing);
+        },
+      );
+
+      testWidgets('restarting with a verified stored session lands on home', (
+        tester,
+      ) async {
+        await pumpRouterApp(tester);
+
+        await bootstrapStoredSession(
+          tester,
+          storedAccessToken: 'stored_access_token',
+          profile: verifiedUser,
+        );
+
+        expect(find.byType(HomePage), findsOneWidget);
+        expect(find.byType(VerifyPage), findsNothing);
+      });
+
+      testWidgets(
+        'an unverified session is pinned to /verify and enters the shell '
+        'only after the OTP succeeds',
+        (tester) async {
+          await pumpRouterApp(tester);
+          await bootstrapStoredSession(
+            tester,
+            storedAccessToken: 'stored_access_token',
+            profile: unverifiedUser,
+          );
+          expect(find.byType(VerifyPage), findsOneWidget);
+          expect(find.byType(LoginPage), findsNothing);
+
+          // Even an explicit attempt to reach the shell is redirected back.
+          routerConfig.go('/home');
+          await tester.pumpAndSettle();
+          expect(find.byType(VerifyPage), findsOneWidget);
+          expect(find.byType(HomePage), findsNothing);
+
+          // A successful OTP submission returns fresh tokens + a verified
+          // profile; authenticating with them must let the session through.
+          when(() => mockRepo.verifyOtp(any())).thenAnswer(
+            (_) async => const Result.success(
+              VerifyOtpResponse(
+                verified: true,
+                accessToken: 'new_access',
+                refreshToken: 'new_refresh',
+                expiresIn: 900,
+                user: verifiedUser,
+              ),
+            ),
+          );
+
+          // Seed the OTP input via the page's route query param (code=) and
+          // submit through the real VERIFY button. This avoids depending on
+          // GetIt scope resolution for the page-scoped ViewModel.
+          routerConfig.go('/verify?email=${Uri.encodeQueryComponent(unverifiedUser.email)}&code=123456');
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('VERIFY'));
+          await tester.pumpAndSettle();
+
+          expect(di<AuthViewModel>().verified.value, isTrue);
+          expect(find.byType(HomePage), findsOneWidget);
+          expect(find.byType(VerifyPage), findsNothing);
+        },
+      );
+
+      testWidgets('a verified user cannot reach /verify', (tester) async {
+        await pumpRouterApp(tester);
+        di<AuthViewModel>().authenticate(credentials);
+        await tester.pumpAndSettle();
+        expect(find.byType(HomePage), findsOneWidget);
+
+        routerConfig.go('/verify');
+        await tester.pumpAndSettle();
+
+        expect(find.byType(HomePage), findsOneWidget);
+        expect(find.byType(VerifyPage), findsNothing);
+      });
+    });
   });
 }

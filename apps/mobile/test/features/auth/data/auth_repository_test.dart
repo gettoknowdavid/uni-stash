@@ -65,6 +65,15 @@ void main() {
     registerFallbackValue(
       const LoginRequest(email: '', password: ''),
     );
+    registerFallbackValue(
+      const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
+    );
+    registerFallbackValue(
+      const ResendVerificationRequest(email: ''),
+    );
+    registerFallbackValue(
+      const ResetPasswordRequest(code: '123456', newPassword: 'newpassword'),
+    );
   });
 
   setUp(() {
@@ -295,6 +304,69 @@ void main() {
         expect(message, 'Custom server message');
       }
     });
+
+    test('reads messages from the nested error envelope', () async {
+      when(() => mockApiClient.login(any())).thenThrow(
+        makeDioException(
+          statusCode: 403,
+          responseData: {
+            'status': false,
+            'data': null,
+            'error': {
+              'code': 'email_not_verified',
+              'message': 'Email not verified',
+              'fields': null,
+            },
+          },
+        ),
+      );
+
+      final result = await repository.login(
+        const LoginRequest(email: 'new@example.com', password: 'pass'),
+      );
+
+      expect(result.isFailure, true);
+      if (result case Failure(:final message)) {
+        expect(message, 'Email not verified');
+      }
+    });
+
+    test('surfaces the backend error code for email_not_verified', () async {
+      when(() => mockApiClient.login(any())).thenThrow(
+        makeDioException(
+          statusCode: 403,
+          responseData: {
+            'status': false,
+            'data': null,
+            'error': {'code': 'email_not_verified', 'message': 'not verified'},
+          },
+        ),
+      );
+
+      final result = await repository.login(
+        const LoginRequest(email: 'new@example.com', password: 'pass'),
+      );
+
+      expect(result.failureCode, AuthErrorCode.emailNotVerified);
+      if (result case Failure(:final code)) {
+        expect(code, 'email_not_verified');
+      }
+    });
+
+    test('maps a bare 403 to the email-not-verified message', () async {
+      when(() => mockApiClient.login(any())).thenThrow(
+        makeDioException(statusCode: 403),
+      );
+
+      final result = await repository.login(
+        const LoginRequest(email: 'new@example.com', password: 'pass'),
+      );
+
+      expect(result.isFailure, true);
+      if (result case Failure(:final message)) {
+        expect(message, contains('not verified'));
+      }
+    });
   });
 
   // =========================================================================
@@ -353,6 +425,167 @@ void main() {
           error: any(named: 'error'),
         ),
       ).called(1);
+    });
+  });
+
+  // =========================================================================
+  // GROUP: verifyOtp
+  // =========================================================================
+  group('verifyOtp', () {
+    test('returns tokens + verified user on success', () async {
+      const user = User(
+        id: 'uuid-789',
+        email: 'test@university.edu',
+        displayName: 'Test User',
+        emailVerified: true,
+        role: 'student',
+      );
+      when(() => mockApiClient.verifyOtp(any())).thenAnswer(
+        (_) async => ApiResponse<VerifyOtpResponse>(
+          status: true,
+          message: 'ok',
+          data: const VerifyOtpResponse(
+            verified: true,
+            accessToken: 'new_access',
+            refreshToken: 'new_refresh',
+            expiresIn: 900,
+            user: user,
+          ),
+        ),
+      );
+
+      final result = await repository.verifyOtp(
+        const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
+      );
+
+      expect(result.isSuccess, true);
+      if (result case Success(:final value)) {
+        expect(value.verified, isTrue);
+        expect(value.accessToken, 'new_access');
+        expect(value.user?.emailVerified, isTrue);
+      }
+      verify(
+        () => mockApiClient.verifyOtp(
+          const VerifyOtpRequest(code: '123456', otpType: 'email_verify'),
+        ),
+      ).called(1);
+    });
+
+    test('returns Failure for an invalid/expired code', () async {
+      when(() => mockApiClient.verifyOtp(any())).thenThrow(
+        makeDioException(
+          statusCode: 400,
+          responseData: {
+            'error': {'code': 'bad_request', 'message': 'invalid OTP'},
+          },
+        ),
+      );
+
+      final result = await repository.verifyOtp(
+        const VerifyOtpRequest(code: '000000', otpType: 'email_verify'),
+      );
+
+      expect(result.isFailure, true);
+      if (result case Failure(:final message)) {
+        expect(message, 'invalid OTP');
+      }
+    });
+  });
+
+  // =========================================================================
+  // GROUP: resendVerification
+  // =========================================================================
+  group('resendVerification', () {
+    test('returns Success when the code is resent', () async {
+      when(() => mockApiClient.resendVerification(any())).thenAnswer(
+        (_) async => const ApiResponse<MessageResponse>(
+          status: true,
+          message: 'verification code sent',
+        ),
+      );
+
+      final result = await repository.resendVerification(
+        const ResendVerificationRequest(email: 'test@university.edu'),
+      );
+
+      expect(result.isSuccess, true);
+      verify(
+        () => mockApiClient.resendVerification(
+          const ResendVerificationRequest(email: 'test@university.edu'),
+        ),
+      ).called(1);
+    });
+
+    test('returns Failure when the API reports an error', () async {
+      when(() => mockApiClient.resendVerification(any())).thenAnswer(
+        (_) async => const ApiResponse<MessageResponse>(
+          status: false,
+          message: 'email is already verified',
+        ),
+      );
+
+      final result = await repository.resendVerification(
+        const ResendVerificationRequest(email: 'test@university.edu'),
+      );
+
+      expect(result.isFailure, true);
+      if (result case Failure(:final message)) {
+        expect(message, 'email is already verified');
+      }
+    });
+  });
+
+  // =========================================================================
+  // GROUP: resetPassword
+  // =========================================================================
+  group('resetPassword', () {
+    test('returns Success when the password is updated', () async {
+      when(() => mockApiClient.resetPassword(any())).thenAnswer(
+        (_) async => const ApiResponse<MessageResponse>(
+          status: true,
+          message: 'password updated successfully',
+        ),
+      );
+
+      final result = await repository.resetPassword(
+        const ResetPasswordRequest(
+          code: '123456',
+          newPassword: 'newpassword123',
+        ),
+      );
+
+      expect(result.isSuccess, true);
+      verify(
+        () => mockApiClient.resetPassword(
+          const ResetPasswordRequest(
+            code: '123456',
+            newPassword: 'newpassword123',
+          ),
+        ),
+      ).called(1);
+    });
+
+    test('returns Failure on a bad code', () async {
+      when(() => mockApiClient.resetPassword(any())).thenThrow(
+        makeDioException(
+          statusCode: 400,
+          responseData: {
+            'error': {'code': 'bad_request', 'message': 'invalid OTP'},
+          },
+        ),
+      );
+
+      final result = await repository.resetPassword(
+        const ResetPasswordRequest(
+          code: '000000',
+          newPassword: 'newpassword123',
+        ),
+      );
+
+      expect(result.isFailure, true);
+      if (result case Failure(:final message)) {
+        expect(message, 'invalid OTP');
+      }
     });
   });
 }

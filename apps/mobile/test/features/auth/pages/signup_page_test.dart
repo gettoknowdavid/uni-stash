@@ -180,7 +180,7 @@ void main() {
         expect(find.text('Please enter your email.'), findsOneWidget);
       });
 
-      testWidgets('shows error for password shorter than 8 characters', (
+      testWidgets('shows error for password shorter than 10 characters', (
         tester,
       ) async {
         await pumpSignUpPage(tester);
@@ -198,7 +198,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Password must be at least 8 characters.'),
+          find.text('Password must be at least 10 characters.'),
           findsOneWidget,
         );
       });

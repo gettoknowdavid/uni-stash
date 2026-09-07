@@ -46,8 +46,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(),
+    return UsPage(
+      header: const UsPageHeader(),
       body: SingleChildScrollView(
         padding: const .only(top: 16),
         child: AuthPageShell(
@@ -62,7 +62,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           body: SignalEffect(
             effect: (context) {
               if (_model.result.value ?? false) {
-                unawaited(context.push(UsRoutes.resetPw));
+                unawaited(
+                  context.push(
+                    UsRoutes.resetPwRoute(email: _model.email.value),
+                  ),
+                );
                 _model.reset();
               }
 

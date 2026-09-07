@@ -75,8 +75,8 @@ class _SignUpPageState extends State<SignUpPage> {
           );
         }
       },
-      child: Scaffold(
-        appBar: AppBar(),
+      child: UsPage(
+        header: const UsPageHeader(),
         body: SingleChildScrollView(
           child: Column(
             children: [
@@ -223,8 +223,9 @@ class _PasswordFieldState extends State<_PasswordField> {
       ),
       validator: (value) {
         if (value.isEmpty) return 'Please enter your password.';
-        if (value.length < 8) {
-          return 'Password must be at least 8 characters.';
+        // Mirrors the backend rule (`validator` enforces a 10-char minimum).
+        if (value.length < 10) {
+          return 'Password must be at least 10 characters.';
         }
         return null;
       },

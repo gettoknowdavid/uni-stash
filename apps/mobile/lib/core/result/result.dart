@@ -25,7 +25,12 @@ sealed class Result<T> with _$Result<T> {
   const Result._();
 
   const factory Result.success(T value) = Success<T>;
-  const factory Result.failure(String message) = Failure<T>;
+
+  /// Creates a failure carrying a human-readable [message] and, when known, a
+  /// machine-readable [code] (e.g. the backend `error.code` value such as
+  /// `email_not_verified`) so callers can branch on the failure kind without
+  /// string-matching the message.
+  const factory Result.failure(String message, {String? code}) = Failure<T>;
 
   /// Returns `true` when this is a [Success].
   bool get isSuccess => this is Success<T>;
@@ -49,6 +54,13 @@ sealed class Result<T> with _$Result<T> {
   T orElse(T defaultValue) => switch (this) {
     Success(:final value) => value,
     Failure() => defaultValue,
+  };
+
+  /// The machine-readable code attached to a [Failure], or `null` for a
+  /// [Success] or a failure created without a code.
+  String? get failureCode => switch (this) {
+    Success() => null,
+    Failure(:final code) => code,
   };
 
   /// Unwraps the result, calling [onSuccess] or [onFailure].
