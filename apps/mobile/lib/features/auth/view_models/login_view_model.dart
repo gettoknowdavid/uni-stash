@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 
@@ -14,10 +15,18 @@ class LoginViewModel implements Disposable {
       final req = LoginRequest(email: email.value, password: password.value);
       final response = await _repository.login(req);
 
-      response.fold(
-        (data) => result.value = data,
-        (message) => error.value = message,
-      );
+      switch (response) {
+        case Success(:final value):
+          result.value = value;
+        case Failure(:final message, :final code):
+          error.value = message;
+          // Backend 403 email_not_verified: the credentials are right but
+          // the account still needs its OTP flow finished, so the page can
+          // route the user to the verification screen.
+          if (code == AuthErrorCode.emailNotVerified) {
+            needsVerification.value = true;
+          }
+      }
 
       isLoading.value = false;
     });
@@ -31,6 +40,10 @@ class LoginViewModel implements Disposable {
   final Signal<String?> error = Signal(null);
   final Signal<LoginResponse?> result = Signal(null);
 
+  /// True when the last login attempt failed because the account's email is
+  /// not yet verified, signalling the page to take the user to `/verify`.
+  final Signal<bool> needsVerification = Signal(false);
+
   void setEmail(String? value) => email.value = value ?? '';
 
   void setPassword(String? value) => password.value = value ?? '';
@@ -43,6 +56,7 @@ class LoginViewModel implements Disposable {
     isLoading.value = false;
     error.value = null;
     result.value = null;
+    needsVerification.value = false;
   }
 
   void dispose() {
@@ -51,6 +65,7 @@ class LoginViewModel implements Disposable {
     isLoading.dispose();
     error.dispose();
     result.dispose();
+    needsVerification.dispose();
   }
 
   @override

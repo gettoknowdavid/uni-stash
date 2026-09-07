@@ -39,6 +39,26 @@ class AuthViewModel {
   final Signal<User?> _user = signal(null);
   ReadonlySignal<User?> get user => _user;
 
+  /// Whether the signed-in user's email is verified (false while signed out).
+  ///
+  /// Mirrors `User.emailVerified`, kept as a dedicated derived signal so
+  /// router code can react to a verification change even when the auth
+  /// status itself doesn't move (e.g. a successful OTP submit while staying
+  /// signed in).
+  late final ReadonlySignal<bool> verified = computed(
+    () => _user.value?.emailVerified ?? false,
+  );
+
+  /// Combines every auth fact the router's redirect reads into one signal.
+  ///
+  /// GoRouter's `refreshListenable` subscribes to this — instead of just
+  /// [status] — so a verification-state change also re-runs the redirect
+  /// (an unverified session is bounced to `/verify`; a session that just
+  /// verified is let through to the shell).
+  late final ReadonlySignal<Object?> routerRefresh = computed(
+    () => (_status.value, verified.value),
+  );
+
   late final void Function(UserCredentials) authenticate;
   late final void Function() unauthenticate;
 
@@ -86,6 +106,8 @@ class AuthViewModel {
   /// the disposal contract of the page-scoped view models and so tests that
   /// construct an instance directly can clean it up.
   void dispose() {
+    routerRefresh.dispose();
+    verified.dispose();
     _status.dispose();
     _user.dispose();
   }

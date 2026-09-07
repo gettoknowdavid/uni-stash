@@ -20,7 +20,9 @@ final GlobalKey<NavigatorState> _profileNavKey = GlobalKey<NavigatorState>();
 final GoRouter routerConfig = GoRouter(
   navigatorKey: _rootNavKey,
   initialLocation: UsRoutes.home,
-  refreshListenable: SignalListenable(di<AuthViewModel>().status),
+  // Listen to status *and* verification state so redirects re-run when a
+  // session verifies its email (e.g. OTP success) as well as on sign-in/out.
+  refreshListenable: SignalListenable(di<AuthViewModel>().routerRefresh),
   redirect: usRedirect,
   routes: [
     GoRoute(
@@ -37,7 +39,16 @@ final GoRouter routerConfig = GoRouter(
     ),
     GoRoute(
       path: UsRoutes.resetPw,
-      builder: (context, state) => const ResetPasswordPage(),
+      builder: (context, state) => ResetPasswordPage(
+        email: state.uri.queryParameters['email'],
+      ),
+    ),
+    GoRoute(
+      path: UsRoutes.verify,
+      builder: (context, state) => VerifyPage(
+        email: state.uri.queryParameters['email'],
+        code: state.uri.queryParameters['code'],
+      ),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(
