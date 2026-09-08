@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:get_it/get_it.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -64,7 +65,6 @@ class _VerifyPageState extends State<VerifyPage> {
       },
     );
     _model = di<VerifyOtpViewModel>();
-
     // If the code was seeded via the route query (used by tests and deep-links),
     // push it straight into the ViewModel so the VERIFY button can submit.
     if (_code != null) {
@@ -77,6 +77,9 @@ class _VerifyPageState extends State<VerifyPage> {
     super.didUpdateWidget(oldWidget);
     // Navigating to /verify?code=... while already on /verify reuses this
     // State (same route path), so re-seed whenever a new code arrives.
+    // Guard against a disposed ViewModel: during test router redirects the
+    // GetIt scope may already have been popped before this callback runs.
+    if (!GetIt.I.isRegistered<VerifyOtpViewModel>()) return;
     final newCode = widget.code;
     if (newCode != null && newCode != _code) {
       _code = newCode;
