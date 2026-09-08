@@ -34,7 +34,11 @@ String? usRedirect(BuildContext context, GoRouterState state) {
   // must land on /verify, not the shell.
   final verified = auth.verified.value;
   if (!verified) {
-    return location == UsRoutes.verify ? null : UsRoutes.verify;
+    // Already on the verify page: skip the redirect to avoid a redundant
+    // route-tree rebuild that would duplicate GlobalKeys and disrupt
+    // page-scoped GetIt stacks (see us_router_test.dart).
+    if (location == UsRoutes.verify) return null;
+    return UsRoutes.verify;
   }
 
   // Fully authenticated: bounce off the login/signup/... routes.
