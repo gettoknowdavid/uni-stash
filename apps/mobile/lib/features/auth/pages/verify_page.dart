@@ -53,6 +53,9 @@ class _VerifyPageState extends State<VerifyPage> {
 
     // Each visit gets its own page-scoped ViewModel (same pattern as
     // login_page.dart / signup_page.dart): the scope is popped in dispose().
+    // Use a unique scope name so dispose() can safely check ownership —
+    // GoRouter may create a new VerifyPage for the same path with different
+    // query params, causing two pages to coexist briefly.
     di.pushNewScope(
       scopeName: 'verifyPage',
       init: (getIt) {
