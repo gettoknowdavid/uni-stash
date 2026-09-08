@@ -7,8 +7,8 @@ import 'package:uni_stash_mobile/features/listings/models/models.dart';
 part 'listings_api.g.dart';
 
 @RestApi()
-abstract class ListingsApi {
-  factory ListingsApi(Dio dio, {String? baseUrl}) = _ListingsApi;
+abstract class ListingsApiClient {
+  factory ListingsApiClient(Dio dio, {String? baseUrl}) = _ListingsApiClient;
 
   @POST('/api/v1/listings')
   Future<ApiResponse<Listing>> create(@Body() CreateListingRequest request);
