@@ -6,12 +6,15 @@ import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
+import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 
 final GetIt di = GetIt.instance;
 
 void configureDependencies() {
   _registerCore();
   _registerAuth();
+  _registerListings();
 }
 
 /// App-wide infrastructure shared by every feature.
@@ -60,4 +63,19 @@ void _registerAuth() {
   // scope in initState, registers its view model there, and pops the scope in
   // dispose, so every visit gets a fresh instance whose lifecycle (and
   // disposal) is owned by GetIt — see login_page.dart / signup_page.dart.
+}
+
+/// Listings feature registrations. The page-scoped ViewModels
+/// (ListingsViewModel, ListingDetailViewModel) are registered per-page in
+/// their respective initState, following the same pattern as auth.
+void _registerListings() {
+  di.registerSingletonWithDependencies<ListingsApiClient>(
+    () => ListingsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<ListingsRepository>(
+    () => ListingsRepositoryImpl(di<ListingsApiClient>(), di<Logger>()),
+    dependsOn: [ListingsApiClient],
+  );
 }

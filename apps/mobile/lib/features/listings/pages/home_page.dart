@@ -10,7 +10,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return UsPage(
-      header: UsPageHeader(
+      header: const UsPageHeader(
         title: Text('UNI·STASH'),
       ),
       body: Center(
