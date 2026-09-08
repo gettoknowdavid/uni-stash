@@ -441,10 +441,10 @@ void main() {
         role: 'student',
       );
       when(() => mockApiClient.verifyOtp(any())).thenAnswer(
-        (_) async => ApiResponse<VerifyOtpResponse>(
+        (_) async => const ApiResponse<VerifyOtpResponse>(
           status: true,
           message: 'ok',
-          data: const VerifyOtpResponse(
+          data: VerifyOtpResponse(
             verified: true,
             accessToken: 'new_access',
             refreshToken: 'new_refresh',

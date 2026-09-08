@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
+import 'package:uni_stash_mobile/core/api/dio_error.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
@@ -53,7 +54,7 @@ class AuthRepository implements IAuthRepository {
       return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] login failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] login unexpected error',
@@ -73,7 +74,7 @@ class AuthRepository implements IAuthRepository {
       return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] signUp failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] signUp unexpected error',
@@ -93,7 +94,7 @@ class AuthRepository implements IAuthRepository {
       return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] verifyOtp failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] verifyOtp unexpected error',
@@ -113,7 +114,7 @@ class AuthRepository implements IAuthRepository {
       return const Result.success(null);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] resendVerification failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] resendVerification unexpected error',
@@ -131,7 +132,7 @@ class AuthRepository implements IAuthRepository {
       return const Result.success(null);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] forgotPassword failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] forgotPassword unexpected error',
@@ -149,7 +150,7 @@ class AuthRepository implements IAuthRepository {
       return const Result.success(null);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] resetPassword failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] resetPassword unexpected error',
@@ -169,7 +170,7 @@ class AuthRepository implements IAuthRepository {
       return Result.success(data);
     } on DioException catch (e) {
       _logger.e('[AuthRepository] me failed', error: e);
-      return _dioFailure(e);
+      return dioFailure(e);
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] me unexpected error',
@@ -178,54 +179,4 @@ class AuthRepository implements IAuthRepository {
       return const Result.failure('An unexpected error occurred.');
     }
   }
-
-  /// Builds a failure for a [DioException], extracting the backend's
-  /// machine-readable `error.code` (when present) alongside the message.
-  Result<T> _dioFailure<T>(DioException e) =>
-      Result.failure(_humanize(e), code: _errorCode(e));
-
-  /// Turns a [DioException] into a human-readable message.
-  String _humanize(DioException e) {
-    if (e.response?.data is Map<String, dynamic>) {
-      final data = e.response!.data as Map<String, dynamic>;
-      final error = data['error'];
-      final message = error is Map<String, dynamic>
-          ? error['message'] as String?
-          : data['message'] as String?;
-      if (message != null && message.isNotEmpty) return message;
-    }
-    return switch (e.type) {
-      DioExceptionType.connectionTimeout ||
-      DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout =>
-        'Connection timed out. Please check your network.',
-      DioExceptionType.connectionError => 'No internet connection.',
-      DioExceptionType.badResponse => _humanizeStatus(
-        e.response?.statusCode,
-      ),
-      _ => 'Network error. Please check your connection.',
-    };
-  }
-
-  /// Extracts the machine-readable error code from the backend's
-  /// `{ "error": { "code": "..." } }` envelope, or `null` when absent.
-  String? _errorCode(DioException e) {
-    final data = e.response?.data;
-    if (data is! Map<String, dynamic>) return null;
-    final error = data['error'];
-    if (error is Map<String, dynamic>) {
-      final code = error['code'];
-      if (code is String && code.isNotEmpty) return code;
-    }
-    return null;
-  }
-
-  String _humanizeStatus(int? status) => switch (status) {
-    401 => 'Invalid email or password.',
-    403 => 'Your email address is not verified yet.',
-    409 => 'An account with this email already exists.',
-    422 => 'Please check your input and try again.',
-    final s? => 'Server error ($s). Please try again later.',
-    null => 'Unknown server error.',
-  };
 }
