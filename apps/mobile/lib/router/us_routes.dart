@@ -25,6 +25,7 @@ final class UsRoutes {
   }
 
   static const String home = '/home';
+  static const String schools = '/schools';
   static const String listings = '/listings';
   static const String search = '/search';
   static const String sell = '/sell';
