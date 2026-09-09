@@ -8,6 +8,7 @@ import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
 
@@ -18,6 +19,7 @@ void configureDependencies() {
   _registerAuth();
   _registerListings();
   _registerSchools();
+  _registerProfile();
 }
 
 /// App-wide infrastructure shared by every feature.
@@ -95,5 +97,18 @@ void _registerSchools() {
   di.registerSingletonWithDependencies<SchoolsRepository>(
     () => SchoolsRepositoryImpl(di<SchoolsApiClient>(), di<Logger>()),
     dependsOn: [SchoolsApiClient],
+  );
+}
+
+/// Profile feature registrations. The page-scoped ViewModel
+/// (ProfileViewModel) is registered per-page in its initState, following
+/// the same pattern as auth/listings/schools.
+///
+/// There are no dedicated profile endpoints yet — ProfileRepository reuses
+/// AuthApiClient's GET /auth/me, so it depends on the auth API client.
+void _registerProfile() {
+  di.registerSingletonWithDependencies<ProfileRepository>(
+    () => ProfileRepositoryImpl(di<AuthApiClient>(), di<Logger>()),
+    dependsOn: [AuthApiClient],
   );
 }
