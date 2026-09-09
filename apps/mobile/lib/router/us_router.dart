@@ -7,6 +7,7 @@ import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart'
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
+import 'package:uni_stash_mobile/features/schools/pages/_pages.dart';
 import 'package:uni_stash_mobile/router/_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 
@@ -49,6 +50,10 @@ final GoRouter routerConfig = GoRouter(
         email: state.uri.queryParameters['email'],
         code: state.uri.queryParameters['code'],
       ),
+    ),
+    GoRoute(
+      path: UsRoutes.schools,
+      builder: (context, state) => const SchoolsPage(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(

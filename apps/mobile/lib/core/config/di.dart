@@ -8,6 +8,8 @@ import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
+import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
 
 final GetIt di = GetIt.instance;
 
@@ -15,6 +17,7 @@ void configureDependencies() {
   _registerCore();
   _registerAuth();
   _registerListings();
+  _registerSchools();
 }
 
 /// App-wide infrastructure shared by every feature.
@@ -77,5 +80,20 @@ void _registerListings() {
   di.registerSingletonWithDependencies<ListingsRepository>(
     () => ListingsRepositoryImpl(di<ListingsApiClient>(), di<Logger>()),
     dependsOn: [ListingsApiClient],
+  );
+}
+
+/// Schools feature registrations. The page-scoped ViewModels
+/// (SchoolsViewModel, SchoolDetailViewModel) are registered per-page in
+/// their respective initState, following the same pattern as auth/listings.
+void _registerSchools() {
+  di.registerSingletonWithDependencies<SchoolsApiClient>(
+    () => SchoolsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<SchoolsRepository>(
+    () => SchoolsRepositoryImpl(di<SchoolsApiClient>(), di<Logger>()),
+    dependsOn: [SchoolsApiClient],
   );
 }
