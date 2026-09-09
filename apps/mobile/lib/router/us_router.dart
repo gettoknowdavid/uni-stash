@@ -55,6 +55,23 @@ final GoRouter routerConfig = GoRouter(
       path: UsRoutes.schools,
       builder: (context, state) => const SchoolsPage(),
     ),
+    GoRoute(
+      path: UsRoutes.listingEditor,
+      builder: (context, state) => const ListingEditor(),
+      pageBuilder: (context, state) {
+        return CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 150),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+              child: child,
+            );
+          },
+          child: const ListingEditor(),
+        );
+      },
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(
         navigationShell: navigationShell,
