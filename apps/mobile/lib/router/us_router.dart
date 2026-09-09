@@ -64,13 +64,19 @@ final GoRouter routerConfig = GoRouter(
           transitionDuration: const Duration(milliseconds: 310),
           reverseTransitionDuration: const Duration(milliseconds: 250),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final tween = Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: .zero,
+            final slideTween = Tween<Offset>(
+              begin: const Offset(0, 0.15),
+              end: Offset.zero,
             ).chain(CurveTween(curve: Curves.easeOutCubic));
-            return SlideTransition(
-              position: tween.animate(animation),
-              child: child,
+
+            final fadeTween = CurveTween(curve: Curves.easeInOut);
+
+            return FadeTransition(
+              opacity: animation.drive(fadeTween),
+              child: SlideTransition(
+                position: animation.drive(slideTween),
+                child: child,
+              ),
             );
           },
           child: const ListingEditor(),
