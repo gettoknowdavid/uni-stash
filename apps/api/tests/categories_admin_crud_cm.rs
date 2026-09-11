@@ -55,16 +55,16 @@ async fn seed_admin(pool: &PgPool, email: &str, level: &str) -> uuid::Uuid {
     .expect("seed admin")
 }
 
-/// Seed a verified user (for creating listings to test delete guards).
-async fn seed_user(pool: &PgPool) -> uuid::Uuid {
-    sqlx::query_scalar::<_, uuid::Uuid>(
-        "INSERT INTO users (school_id, email, password_hash, display_name, email_verified)\n           VALUES (NULL, $1, 'hash', 'Test User', true) RETURNING id",
-    )
-    .bind(format!("user-{}@test.edu", uuid::Uuid::new_v4()))
-    .fetch_one(pool)
-    .await
-    .expect("seed user")
-}
+// /// Seed a verified user (for creating listings to test delete guards).
+// async fn seed_user(pool: &PgPool) -> uuid::Uuid {
+//     sqlx::query_scalar::<_, uuid::Uuid>(
+//         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified)\n           VALUES (NULL, $1, 'hash', 'Test User', true) RETURNING id",
+//     )
+//     .bind(format!("user-{}@test.edu", uuid::Uuid::new_v4()))
+//     .fetch_one(pool)
+//     .await
+//     .expect("seed user")
+// }
 
 /// Sign an admin access token for the given admin ID and level.
 fn sign_admin_token(admin_id: uuid::Uuid, level: &str) -> String {
@@ -104,18 +104,18 @@ async fn seed_category(pool: &PgPool, slug: &str, label: &str) -> i16 {
     .expect("seed category")
 }
 
-async fn seed_listing(pool: &PgPool, seller_id: uuid::Uuid, category_id: i16) -> uuid::Uuid {
-    sqlx::query_scalar::<_, uuid::Uuid>(
-        r#"INSERT INTO listings (seller_id, category_id, title, description, condition, status)
-           VALUES ($1, $2, 'Test Listing', 'desc', 'used', 'active')
-           RETURNING id"#,
-    )
-    .bind(seller_id)
-    .bind(category_id)
-    .fetch_one(pool)
-    .await
-    .expect("seed listing")
-}
+// async fn seed_listing(pool: &PgPool, seller_id: uuid::Uuid, category_id: i16) -> uuid::Uuid {
+//     sqlx::query_scalar::<_, uuid::Uuid>(
+//         r#"INSERT INTO listings (seller_id, category_id, title, description, condition, status)
+//            VALUES ($1, $2, 'Test Listing', 'desc', 'used', 'active')
+//            RETURNING id"#,
+//     )
+//     .bind(seller_id)
+//     .bind(category_id)
+//     .fetch_one(pool)
+//     .await
+//     .expect("seed listing")
+// }
 
 // ===========================================================================
 // GET /api/v1/categories — public read (unchanged behaviour)
