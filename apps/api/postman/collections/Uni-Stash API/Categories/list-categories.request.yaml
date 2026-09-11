@@ -1,0 +1,41 @@
+$kind: http-request
+name: List Categories
+method: GET
+url: '{{baseUrl}}/api/v1/categories'
+order: 1000
+auth:
+  type: noauth
+docs:
+  description: |-
+    Returns all listing categories, ordered by `sort_order`, for rendering
+    category pickers (listing create/edit form, browse filter chips).
+
+    Categories are backend/seed-managed (CM-4.9): there is no endpoint to
+    create, update, or delete them. New categories are added by inserting
+    into the `categories` table via a migration or seed script, e.g.:
+
+    ```sql
+    INSERT INTO categories (slug, label, sort_order) VALUES ('sports', 'Sports', 30);
+    ```
+
+    ### Success response (200)
+
+    ```json
+    {
+      "success": true,
+      "message": "ok",
+      "data": {
+        "categories": [
+          { "id": 1, "slug": "textbooks", "label": "Textbooks" },
+          { "id": 2, "slug": "electronics", "label": "Electronics" }
+        ]
+      }
+    }
+    ```
+
+    ### Errors
+
+    | Status | Meaning |
+    | ------ | ------- |
+    | 429    | Rate limited (listings rate-limit bucket) |
+    | 500    | Database error |
