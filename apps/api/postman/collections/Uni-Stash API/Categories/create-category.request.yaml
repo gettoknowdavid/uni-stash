@@ -1,0 +1,54 @@
+$kind: http-request
+name: Create Category
+method: POST
+url: '{{baseUrl}}/api/v1/categories'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminAccessToken}}"
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "slug": "sports-equipment",
+      "label": "Sports Equipment",
+      "sort_order": 10
+    }
+docs:
+  description: |-
+    **Admin-only.** Creates a new listing category.
+
+    Categories are curated taxonomy — regular users cannot create them. The
+    `slug` must be unique, lowercase letters/digits/hyphens (2-50 chars);
+    `label` is the display name (2-80 chars); `sort_order` controls display
+    order (defaults to 0, smaller = earlier). Standard admins need the
+    `{"categories": ["write"]}` permission.
+
+    ### Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "category created successfully",
+      "data": {
+        "id": 3,
+        "slug": "sports-equipment",
+        "label": "Sports Equipment",
+        "message": "category created successfully"
+      }
+    }
+    ```
+
+    ### Errors
+
+    | Status | Meaning |
+    | ------ | ------- |
+    | 401    | Missing/invalid admin token |
+    | 403    | Standard admin without `categories: write` permission |
+    | 409    | Slug already exists |
+    | 422    | Validation failed (bad slug format, label length, etc.) |
+    | 429    | Rate limited |
