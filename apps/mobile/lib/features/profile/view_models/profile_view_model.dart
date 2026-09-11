@@ -6,6 +6,23 @@ import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 
+/// Stats displayed in the profile screen's three-cell strip.
+///
+/// No backend endpoints expose these yet (my-listings / saved items are
+/// still unbuilt features), so the view model seeds them with placeholders
+/// until dedicated profile endpoints land in [ProfileRepository].
+class ProfileStats {
+  const ProfileStats({
+    this.activeListings = 0,
+    this.itemsSold = 0,
+    this.saved = 0,
+  });
+
+  final int activeListings;
+  final int itemsSold;
+  final int saved;
+}
+
 /// Page-scoped ViewModel that drives the profile screen.
 ///
 /// Holds a DB-fresh copy of the signed-in user's profile, fetched via
@@ -23,6 +40,12 @@ class ProfileViewModel implements Disposable {
   final Signal<User?> profile = signal(null);
   final Signal<bool> isLoading = signal(false);
   final Signal<String?> error = signal(null);
+
+  /// Placeholder counts for the stats strip; wired to real endpoints when
+  /// my-listings / saved-items APIs land.
+  final Signal<ProfileStats> stats = signal(
+    const ProfileStats(activeListings: 12, itemsSold: 45, saved: 8),
+  );
 
   late final void Function() fetch;
 
@@ -51,12 +74,14 @@ class ProfileViewModel implements Disposable {
     profile.value = null;
     isLoading.value = false;
     error.value = null;
+    stats.value = const ProfileStats();
   }
 
   void dispose() {
     profile.dispose();
     isLoading.dispose();
     error.dispose();
+    stats.dispose();
   }
 
   @override
