@@ -159,6 +159,18 @@ async fn reuse_within_grace_rotates_from_current_valid_token(pool: PgPool) {
     // Step 1: Rotate A → B (happy path).
     let plain_b = rotate_once(&state, &plain_a).await;
 
+    // The grace window is measured against A's `revoked_at`.  Between test
+    // statements there are multiple DB round trips, so on a remote/CI
+    // database the elapsed wall-clock time can already exceed the 5-second
+    // window before the retry is issued.  Pin `revoked_at` to now() to
+    // simulate what the test is actually about: a retry that arrives
+    // *immediately* after the rotation response.
+    sqlx::query("UPDATE refresh_tokens SET revoked_at = now() WHERE token_hash = $1")
+        .bind(refresh_token::hash_refresh_token(&plain_a))
+        .execute(&pool)
+        .await
+        .expect("pin revoked_at inside grace window");
+
     // Step 2: Re-present A within the grace window (< 5 seconds).
     //   This simulates a network retry where the client's second request
     //   arrives before the first response reaches it.
