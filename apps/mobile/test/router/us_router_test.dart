@@ -20,7 +20,8 @@
 
 // class MockAuthRepository extends Mock implements IAuthRepository {}
 
-// class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
+// class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {
+// }
 
 // class _StubProfileRepository implements ProfileRepository {
 //   const _StubProfileRepository();
@@ -149,7 +150,8 @@
 //   }
 
 //   group('routerConfig', () {
-//     testWidgets('redirects unauthenticated users from shell pages to login', (
+//     testWidgets('redirects unauthenticated users from shell pages to login',
+// (
 //       tester,
 //     ) async {
 //       await pumpRouterApp(tester);
@@ -205,7 +207,8 @@
 //         },
 //       );
 
-//       testWidgets('restarting with a verified stored session lands on home', (
+//       testWidgets('restarting with a verified stored session lands on home',
+//  (
 //         tester,
 //       ) async {
 //         await pumpRouterApp(tester);
