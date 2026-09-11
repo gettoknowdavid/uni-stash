@@ -85,7 +85,8 @@ class UsPageHeader extends StatelessWidget implements PreferredSizeWidget {
     final effBackgroundColor = backgroundColor ?? theme.colorScheme.background;
     final effForegroundColor = foregroundColor ?? theme.colorScheme.foreground;
     final effTitleStyle =
-        titleStyle ?? theme.textTheme.h1.copyWith(color: effForegroundColor);
+        titleStyle?.copyWith(color: effForegroundColor) ??
+        theme.textTheme.h1.copyWith(color: effForegroundColor);
 
     var titleWidget = title ?? const SizedBox.shrink();
     if (title is Text) {

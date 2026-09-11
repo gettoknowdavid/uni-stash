@@ -68,10 +68,11 @@ class _VerifyPageState extends State<VerifyPage> {
       },
     );
     _model = di<VerifyOtpViewModel>();
-    // If the code was seeded via the route query (used by tests and deep-links),
-    // push it straight into the ViewModel so the VERIFY button can submit.
+    // If the code was seeded via the route query (used by tests and
+    // deep-links), push it straight into the ViewModel so the VERIFY button
+    // can submit.
     if (_code != null) {
-      _model.setCode(_code!);
+      _model.setCode(_code);
     }
   }
 

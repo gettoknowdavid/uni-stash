@@ -20,52 +20,57 @@ abstract final class UsFontFamily {
 /// * Headings → Archivo Narrow
 /// * Body → Inter
 /// * Labels → JetBrains Mono
-ShadTextTheme usTextTheme() {
+ShadTextTheme usTextTheme(ShadColorScheme colors) {
   // ── Heading styles (Archivo Narrow) ────────────────────────────────────────
 
   /// h1Large → Display/Large · 32/38 · Bold · +0.5px tracking
-  const h1Large = TextStyle(
+  final h1Large = TextStyle(
     fontFamily: UsFontFamily.display,
     fontSize: 32,
     height: 38 / 32,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.5,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// h1 → Display/Medium · 24/30 · Bold · +0.3px tracking
-  const h1 = TextStyle(
+  final h1 = TextStyle(
     fontFamily: UsFontFamily.display,
     fontSize: 24,
     height: 30 / 24,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.3,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// h2 → Heading/Large · 20/26 · Bold · 0px tracking
-  const h2 = TextStyle(
+  final h2 = TextStyle(
     fontFamily: UsFontFamily.display,
     fontSize: 20,
     height: 26 / 20,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// h3 → Heading/Medium · 18/24 · Bold · 0px tracking
-  const h3 = TextStyle(
+  final h3 = TextStyle(
     fontFamily: UsFontFamily.display,
     fontSize: 18,
     height: 24 / 18,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// h4 → Heading/Small · 16/22 · Bold · 0px tracking
-  const h4 = TextStyle(
+  final h4 = TextStyle(
     fontFamily: UsFontFamily.display,
     fontSize: 16,
     height: 22 / 16,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     leadingDistribution: TextLeadingDistribution.even,
   );
@@ -73,77 +78,85 @@ ShadTextTheme usTextTheme() {
   // ── Body styles (Inter) ────────────────────────────────────────────────────
 
   /// p → Body/Large · 16/24 · Regular
-  const p = TextStyle(
+  final p = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 16,
     height: 24 / 16,
+    color: colors.foreground,
     fontWeight: FontWeight.w400,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// lead → Body/Medium · 14/20 · Regular
-  const lead = TextStyle(
+  final lead = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 14,
     height: 20 / 14,
+    color: colors.foreground,
     fontWeight: FontWeight.w400,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// small → Body/Small · 12/18 · Regular
-  const small = TextStyle(
+  final small = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 12,
     height: 18 / 12,
+    color: colors.foreground,
     fontWeight: FontWeight.w400,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// muted → Helper text · 14/20 · Regular
-  const muted = TextStyle(
+  final muted = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 14,
     height: 20 / 14,
+    color: colors.mutedForeground,
     fontWeight: FontWeight.w400,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
   // ── Misc styles (Inter default) ────────────────────────────────────────────
 
-  const blockquote = TextStyle(
+  final blockquote = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 16,
     height: 24 / 16,
+    color: colors.foreground,
     fontWeight: FontWeight.w400,
     fontStyle: FontStyle.italic,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  const table = TextStyle(
+  final table = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 16,
     height: 24 / 16,
+    color: colors.foreground,
     fontWeight: FontWeight.w700,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  const list = TextStyle(
+  final list = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 16,
     height: 24 / 16,
+    color: colors.foreground,
     fontWeight: FontWeight.w400,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  const large = TextStyle(
+  final large = TextStyle(
     fontFamily: UsFontFamily.body,
     fontSize: 18,
     height: 28 / 18,
+    color: colors.foreground,
     fontWeight: FontWeight.w600,
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  return const ShadTextTheme.custom(
+  return ShadTextTheme.custom(
     h1Large: h1Large,
     h1: h1,
     h2: h2,
@@ -163,29 +176,37 @@ ShadTextTheme usTextTheme() {
         fontFamily: UsFontFamily.mono,
         fontSize: 14,
         height: 20 / 14,
+        color: colors.foreground,
         fontWeight: FontWeight.w400,
         leadingDistribution: TextLeadingDistribution.even,
+        decoration: .none,
       ),
       'labelMd': TextStyle(
         fontFamily: UsFontFamily.mono,
         fontSize: 12,
         height: 18 / 12,
+        color: colors.foreground,
         fontWeight: FontWeight.w400,
         leadingDistribution: TextLeadingDistribution.even,
+        decoration: .none,
       ),
       'labelSm': TextStyle(
         fontFamily: UsFontFamily.mono,
         fontSize: 10,
         height: 14 / 10,
+        color: colors.foreground,
         fontWeight: FontWeight.w400,
         leadingDistribution: TextLeadingDistribution.even,
+        decoration: .none,
       ),
       'captionMd': TextStyle(
         fontFamily: UsFontFamily.mono,
         fontSize: 12,
         height: 16 / 12,
+        color: colors.foreground,
         fontWeight: FontWeight.w400,
         leadingDistribution: TextLeadingDistribution.even,
+        decoration: .none,
       ),
     },
   );

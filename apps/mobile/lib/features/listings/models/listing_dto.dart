@@ -11,7 +11,8 @@ abstract class CreateListingRequest with _$CreateListingRequest {
     required Condition condition,
     @JsonKey(name: 'category_id') required int categoryId,
     double? price,
-    String? dscription,
+    String? description,
+    @JsonKey(name: 'barter_request') String? barterRequest,
   }) = _CreateListingRequest;
 
   factory CreateListingRequest.fromJson(Map<String, dynamic> json) =>
@@ -25,7 +26,8 @@ abstract class UpdateListingRequest with _$UpdateListingRequest {
     Condition? condition,
     @JsonKey(name: 'category_id') int? categoryId,
     double? price,
-    String? dscription,
+    String? description,
+    @JsonKey(name: 'barter_request') String? barterRequest,
   }) = _UpdateListingRequest;
 
   factory UpdateListingRequest.fromJson(Map<String, dynamic> json) =>

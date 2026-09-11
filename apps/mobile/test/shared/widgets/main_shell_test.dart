@@ -2,18 +2,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart' hide GlobalMaterialLocalizations;
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
+import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/chats/pages/chat_page.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
 import 'package:uni_stash_mobile/features/listings/pages/search_page.dart';
 import 'package:uni_stash_mobile/features/listings/pages/sell_page.dart';
+import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/profile/pages/profile_page.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
+
+/// ProfilePage fetches through ProfileRepository on open; the shell tests
+/// don't care about profile data, so a canned success is enough.
+class _StubProfileRepository implements ProfileRepository {
+  const _StubProfileRepository();
+
+  @override
+  Future<Result<User>> getProfile() async => const Result.success(
+    User(
+      id: 'test-uuid-123',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      emailVerified: true,
+      role: 'student',
+    ),
+  );
+}
 
 void main() {
   late GoRouter router;
 
   setUp(() {
+    // ProfilePage pushes its own GetIt scope; this parent scope supplies the
+    // repository it resolves.
+    di.pushNewScope(
+      scopeName: 'mainShellTest',
+      init: (getIt) {
+        getIt.registerSingleton<ProfileRepository>(
+          const _StubProfileRepository(),
+        );
+      },
+    );
+
     router = GoRouter(
       initialLocation: '/home',
       routes: [
@@ -43,13 +75,34 @@ void main() {
             ),
             StatefulShellBranch(
               routes: [
-                GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+                GoRoute(
+                  path: '/profile',
+                  builder: (_, _) => const ProfilePage(),
+                ),
               ],
             ),
           ],
         ),
       ],
     );
+  });
+
+  tearDown(() async {
+    // Let any in-flight page-scope pop (ProfilePage's dispose) land first,
+    // then clean up defensively.
+    await Future<void>.delayed(Duration.zero);
+    while (di.currentScopeName != 'mainShellTest') {
+      try {
+        await di.popScope();
+      } on Object {
+        break;
+      }
+    }
+    try {
+      await di.popScope();
+    } on Object {
+      // Already at the base scope.
+    }
   });
 
   Future<void> pumpShell(WidgetTester tester) async {
