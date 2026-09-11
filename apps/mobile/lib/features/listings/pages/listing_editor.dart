@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/_widgets.dart';
@@ -34,7 +34,10 @@ class _ListingEditorState extends State<ListingEditor> {
       scopeName: 'listingEditorPage',
       init: (getIt) {
         getIt.registerLazySingleton<ListingEditorViewModel>(
-          () => ListingEditorViewModel(di<ListingsRepository>()),
+          () => ListingEditorViewModel(
+            di<ListingsRepository>(),
+            di<CategoriesRepository>(),
+          ),
         );
       },
     );
@@ -216,16 +219,58 @@ class _CategoryField extends SignalHookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     final model = di<ListingEditorViewModel>();
-    final categories = Category.fakeList();
+
+    // Watch all three signals so the picker reacts to the fetch lifecycle.
+    final categories = model.categories.value;
+    final isLoading = model.isLoadingCategories.value;
+    final error = model.categoriesError.value;
+
     return LayoutBuilder(
       builder: (context, constraints) {
+        final label = Row(
+          children: [
+            const Text('CATEGORY'),
+            if (isLoading) ...[
+              const SizedBox(width: 8),
+              const ShadSpinner(width: 10, height: 10),
+            ],
+          ],
+        );
+
+        // Fetch failed and we have nothing to show: surface a retry
+        // affordance instead of an empty, silently-disabled dropdown.
+        if (error != null && categories.isEmpty) {
+          return GestureDetector(
+            onTap: model.loadCategories,
+            child: Column(
+              crossAxisAlignment: .stretch,
+              children: [
+                label,
+                const SizedBox(height: 8),
+                Text(
+                  "Couldn't load categories. Tap to retry.",
+                  style: theme.textTheme.small.copyWith(
+                    color: theme.colorScheme.destructive,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         return ShadSelectFormField<Category>(
           id: 'category',
-          label: const Text('CATEGORY'),
-          placeholder: const Text('Select a category'),
+          label: label,
+          placeholder: Text(
+            categories.isEmpty
+                ? 'No categories available'
+                : 'Select a category',
+          ),
           minWidth: constraints.maxWidth,
-          enabled: !model.isSubmitting.value,
+          enabled:
+              !model.isSubmitting.value && !isLoading && categories.isNotEmpty,
           options: categories.map((value) {
             return ShadOption(value: value, child: Text(value.label));
           }).toList(),
