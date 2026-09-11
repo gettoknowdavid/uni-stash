@@ -1,0 +1,30 @@
+$kind: http-request
+name: Delete Category
+method: DELETE
+url: '{{baseUrl}}/api/v1/categories/{{categoryId}}'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminAccessToken}}"
+docs:
+  description: |-
+    **Admin-only.** Deletes a category.
+
+    ⚠️ **A category that still has listings CANNOT be deleted** — the API
+    returns `409 Conflict` instead of cascading. Reassign the listings to
+    another category (or delete them) first, then retry. This protects user
+    data from the schema's `ON DELETE CASCADE`.
+
+    ### Success
+
+    `204 No Content` (empty body)
+
+    ### Errors
+
+    | Status | Meaning |
+    | ------ | ------- |
+    | 401    | Missing/invalid admin token |
+    | 403    | Standard admin without `categories: write` permission |
+    | 404    | Category not found |
+    | 409    | Category still has listings — reassign or delete them first |

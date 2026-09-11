@@ -11,7 +11,7 @@ apps/api/postman/
 │   ├── Admin Auth/         # /api/v1/admin/auth/*    — admin login, refresh, me, logout, password reset
 │   ├── Admin Management/   # /api/v1/admin/admins    — create/list/update/deactivate admins
 │   ├── Auth/               # /api/v1/auth/*          — signup, verify, login, refresh, password reset
-│   ├── Categories/         # /api/v1/categories      — list categories
+│   ├── Categories/         # /api/v1/categories      — public list + admin CRUD
 │   ├── Images/             # /api/v1/images/*        — presign, confirm, delete
 │   ├── Listings/           # /api/v1/listings/*      — CRUD + reserve/unreserve/mark-sold
 │   └── Schools/            # /api/v1/schools         — CRUD + search
@@ -49,18 +49,29 @@ apps/api/postman/
    `apps/api/src/features/<feature>/`.
 2. Use `$kind: http-request`, set `order` (multiples of 1000 within the
    folder), and `auth: { type: noauth }` or bearer `{{accessToken}}` /
-   `{{adminAccessToken}}`.
+   `{{adminAccessToken}}` (admin-only routes).
 3. Add `docs.description` with a request/response example and error table.
 
 ## Notes on Categories
 
-Categories are seed-managed in the database (CM-4.9). The API only exposes
-`GET /api/v1/categories` — there is intentionally no create/update/delete
-endpoint. To add a category, insert a row via a migration or seed script:
+Categories are **curated taxonomy managed by admins** via the API:
+
+| Method | Path | Access |
+| ------ | ---- | ------ |
+| GET    | `/api/v1/categories`     | Public (no auth) — browse filter chips, pickers |
+| POST   | `/api/v1/categories`     | Admin only (`categories: write`) |
+| PATCH  | `/api/v1/categories/{id}` | Admin only (`categories: write`) |
+| DELETE | `/api/v1/categories/{id}` | Admin only (`categories: write`) |
+
+- Regular users (mobile app) only ever **read** the list; there is no
+  user-facing category creation.
+- `slug` is unique and must be lowercase letters/digits/hyphens; `sort_order`
+  controls display order.
+- **Deleting a category that still has listings returns `409 Conflict`** —
+  reassign or delete the listings first. This guards against the schema's
+  `ON DELETE CASCADE` destroying user data.
+- For bootstrap/seed purposes you can still insert rows via a migration:
 
 ```sql
 INSERT INTO categories (slug, label, sort_order) VALUES ('sports', 'Sports', 30);
 ```
-
-Note that deleting a category cascades to delete all its listings
-(`ON DELETE CASCADE` on `listings.category_id`).

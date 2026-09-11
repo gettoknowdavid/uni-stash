@@ -10,7 +10,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         "/api/v1/categories",
         crate::core::governor::LISTINGS_RATE_LIMIT,
         |scope| {
-            scope.route("", web::get().to(handlers::list_categories));
+            scope
+                .route("", web::get().to(handlers::list_categories))
+                .route("", web::post().to(handlers::create_category))
+                .route("/{id}", web::patch().to(handlers::update_category))
+                .route("/{id}", web::delete().to(handlers::delete_category));
         },
     );
 }
