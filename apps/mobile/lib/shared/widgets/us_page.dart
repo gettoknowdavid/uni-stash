@@ -18,6 +18,7 @@ class UsPage extends StatelessWidget {
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.safeArea = true,
+    this.gutters = const .symmetric(horizontal: 16),
   });
 
   /// The app bar to display at the top of the scaffold.
@@ -45,6 +46,9 @@ class UsPage extends StatelessWidget {
   /// If true, the scaffold is wrapped in a [SafeArea].
   final bool safeArea;
 
+  /// The gutters (padding) to apply to the scaffold.
+  final EdgeInsets gutters;
+
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
@@ -56,7 +60,12 @@ class UsPage extends StatelessWidget {
     Widget content = Column(
       children: [
         ?header,
-        Expanded(child: body ?? const SizedBox.shrink()),
+        Expanded(
+          child: Padding(
+            padding: gutters,
+            child: body ?? const SizedBox.shrink(),
+          ),
+        ),
         ?footer,
       ],
     );

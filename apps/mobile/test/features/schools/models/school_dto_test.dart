@@ -11,7 +11,7 @@ void main() {
         slug: 'mit',
         domain: 'mit.edu',
         logoUrl: 'https://mit.edu/logo.png',
-        createdAt: DateTime(2025, 1, 1),
+        createdAt: DateTime(2025),
       );
       final json = school.toJson();
       expect(json['id'], 'school-1');
@@ -57,7 +57,7 @@ void main() {
         name: 'MIT',
         slug: 'mit',
         domain: 'mit.edu',
-        createdAt: DateTime(2025, 1, 1),
+        createdAt: DateTime(2025),
       );
       final restored = School.fromJson(original.toJson());
       expect(restored, original);

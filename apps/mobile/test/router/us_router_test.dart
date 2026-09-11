@@ -12,6 +12,7 @@ import 'package:uni_stash_mobile/features/auth/pages/login_page.dart';
 import 'package:uni_stash_mobile/features/auth/pages/verify_page.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/pages/home_page.dart';
+import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/profile/pages/profile_page.dart';
 import 'package:uni_stash_mobile/router/us_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
@@ -20,6 +21,21 @@ import 'package:uni_stash_mobile/theme/_theme.dart';
 class MockAuthRepository extends Mock implements IAuthRepository {}
 
 class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
+
+class _StubProfileRepository implements ProfileRepository {
+  const _StubProfileRepository();
+
+  @override
+  Future<Result<User>> getProfile() async => const Result.success(
+    User(
+      id: 'test-uuid-123',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      emailVerified: true,
+      role: 'student',
+    ),
+  );
+}
 
 void main() {
   const verifiedUser = User(
@@ -80,6 +96,10 @@ void main() {
             getIt<FlutterSecureStorage>(),
           ),
         );
+        // ProfilePage (a shell branch) fetches through ProfileRepository on
+        // open; these tests don't exercise profile data, so a canned success
+        // stub keeps the shell visit side-effect free.
+        getIt.registerSingleton<ProfileRepository>(_StubProfileRepository());
       },
     );
   });
@@ -236,7 +256,9 @@ void main() {
           // Seed the OTP input via the page's route query param (code=) and
           // submit through the real VERIFY button. This avoids depending on
           // GetIt scope resolution for the page-scoped ViewModel.
-          routerConfig.go('/verify?email=${Uri.encodeQueryComponent(unverifiedUser.email)}&code=123456');
+          routerConfig.go(
+            '/verify?email=${Uri.encodeQueryComponent(unverifiedUser.email)}&code=123456',
+          );
           await tester.pumpAndSettle();
 
           await tester.tap(find.text('VERIFY'));

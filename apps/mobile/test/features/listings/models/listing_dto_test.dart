@@ -10,14 +10,14 @@ void main() {
         condition: Condition.isNew,
         categoryId: 1,
         price: 100,
-        dscription: 'Test Description',
+        description: 'Test Description',
       );
       final json = request.toJson();
       expect(json['title'], 'Test Title');
       expect(json['condition'], 'new');
       expect(json['category_id'], 1);
       expect(json['price'], 100);
-      expect(json['dscription'], 'Test Description');
+      expect(json['description'], 'Test Description');
     });
     test('deserializes from JSON with snake_case keys', () {
       final json = {
@@ -25,14 +25,14 @@ void main() {
         'condition': 'new',
         'category_id': 1,
         'price': 100,
-        'dscription': 'Test Description',
+        'description': 'Test Description',
       };
       final request = CreateListingRequest.fromJson(json);
       expect(request.title, 'Test Title');
       expect(request.condition, Condition.isNew);
       expect(request.categoryId, 1);
       expect(request.price, 100);
-      expect(request.dscription, 'Test Description');
+      expect(request.description, 'Test Description');
     });
     test('roundtrip serialization preserves data', () {
       const original = CreateListingRequest(
@@ -40,7 +40,7 @@ void main() {
         condition: Condition.isNew,
         categoryId: 1,
         price: 100,
-        dscription: 'Test Description',
+        description: 'Test Description',
       );
       final restored = CreateListingRequest.fromJson(original.toJson());
       expect(restored, original);
@@ -54,14 +54,14 @@ void main() {
         condition: Condition.isNew,
         categoryId: 1,
         price: 100,
-        dscription: 'Test Description',
+        description: 'Test Description',
       );
       final json = request.toJson();
       expect(json['title'], 'Test Title');
       expect(json['condition'], 'new');
       expect(json['category_id'], 1);
       expect(json['price'], 100);
-      expect(json['dscription'], 'Test Description');
+      expect(json['description'], 'Test Description');
     });
     test('deserializes from JSON with snake_case keys', () {
       final json = {
@@ -69,14 +69,14 @@ void main() {
         'condition': 'new',
         'category_id': 1,
         'price': 100,
-        'dscription': 'Test Description',
+        'description': 'Test Description',
       };
       final request = UpdateListingRequest.fromJson(json);
       expect(request.title, 'Test Title');
       expect(request.condition, Condition.isNew);
       expect(request.categoryId, 1);
       expect(request.price, 100);
-      expect(request.dscription, 'Test Description');
+      expect(request.description, 'Test Description');
     });
     test('roundtrip serialization preserves data', () {
       const original = UpdateListingRequest(
@@ -84,7 +84,7 @@ void main() {
         condition: Condition.isNew,
         categoryId: 1,
         price: 100,
-        dscription: 'Test Description',
+        description: 'Test Description',
       );
       final restored = UpdateListingRequest.fromJson(original.toJson());
       expect(restored, original);

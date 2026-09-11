@@ -87,7 +87,8 @@ void main() {
           message: 'ok',
           data: listing,
         ),
-      );        final result = await repository.create(
+      );
+      final result = await repository.create(
         const CreateListingRequest(
           title: 'Created Listing',
           condition: Condition.isNew,
@@ -169,15 +170,17 @@ void main() {
   group('list', () {
     test('returns Success with ListListingsResponse', () async {
       final listing = makeListing();
-      when(() => mockApiClient.getList(
-            q: any(named: 'q'),
-            categoryId: any(named: 'categoryId'),
-            minPrice: any(named: 'minPrice'),
-            maxPrice: any(named: 'maxPrice'),
-            status: any(named: 'status'),
-            cursor: any(named: 'cursor'),
-            limit: any(named: 'limit'),
-          )).thenAnswer(
+      when(
+        () => mockApiClient.getList(
+          q: any(named: 'q'),
+          categoryId: any(named: 'categoryId'),
+          minPrice: any(named: 'minPrice'),
+          maxPrice: any(named: 'maxPrice'),
+          status: any(named: 'status'),
+          cursor: any(named: 'cursor'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse<ListListingsResponse>(
           status: true,
           message: 'ok',
@@ -186,7 +189,8 @@ void main() {
             nextCursor: 'cursor-abc',
           ),
         ),
-      );        final result = await repository.list(
+      );
+      final result = await repository.list(
         const ListListingsQuery(q: 'test', limit: 10),
       );
 
@@ -198,15 +202,17 @@ void main() {
     });
 
     test('passes query parameters to the API client', () async {
-      when(() => mockApiClient.getList(
-            q: any(named: 'q'),
-            categoryId: any(named: 'categoryId'),
-            minPrice: any(named: 'minPrice'),
-            maxPrice: any(named: 'maxPrice'),
-            status: any(named: 'status'),
-            cursor: any(named: 'cursor'),
-            limit: any(named: 'limit'),
-          )).thenAnswer(
+      when(
+        () => mockApiClient.getList(
+          q: any(named: 'q'),
+          categoryId: any(named: 'categoryId'),
+          minPrice: any(named: 'minPrice'),
+          maxPrice: any(named: 'maxPrice'),
+          status: any(named: 'status'),
+          cursor: any(named: 'cursor'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenAnswer(
         (_) async => const ApiResponse<ListListingsResponse>(
           status: true,
           message: 'ok',
@@ -214,37 +220,43 @@ void main() {
         ),
       );
 
-      await repository.list(const ListListingsQuery(
-        q: 'phone',
-        categoryId: 5,
-        minPrice: 10,
-        maxPrice: 100,
-        status: ListingStatus.active,
-        cursor: 'prev-cursor',
-        limit: 20,
-      ));
+      await repository.list(
+        const ListListingsQuery(
+          q: 'phone',
+          categoryId: 5,
+          minPrice: 10,
+          maxPrice: 100,
+          status: ListingStatus.active,
+          cursor: 'prev-cursor',
+          limit: 20,
+        ),
+      );
 
-      verify(() => mockApiClient.getList(
-            q: 'phone',
-            categoryId: 5,
-            minPrice: 10,
-            maxPrice: 100,
-            status: ListingStatus.active,
-            cursor: 'prev-cursor',
-            limit: 20,
-          )).called(1);
+      verify(
+        () => mockApiClient.getList(
+          q: 'phone',
+          categoryId: 5,
+          minPrice: 10,
+          maxPrice: 100,
+          status: ListingStatus.active,
+          cursor: 'prev-cursor',
+          limit: 20,
+        ),
+      ).called(1);
     });
 
     test('returns Failure on DioException', () async {
-      when(() => mockApiClient.getList(
-            q: any(named: 'q'),
-            categoryId: any(named: 'categoryId'),
-            minPrice: any(named: 'minPrice'),
-            maxPrice: any(named: 'maxPrice'),
-            status: any(named: 'status'),
-            cursor: any(named: 'cursor'),
-            limit: any(named: 'limit'),
-          )).thenThrow(
+      when(
+        () => mockApiClient.getList(
+          q: any(named: 'q'),
+          categoryId: any(named: 'categoryId'),
+          minPrice: any(named: 'minPrice'),
+          maxPrice: any(named: 'maxPrice'),
+          status: any(named: 'status'),
+          cursor: any(named: 'cursor'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenThrow(
         makeDioException(statusCode: 500),
       );
 
@@ -342,7 +354,7 @@ void main() {
 
   group('unreserve', () {
     test('returns Success with updated Listing', () async {
-      final listing = makeListing(status: ListingStatus.active);
+      final listing = makeListing();
       when(() => mockApiClient.unreserve('listing-1')).thenAnswer(
         (_) async => ApiResponse<Listing>(
           status: true,
@@ -385,15 +397,17 @@ void main() {
   // =========================================================================
   group('Logging', () {
     test('logs DioException errors for debugging', () async {
-      when(() => mockApiClient.getList(
-            q: any(named: 'q'),
-            categoryId: any(named: 'categoryId'),
-            minPrice: any(named: 'minPrice'),
-            maxPrice: any(named: 'maxPrice'),
-            status: any(named: 'status'),
-            cursor: any(named: 'cursor'),
-            limit: any(named: 'limit'),
-          )).thenThrow(
+      when(
+        () => mockApiClient.getList(
+          q: any(named: 'q'),
+          categoryId: any(named: 'categoryId'),
+          minPrice: any(named: 'minPrice'),
+          maxPrice: any(named: 'maxPrice'),
+          status: any(named: 'status'),
+          cursor: any(named: 'cursor'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenThrow(
         makeDioException(type: DioExceptionType.connectionError),
       );
 

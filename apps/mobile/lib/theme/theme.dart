@@ -18,7 +18,7 @@ ShadThemeData get usLightTheme {
   final colorScheme = UniStashColorScheme.light();
 
   // ── Typography ───────────────────────────────────────────────────────────
-  final textTheme = usTextTheme();
+  final textTheme = usTextTheme(colorScheme);
 
   // ── Global border radius: sm (4px) ──────────────────────────────────────
   const effectiveRadius = BorderRadius.zero;
@@ -142,6 +142,38 @@ ShadThemeData get usLightTheme {
         color: colorScheme.transparent,
         radius: effectiveRadius,
       ),
+    ),
+  );
+
+  final selectTheme = ShadSelectTheme(
+    decoration: ShadDecoration(
+      labelStyle: textTheme.custom['labelMd'],
+      errorLabelStyle: textTheme.custom['labelMd']?.copyWith(
+        color: colorScheme.destructive,
+      ),
+      border: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.neutral400,
+        radius: effectiveRadius,
+      ),
+      focusedBorder: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.orange500,
+        radius: effectiveRadius,
+      ),
+      errorBorder: ShadBorder.all(
+        width: 2,
+        color: UsPrimitives.red500,
+        radius: effectiveRadius,
+      ),
+      errorStyle: const TextStyle(
+        fontFamily: UsFontFamily.body,
+        fontSize: 11,
+        height: 16 / 11,
+        fontWeight: FontWeight.w400,
+        color: UsPrimitives.red500,
+      ),
+      shape: BoxShape.rectangle,
     ),
   );
 
@@ -383,6 +415,7 @@ ShadThemeData get usLightTheme {
     inputOTPTheme: inputOTPTheme,
     checkboxTheme: checkboxTheme,
     switchTheme: switchTheme,
+    selectTheme: selectTheme,
 
     // Overlay surfaces
     cardTheme: cardTheme,
