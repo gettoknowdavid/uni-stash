@@ -85,8 +85,11 @@ async fn list_categories_returns_all_categories(pool: PgPool) {
     assert_eq!(categories[1]["slug"], "electronics");
     assert_eq!(categories[1]["label"], "Electronics");
 
-    // Wire format per CM-4.9: numeric id, slug, label.
-    assert_eq!(categories[0]["id"], 1);
+    // Wire format per CM-4.9: numeric id, slug, label. Ids are SMALLSERIAL-
+    // assigned by insertion order (electronics=1, textbooks=2), while response
+    // order is by sort_order — so the first row carries id 2.
+    assert_eq!(categories[0]["id"], 2);
+    assert_eq!(categories[1]["id"], 1);
 }
 
 #[sqlx::test]
