@@ -10,7 +10,8 @@ use crate::{
     },
     features::{
         admin_auth::AdminAuthRepo, admin_management::AdminManagementRepo, auth::repo::AuthRepo,
-        images::repo::ImagesRepo, listings::repo::ListingsRepo, schools::repo::SchoolsRepo,
+        categories::repo::CategoriesRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo,
+        schools::repo::SchoolsRepo,
     },
 };
 
@@ -30,6 +31,7 @@ pub struct AppState {
     pub listings_repo: ListingsRepo,
     pub images_repo: ImagesRepo,
     pub schools_repo: SchoolsRepo,
+    pub categories_repo: CategoriesRepo,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
@@ -47,6 +49,7 @@ impl AppState {
             listings_repo: ListingsRepo::new(pool.clone()),
             images_repo: ImagesRepo::new(pool.clone()),
             schools_repo: SchoolsRepo::new(pool.clone()),
+            categories_repo: CategoriesRepo::new(pool.clone()),
             email_limiter: PerEmailLimiter::new(),
             db: db.pool,
         })
