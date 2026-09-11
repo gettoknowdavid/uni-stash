@@ -48,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::admin_management::configure)
             .configure(features::listings::configure)
             .configure(features::images::configure)
+            .configure(features::categories::configure)
             .configure(features::schools::configure)
     })
     // 0.0.0.0, not 127.0.0.1 — Render's proxy connects from outside the
