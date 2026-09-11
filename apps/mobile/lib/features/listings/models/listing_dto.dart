@@ -61,6 +61,18 @@ abstract class ListListingsResponse with _$ListListingsResponse {
       _$ListListingsResponseFromJson(json);
 }
 
+/// Response of `GET /api/v1/categories`: all categories ordered by
+/// `sort_order`.
+@freezed
+abstract class ListCategoriesResponse with _$ListCategoriesResponse {
+  const factory ListCategoriesResponse({
+    required List<Category> categories,
+  }) = _ListCategoriesResponse;
+
+  factory ListCategoriesResponse.fromJson(Map<String, dynamic> json) =>
+      _$ListCategoriesResponseFromJson(json);
+}
+
 @freezed
 abstract class ListingDetailResponse with _$ListingDetailResponse {
   const factory ListingDetailResponse({

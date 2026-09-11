@@ -15,6 +15,7 @@ analyzer:
   errors:
     unused_field: ignore
     prefer_initializing_formals: ignore
+    one_member_abstracts: ignore
 
 linter:
   rules:

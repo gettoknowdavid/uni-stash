@@ -6,6 +6,8 @@ import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
+import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
@@ -79,9 +81,19 @@ void _registerListings() {
     dependsOn: [Dio],
   );
 
+  di.registerSingletonWithDependencies<CategoriesApiClient>(
+    () => CategoriesApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
   di.registerSingletonWithDependencies<ListingsRepository>(
     () => ListingsRepositoryImpl(di<ListingsApiClient>(), di<Logger>()),
     dependsOn: [ListingsApiClient],
+  );
+
+  di.registerSingletonWithDependencies<CategoriesRepository>(
+    () => CategoriesRepositoryImpl(di<CategoriesApiClient>(), di<Logger>()),
+    dependsOn: [CategoriesApiClient],
   );
 }
 
