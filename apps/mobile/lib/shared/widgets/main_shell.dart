@@ -27,6 +27,7 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return UsPage(
       body: navigationShell,
+      gutters: .zero,
       resizeToAvoidBottomInset: false,
       footer: UsBottomNavBar(
         destinations: destinations,
