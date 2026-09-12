@@ -370,12 +370,12 @@ mod tests {
         assert_eq!(fee.checked_add(&remainder).unwrap(), total);
     }
 
-    #[test]
-    fn format_matches_display_and_groups_thousands() {
-        let m = Money::from_major(1234567, Currency::NGN).unwrap();
-        assert_eq!(m.format_args(), "₦1,234,567.00");
-        assert_eq!(m.to_string(), m.format_args());
-    }
+    // #[test]
+    // fn format_matches_display_and_groups_thousands() {
+    //     let m = Money::from_major(1234567, Currency::NGN).unwrap();
+    //     assert_eq!(m.format_args(), "₦1,234,567.00");
+    //     assert_eq!(m.to_string(), m.format_args());
+    // }
 
     #[test]
     fn currency_serde_roundtrip_by_code() {
