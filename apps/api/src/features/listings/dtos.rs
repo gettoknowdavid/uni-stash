@@ -70,8 +70,11 @@ pub struct ListingResponse {
     pub condition: models::Condition,
     pub status: models::ListingStatus,
     pub reserved_by: Option<uuid::Uuid>,
+    #[serde(with = "timer::serde::rfc3339::option")]
     pub reserved_at: Option<time::OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub updated_at: time::OffsetDateTime,
 }
 
@@ -130,6 +133,7 @@ pub struct ListingSummary {
     pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
 }
 
@@ -188,6 +192,7 @@ pub struct ListingDetailResponse {
     pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
     pub seller: SellerSummary,
     pub category: CategorySummary,
