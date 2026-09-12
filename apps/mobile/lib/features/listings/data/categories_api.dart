@@ -12,8 +12,7 @@ abstract class CategoriesApiClient {
     String? baseUrl,
   }) = _CategoriesApiClient;
 
-  /// CM-4.9 — public, no auth. Returns all categories ordered by
-  /// `sort_order` (then label).
-  @GET('/api/v1/categories/')
+  /// Returns all categories ordered by `sort_order` (then label).
+  @GET('/api/v1/categories')
   Future<ApiResponse<ListCategoriesResponse>> getCategories();
 }

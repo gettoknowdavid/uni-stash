@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 /// [TextInputFormatter] that masks input as Naira currency.
 ///
@@ -12,13 +13,16 @@ class NairaCurrencyInputFormatter extends TextInputFormatter {
   /// Maximum number of digits accepted (₦999,999,999,999).
   static const int maxDigits = 12;
 
-  /// Parses formatted text back into an amount.
+  /// Parses formatted text back into a [Money] amount in **kobo**.
   ///
-  /// Returns null when the text contains no digits.
-  static double? parse(String text) {
+  /// Users type whole naira (₦1,500 => 150000 kobo). Returns null when the
+  /// text contains no digits.
+  static Money? parse(String text) {
     final digits = text.replaceAll(_nonDigits, '');
     if (digits.isEmpty) return null;
-    return double.tryParse(digits);
+    final naira = int.tryParse(digits);
+    if (naira == null) return null;
+    return Money.fromMajor(naira);
   }
 
   @override

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO listings (seller_id, category_id, title, description, price, condition)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING id, seller_id, category_id, title, description, price, condition, status, reserved_by, reserved_at, created_at, updated_at",
+  "query": "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,\n                    u.id AS seller_id, u.display_name AS seller_display_name,\n                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label\n             FROM listings l\n             JOIN users u ON u.id = l.seller_id\n             JOIN categories c ON c.id = l.category_id\n             WHERE l.id = $1",
   "describe": {
     "columns": [
       {
@@ -16,28 +16,6 @@
       },
       {
         "ordinal": 1,
-        "name": "seller_id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "listings",
-            "name": "seller_id"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
-        "name": "category_id",
-        "type_info": "Int2",
-        "origin": {
-          "Table": {
-            "table": "listings",
-            "name": "category_id"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "title",
         "type_info": "Text",
         "origin": {
@@ -48,7 +26,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 2,
         "name": "description",
         "type_info": "Text",
         "origin": {
@@ -59,13 +37,35 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 3,
         "name": "price",
-        "type_info": "Int4",
+        "type_info": "Int8",
         "origin": {
           "Table": {
             "table": "listings",
             "name": "price"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "currency: String",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "barter_request",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "barter_request"
           }
         }
       },
@@ -93,28 +93,6 @@
       },
       {
         "ordinal": 8,
-        "name": "reserved_by",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "listings",
-            "name": "reserved_by"
-          }
-        }
-      },
-      {
-        "ordinal": 9,
-        "name": "reserved_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "listings",
-            "name": "reserved_at"
-          }
-        }
-      },
-      {
-        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -125,41 +103,82 @@
         }
       },
       {
-        "ordinal": 11,
-        "name": "updated_at",
-        "type_info": "Timestamptz",
+        "ordinal": 9,
+        "name": "seller_id",
+        "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "listings",
-            "name": "updated_at"
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "seller_display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "category_id",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "categories",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "category_slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "categories",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "category_label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "categories",
+            "name": "label"
           }
         }
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Int2",
-        "Text",
-        "Text",
-        "Int4",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
       false,
-      false,
+      true,
       false,
       true,
       false,
       false,
-      true,
-      true,
+      false,
+      false,
+      false,
+      false,
       false,
       false
     ]
   },
-  "hash": "06395088d3f503a253b7d28a2ef0432592eb6d2e656cb97784b50d22246e43c7"
+  "hash": "4c0b19c182c0942329c89e83bf9533d982d3ba197cd3b5084eac8eff7abe1a5d"
 }

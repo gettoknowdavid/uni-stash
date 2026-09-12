@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:get_it/get_it.dart';
+import 'package:logger/logger.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
@@ -65,21 +67,28 @@ class ListingEditorViewModel implements Disposable {
     final title = (values['title'] as String?)?.trim() ?? '';
     final description = (values['description'] as String?)?.trim() ?? '';
     final category = values['category'] as Category?;
+    if (category == null) {
+      error.value = 'Please select a category.';
+      return;
+    }
     final condition = values['condition'] as Condition?;
     final barterOnly = this.barterOnly.value;
     final priceText = values['price'] as String?;
     final barterRequest = (values['barter_request'] as String?)?.trim();
 
+    // A listing is priced OR barter-only — mirrors the API's constraint.
     final request = CreateListingRequest(
       title: title,
       description: description,
       condition: condition ?? Condition.isNew,
-      categoryId: category?.id ?? 0,
+      categoryId: category.id,
       price: barterOnly
           ? null
           : NairaCurrencyInputFormatter.parse(priceText ?? ''),
       barterRequest: barterOnly ? barterRequest : null,
     );
+
+    di<Logger>().w(request.toJson());
 
     isSubmitting.value = true;
     error.value = null;

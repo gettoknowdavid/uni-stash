@@ -131,7 +131,7 @@ fn listing_body(title: &str, category_id: i16) -> serde_json::Value {
         "title": title,
         "description": "A test listing",
         "category_id": category_id,
-        "price": 100,
+        "price": {"amount_minor": 10000, "currency": "NGN"},
         "condition": "new",
     })
 }
@@ -139,7 +139,7 @@ fn listing_body(title: &str, category_id: i16) -> serde_json::Value {
 fn full_listing_body(
     title: &str,
     category_id: i16,
-    price: Option<i32>,
+    price: Option<i64>,
     condition: &str,
 ) -> serde_json::Value {
     let mut body = serde_json::json!({
@@ -148,7 +148,7 @@ fn full_listing_body(
         "condition": condition,
     });
     if let Some(p) = price {
-        body["price"] = serde_json::json!(p);
+        body["price"] = serde_json::json!({"amount_minor": p, "currency": "NGN"});
     }
     body
 }
@@ -237,6 +237,7 @@ async fn create_listing_validates_title_before_db_call() {
         description: None,
         category_id: 1,
         price: None,
+        barter_request: None,
         condition: models::Condition::New,
     };
     let err = req.validate().unwrap_err();
@@ -255,7 +256,11 @@ async fn create_listing_rejects_negative_price() {
         title: "Laptop".into(),
         description: Some("Used".into()),
         category_id: 1,
-        price: Some(-100),
+        price: Some(
+            uni_stash_be::core::money::Money::new(-100, uni_stash_be::core::money::Currency::NGN)
+                .unwrap(),
+        ),
+        barter_request: None,
         condition: models::Condition::Used,
     };
     let err = req.validate().unwrap_err();
@@ -278,7 +283,7 @@ async fn empty_title_does_not_insert_row(pool: PgPool) {
     let body = serde_json::json!({
         "title": "",
         "category_id": category_id,
-        "price": 100,
+        "price": {"amount_minor": 10000, "currency": "NGN"},
         "condition": "new",
     });
     let resp = call_create_listing(&state, &body, Some(&token)).await;
@@ -329,7 +334,7 @@ async fn create_listing_success_returns_201_with_full_object(pool: PgPool) {
     let state = test_state(pool);
     let token = sign_access_token(&state.jwt_keys, user_id, "alice@test.edu", true);
 
-    let body = full_listing_body("Organic Chemistry 8th Ed", category_id, Some(45), "used");
+    let body = full_listing_body("Organic Chemistry 8th Ed", category_id, Some(4500), "used");
     let resp = call_create_listing(&state, &body, Some(&token)).await;
 
     assert_eq!(resp.status(), 201);
@@ -342,7 +347,8 @@ async fn create_listing_success_returns_201_with_full_object(pool: PgPool) {
     assert_eq!(data["seller_id"], user_id.to_string());
     assert_eq!(data["category_id"], category_id);
     assert_eq!(data["title"], "Organic Chemistry 8th Ed");
-    assert_eq!(data["price"], 45);
+    assert_eq!(data["price"]["amount_minor"], 4500);
+    assert_eq!(data["price"]["currency"], "NGN");
     assert_eq!(data["condition"], "used");
     assert_eq!(data["status"], "active");
     assert!(
@@ -375,7 +381,7 @@ async fn create_listing_seller_id_is_never_trusted_from_body(pool: PgPool) {
         "title": "Hacked Listing",
         "seller_id": other_user_id.to_string(),
         "category_id": category_id,
-        "price": 100,
+        "price": {"amount_minor": 10000, "currency": "NGN"},
         "condition": "new",
     });
     let resp = call_create_listing(&state, &body, Some(&token)).await;
@@ -444,7 +450,7 @@ async fn create_listing_default_description_when_omitted(pool: PgPool) {
     let body = serde_json::json!({
         "title": "USB Cable",
         "category_id": category_id,
-        "price": 5,
+        "price": {"amount_minor": 500, "currency": "NGN"},
         "condition": "new",
     });
     let resp = call_create_listing(&state, &body, Some(&token)).await;

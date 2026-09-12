@@ -27,6 +27,8 @@ pub async fn lock_listing_row(
 }
 
 /// Reserve an active listing for a buyer. Uses SELECT ... FOR UPDATE to
+use crate::core::money::Currency;
+
 /// prevent concurrent race conditions (TRD §4.3).
 pub async fn reserve_listing(
     pool: &sqlx::PgPool,
@@ -59,7 +61,7 @@ pub async fn reserve_listing(
         "UPDATE listings
          SET status = 'reserved', reserved_by = $1, reserved_at = now(), updated_at = now()
          WHERE id = $2
-         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+         RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
         buyer_id,
         listing_id,
     )
@@ -106,7 +108,7 @@ pub async fn mark_sold(
         "UPDATE listings
          SET status = 'sold', reserved_by = NULL, reserved_at = NULL, updated_at = now()
          WHERE id = $1
-         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+         RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
         listing_id,
     )
     .fetch_one(&mut *tx)
@@ -147,7 +149,7 @@ pub async fn unreserve(
         "UPDATE listings
          SET status = 'active', reserved_by = NULL, reserved_at = NULL, updated_at = now()
          WHERE id = $1
-         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+         RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
         listing_id,
     )
     .fetch_one(&mut *tx)
@@ -183,7 +185,7 @@ pub async fn unreserve_system(
         "UPDATE listings
          SET status = 'active', reserved_by = NULL, reserved_at = NULL, updated_at = now()
          WHERE id = $1
-         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+         RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
         listing_id,
     )
     .fetch_one(&mut *tx)

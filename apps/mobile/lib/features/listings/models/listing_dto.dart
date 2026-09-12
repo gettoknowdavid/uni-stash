@@ -10,9 +10,9 @@ abstract class CreateListingRequest with _$CreateListingRequest {
     required String title,
     required Condition condition,
     @JsonKey(name: 'category_id') required int categoryId,
-    double? price,
-    String? description,
+    Money? price,
     @JsonKey(name: 'barter_request') String? barterRequest,
+    String? description,
   }) = _CreateListingRequest;
 
   factory CreateListingRequest.fromJson(Map<String, dynamic> json) =>
@@ -25,9 +25,9 @@ abstract class UpdateListingRequest with _$UpdateListingRequest {
     String? title,
     Condition? condition,
     @JsonKey(name: 'category_id') int? categoryId,
-    double? price,
-    String? description,
+    Money? price,
     @JsonKey(name: 'barter_request') String? barterRequest,
+    String? description,
   }) = _UpdateListingRequest;
 
   factory UpdateListingRequest.fromJson(Map<String, dynamic> json) =>
@@ -39,8 +39,9 @@ abstract class ListListingsQuery with _$ListListingsQuery {
   const factory ListListingsQuery({
     String? q,
     @JsonKey(name: 'category_id') int? categoryId,
-    @JsonKey(name: 'min_price') double? minPrice,
-    @JsonKey(name: 'max_price') double? maxPrice,
+    /// Price filter bounds in minor units (kobo).
+    @JsonKey(name: 'min_price') int? minPrice,
+    @JsonKey(name: 'max_price') int? maxPrice,
     ListingStatus? status,
     String? cursor,
     @Default(50) int limit,
@@ -85,7 +86,8 @@ abstract class ListingDetailResponse with _$ListingDetailResponse {
     required Seller seller,
     required Category category,
     required List<Image> images,
-    double? price,
+    Money? price,
+    @JsonKey(name: 'barter_request') String? barterRequest,
   }) = _ListingDetailResponse;
 
   factory ListingDetailResponse.fromJson(Map<String, dynamic> json) =>

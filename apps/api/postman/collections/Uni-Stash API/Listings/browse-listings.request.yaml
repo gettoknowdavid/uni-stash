@@ -27,3 +27,42 @@ queryParams:
   - key: limit
     value: ''
     disabled: true
+docs:
+  description: |-
+    Public browse/search endpoint.
+
+    ## Query params
+
+    | Param       | Notes                                                        |
+    | ----------- | ------------------------------------------------------------ |
+    | `q`         | Full-text search (title weighted above description). Results ranked by relevance; cursor ignored. |
+    | `category`  | Category id.                                                 |
+    | `min_price` | Inclusive lower bound in **minor units** (kobo for NGN). `min_price=50000` = ₦500.00. |
+    | `max_price` | Inclusive upper bound, same units.                            |
+    | `status`    | `active` (default), `reserved`, `sold`, `deleted`.             |
+    | `cursor`    | Opaque cursor from `next_cursor` (browse only, not search).    |
+    | `limit`     | 1–50, default 20.                                              |
+
+    ## Response shape
+
+    Each listing's `price` is a Money object (or null for barter-only):
+
+    ```json
+    {
+      "status": true,
+      "data": {
+        "listings": [
+          {
+            "id": "…",
+            "title": "Calculus Textbook",
+            "price": { "amount_minor": 250000, "currency": "NGN" },
+            "barter_request": null,
+            "condition": "used",
+            "status": "active",
+            "created_at": "…"
+          }
+        ],
+        "next_cursor": "…"
+      }
+    }
+    ```
