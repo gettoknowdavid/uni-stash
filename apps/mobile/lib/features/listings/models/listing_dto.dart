@@ -54,7 +54,7 @@ abstract class ListListingsQuery with _$ListListingsQuery {
 @freezed
 abstract class ListListingsResponse with _$ListListingsResponse {
   const factory ListListingsResponse({
-    required List<Listing> listings,
+    required List<ListingSummary> listings,
     @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _ListListingsResponse;
 

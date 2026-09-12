@@ -19,10 +19,12 @@ class ListingsViewModel implements Disposable {
       _cursor = null;
       hasMore.value = true;
 
-      final result = await _repository.list(ListListingsQuery(
-        q: query.value.isEmpty ? null : query.value,
-        categoryId: categoryId.value,
-      ));
+      final result = await _repository.list(
+        ListListingsQuery(
+          q: query.value.isEmpty ? null : query.value,
+          categoryId: categoryId.value,
+        ),
+      );
 
       switch (result) {
         case Success(:final value):
@@ -42,11 +44,13 @@ class ListingsViewModel implements Disposable {
       isLoadingMore.value = true;
       error.value = null;
 
-      final result = await _repository.list(ListListingsQuery(
-        q: query.value.isEmpty ? null : query.value,
-        categoryId: categoryId.value,
-        cursor: _cursor,
-      ));
+      final result = await _repository.list(
+        ListListingsQuery(
+          q: query.value.isEmpty ? null : query.value,
+          categoryId: categoryId.value,
+          cursor: _cursor,
+        ),
+      );
 
       switch (result) {
         case Success(:final value):
@@ -64,10 +68,12 @@ class ListingsViewModel implements Disposable {
       _cursor = null;
       hasMore.value = true;
 
-      final result = await _repository.list(ListListingsQuery(
-        q: query.value.isEmpty ? null : query.value,
-        categoryId: categoryId.value,
-      ));
+      final result = await _repository.list(
+        ListListingsQuery(
+          q: query.value.isEmpty ? null : query.value,
+          categoryId: categoryId.value,
+        ),
+      );
 
       switch (result) {
         case Success(:final value):
@@ -82,7 +88,7 @@ class ListingsViewModel implements Disposable {
 
   final ListingsRepository _repository;
 
-  final Signal<List<Listing>> listings = signal([]);
+  final Signal<List<ListingSummary>> listings = signal([]);
   final Signal<bool> isLoading = signal(false);
   final Signal<bool> isLoadingMore = signal(false);
   final Signal<String?> error = signal(null);
