@@ -77,10 +77,10 @@ class _SignUpPageState extends State<SignUpPage> {
       },
       child: UsPage(
         header: const UsPageHeader(),
+        gutters: const .only(top: 24),
         body: SingleChildScrollView(
           child: Column(
             children: [
-              const SizedBox(height: 16),
               AuthPageShell(
                 title: const Text('UNI·STASH'),
                 subtitle: const Text('Campus Bulletin Board'),
