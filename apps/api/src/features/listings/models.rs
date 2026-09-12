@@ -65,13 +65,29 @@ pub struct Listing {
     pub category_id: i16,
     pub title: String,
     pub description: String,
-    pub price: Option<i32>,
+    /// Minor units (kobo for NGN) — always paired with `currency`. Pair is
+    /// deserialized flat from the DB; use `price_money()` for a typed value.
+    pub price: Option<i64>,
+    /// ISO 4217 code ("NGN" etc.), deserialized into the typed Currency.
+    pub currency: crate::core::money::Currency,
+    pub barter_request: Option<String>,
     pub condition: Condition,
     pub status: ListingStatus,
     pub reserved_by: Option<uuid::Uuid>,
     pub reserved_at: Option<time::OffsetDateTime>,
     pub created_at: time::OffsetDateTime,
     pub updated_at: time::OffsetDateTime,
+}
+
+impl Listing {
+    /// Typed money value assembled from the (price, currency) column pair.
+    /// `None` when the listing is barter-only.
+    pub fn price_money(&self) -> Option<crate::core::money::Money> {
+        self.price.map(|minor| crate::core::money::Money {
+            amount_minor: minor,
+            currency: self.currency,
+        })
+    }
 }
 
 #[cfg(test)]

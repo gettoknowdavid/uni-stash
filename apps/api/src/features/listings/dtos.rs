@@ -1,7 +1,14 @@
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::features::listings::{cursor, models};
+use crate::{
+    core::money::{Currency, Money},
+    features::listings::{cursor, models},
+};
+
+/// Default settlement currency. Clients may override per-request; the DB
+/// column defaults to NGN as well.
+pub const DEFAULT_CURRENCY: Currency = Currency::NGN;
 
 // ---------------------------------------------------------------------------
 // Create (CM-4.1)
@@ -17,10 +24,23 @@ pub struct CreateListingRequest {
 
     pub category_id: i16,
 
-    #[validate(range(min = 0))]
-    pub price: Option<i32>,
+    /// Price in **minor units** (kobo for NGN) — never a float.
+    /// ₦2,500.00 => `{ "amount_minor": 250000, "currency": "NGN" }`.
+    #[validate(custom(function = "validate_money"))]
+    pub price: Option<Money>,
+
+    /// Barter-only listings (price = null): what the seller wants in exchange.
+    #[validate(length(max = 1000))]
+    pub barter_request: Option<String>,
 
     pub condition: models::Condition,
+}
+
+fn validate_money(money: &Money) -> Result<(), validator::ValidationError> {
+    if money.amount_minor <= 0 {
+        return Err(validator::ValidationError::new("price_must_be_positive"));
+    }
+    Ok(())
 }
 
 pub struct InsertListingInput<'a> {
@@ -28,7 +48,8 @@ pub struct InsertListingInput<'a> {
     pub category_id: i16,
     pub title: &'a str,
     pub description: &'a str,
-    pub price: Option<i32>,
+    pub price: Option<Money>,
+    pub barter_request: Option<&'a str>,
     pub condition: models::Condition,
 }
 
@@ -43,7 +64,9 @@ pub struct ListingResponse {
     pub category_id: i16,
     pub title: String,
     pub description: String,
-    pub price: Option<i32>,
+    /// Minor units (kobo) + currency — see `core::money`.
+    pub price: Option<Money>,
+    pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
     pub reserved_by: Option<uuid::Uuid>,
@@ -54,13 +77,15 @@ pub struct ListingResponse {
 
 impl From<models::Listing> for ListingResponse {
     fn from(listing: models::Listing) -> Self {
+        let price = listing.price_money();
         ListingResponse {
             id: listing.id,
             seller_id: listing.seller_id,
             category_id: listing.category_id,
             title: listing.title,
             description: listing.description,
-            price: listing.price,
+            price,
+            barter_request: listing.barter_request,
             condition: listing.condition,
             status: listing.status,
             reserved_by: listing.reserved_by,
@@ -81,8 +106,9 @@ pub struct ListListingsQuery {
     /// (title weighted above description) instead of recency.
     pub q: Option<String>,
     pub category: Option<i16>,
-    pub min_price: Option<i32>,
-    pub max_price: Option<i32>,
+    /// Price filter bounds in **minor units** (kobo for NGN).
+    pub min_price: Option<i64>,
+    pub max_price: Option<i64>,
     pub status: Option<String>,
     pub cursor: Option<String>,
     pub limit: Option<i64>,
@@ -94,22 +120,56 @@ pub struct ListListingsResponse {
     pub next_cursor: Option<String>,
 }
 
-#[derive(serde::Serialize, sqlx::FromRow)]
+/// Wire DTO for browse results. Built from the flat DB row so the JSON
+/// always carries `price` as a Money object, never a raw integer.
+#[derive(serde::Serialize)]
 pub struct ListingSummary {
     pub id: uuid::Uuid,
     pub title: String,
-    pub price: Option<i32>,
+    pub price: Option<Money>,
+    pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
     pub created_at: time::OffsetDateTime,
+}
+
+/// DB row shape for browse queries (flat price/currency pair).
+#[derive(sqlx::FromRow)]
+pub struct ListingSummaryRow {
+    pub id: uuid::Uuid,
+    pub title: String,
+    pub price: Option<i64>,
+    pub currency: Currency,
+    pub barter_request: Option<String>,
+    pub condition: models::Condition,
+    pub status: models::ListingStatus,
+    pub created_at: time::OffsetDateTime,
+}
+
+impl From<ListingSummaryRow> for ListingSummary {
+    fn from(row: ListingSummaryRow) -> Self {
+        ListingSummary {
+            price: row.price.map(|minor| Money {
+                amount_minor: minor,
+                currency: row.currency,
+            }),
+            id: row.id,
+            title: row.title,
+            barter_request: row.barter_request,
+            condition: row.condition,
+            status: row.status,
+            created_at: row.created_at,
+        }
+    }
 }
 
 pub struct ListingFilters {
     /// When Some, performs a full-text search ordered by relevance.
     pub search_query: Option<String>,
     pub category: Option<i16>,
-    pub min_price: Option<i32>,
-    pub max_price: Option<i32>,
+    /// Minor units (kobo).
+    pub min_price: Option<i64>,
+    pub max_price: Option<i64>,
     pub status: models::ListingStatus,
     pub cursor: Option<cursor::ListingCursor>,
     pub limit: i64,
@@ -124,7 +184,8 @@ pub struct ListingDetailResponse {
     pub id: uuid::Uuid,
     pub title: String,
     pub description: String,
-    pub price: Option<i32>,
+    pub price: Option<Money>,
+    pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
     pub created_at: time::OffsetDateTime,
@@ -170,18 +231,32 @@ pub struct UpdateListingRequest {
     // Double-Option to distinguish absent from null:
     //   None       = field not in JSON → don't touch
     //   Some(None) = field present as null → set to NULL (barter)
-    //   Some(Some(n)) = field present with value → set to n
+    //   Some(Some(m)) = field present with value → set to m
     #[serde(default, deserialize_with = "deserialize_double_option")]
-    pub price: Option<Option<i32>>,
+    pub price: Option<Option<Money>>,
+
+    /// Double-Option, same semantics as `price`.
+    #[serde(default, deserialize_with = "deserialize_double_option_string")]
+    pub barter_request: Option<Option<String>>,
 
     pub condition: Option<models::Condition>,
 }
 
-fn deserialize_double_option<'de, D>(deserializer: D) -> Result<Option<Option<i32>>, D::Error>
+fn deserialize_double_option<'de, D>(deserializer: D) -> Result<Option<Option<Money>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let val = Option::<i32>::deserialize(deserializer)?;
+    let val = Option::<Money>::deserialize(deserializer)?;
+    Ok(Some(val))
+}
+
+fn deserialize_double_option_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let val = Option::<String>::deserialize(deserializer)?;
     Ok(Some(val))
 }
 
@@ -191,8 +266,9 @@ pub struct ListingPatch {
     pub title: Option<String>,
     pub description: Option<String>,
     pub category_id: Option<i16>,
-    /// None = don't touch, Some(None) = set null, Some(Some(n)) = set value
-    pub price: Option<Option<i32>>,
+    /// None = don't touch, Some(None) = set null, Some(Some(m)) = set value
+    pub price: Option<Option<Money>>,
+    pub barter_request: Option<Option<String>>,
     pub condition: Option<models::Condition>,
 }
 
@@ -216,6 +292,7 @@ mod tests {
             description: None,
             category_id: 1,
             price: None,
+            barter_request: None,
             condition: models::Condition::New,
         };
         assert!(req.validate().is_err());
@@ -227,7 +304,21 @@ mod tests {
             title: "Laptop".into(),
             description: Some("Used".into()),
             category_id: 1,
-            price: Some(-100),
+            price: Some(Money::new(-100, DEFAULT_CURRENCY).unwrap()),
+            barter_request: None,
+            condition: models::Condition::Used,
+        };
+        assert!(req.validate().is_err());
+    }
+
+    #[test]
+    fn zero_price_fails_validation() {
+        let req = CreateListingRequest {
+            title: "Free thing".into(),
+            description: None,
+            category_id: 1,
+            price: Some(Money::zero(DEFAULT_CURRENCY)),
+            barter_request: None,
             condition: models::Condition::Used,
         };
         assert!(req.validate().is_err());
@@ -239,7 +330,8 @@ mod tests {
             title: "Laptop".into(),
             description: Some("Used".into()),
             category_id: 1,
-            price: Some(100),
+            price: Some(Money::from_major(100, DEFAULT_CURRENCY).unwrap()),
+            barter_request: None,
             condition: models::Condition::New,
         };
         assert!(req.validate().is_ok());
@@ -252,21 +344,23 @@ mod tests {
             description: None,
             category_id: 1,
             price: None,
+            barter_request: Some("A used textbook".into()),
             condition: models::Condition::Fair,
         };
         assert!(req.validate().is_ok());
     }
 
     #[test]
-    fn zero_price_passes_validation() {
+    fn barter_request_over_1000_chars_fails_validation() {
         let req = CreateListingRequest {
-            title: "Free thing".into(),
+            title: "Free couch".into(),
             description: None,
             category_id: 1,
-            price: Some(0),
-            condition: models::Condition::Used,
+            price: None,
+            barter_request: Some("x".repeat(1001)),
+            condition: models::Condition::Fair,
         };
-        assert!(req.validate().is_ok());
+        assert!(req.validate().is_err());
     }
 
     #[test]
@@ -278,19 +372,23 @@ mod tests {
 
     #[test]
     fn double_option_price_null_is_some_none() {
-        let json = r#"{"title": "Test", "price": null}"#;
+        let json = r#"{"title": "Test", "price": null, "barter_request": "A phone"}"#;
         let req: UpdateListingRequest = serde_json::from_str(json).unwrap();
         assert!(req.price.is_some(), "null field should be outer Some");
         assert!(
             req.price.unwrap().is_none(),
             "null field should be inner None"
         );
+        assert_eq!(req.barter_request.unwrap(), Some("A phone".to_string()));
     }
 
     #[test]
     fn double_option_price_present_is_some_some() {
-        let json = r#"{"title": "Test", "price": 42}"#;
+        let json = r#"{"title": "Test", "price": {"amount_minor": 4200, "currency": "NGN"}}"#;
         let req: UpdateListingRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.price, Some(Some(42)));
+        assert_eq!(
+            req.price,
+            Some(Some(Money::new(4200, Currency::NGN).unwrap()))
+        );
     }
 }

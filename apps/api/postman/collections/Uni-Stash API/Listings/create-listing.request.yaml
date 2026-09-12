@@ -12,7 +12,7 @@ body:
     {
       "title": "Calculus Textbook",
       "description": "Barely used, great condition",
-      "price": 2500,
+      "price": { "amount_minor": 250000, "currency": "NGN" },
       "category_id": 1,
       "condition": "used"
     }
@@ -24,3 +24,67 @@ scripts:
           const body = pm.response.json();
           pm.collectionVariables.set("listingId", body.id);
       }
+docs:
+  description: |-
+    Creates a new listing. Requires an authenticated user with a verified email.
+
+    ## Money is always integer minor units
+
+    `price` is a **Money object**, never a float or plain number:
+
+    ```json
+    { "amount_minor": 250000, "currency": "NGN" }
+    ```
+
+    That is ₦2,500.00 — `amount_minor` counts the currency's smallest unit
+    (kobo for NGN, cents for USD/EUR/GBP). Supported currencies: `NGN`,
+    `USD`, `EUR`, `GBP`. Prices must be strictly greater than zero.
+
+    ## Priced vs barter-only
+
+    A listing must have **either** `price` **or** `barter_request` — never
+    both, never neither:
+
+    | Body                               | Result                          |
+    | ---------------------------------- | ------------------------------- |
+    | `price` only                       | Priced listing (201)            |
+    | `barter_request` only              | Barter-only listing (201)       |
+    | both                               | 422 validation error            |
+    | neither                            | 422 validation error            |
+
+    `barter_request` is a free-text description of what the seller wants in
+    exchange (max 1000 chars).
+
+    ### Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "listing created successfully",
+      "data": {
+        "id": "01984af1-…",
+        "seller_id": "01984…",
+        "category_id": 1,
+        "title": "Calculus Textbook",
+        "description": "Barely used, great condition",
+        "price": { "amount_minor": 250000, "currency": "NGN" },
+        "barter_request": null,
+        "condition": "used",
+        "status": "active",
+        "reserved_by": null,
+        "reserved_at": null,
+        "created_at": "2026-09-12T10:00:00Z",
+        "updated_at": "2026-09-12T10:00:00Z"
+      }
+    }
+    ```
+
+    ### Errors
+
+    | Status | Meaning                                                        |
+    | ------ | -------------------------------------------------------------- |
+    | 401    | Missing/invalid token                                          |
+    | 403    | Email not verified                                             |
+    | 400    | Nonexistent category (FK violation)                            |
+    | 422    | Validation failed (empty title, non-positive price, both/neither price & barter_request, barter_request > 1000 chars) |
+    | 429    | Rate limited                                                   |

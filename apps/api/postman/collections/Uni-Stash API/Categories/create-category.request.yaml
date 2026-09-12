@@ -1,22 +1,21 @@
 $kind: http-request
 name: Create Category
 method: POST
-url: '{{baseUrl}}/api/v1/categories'
+url: "{{baseUrl}}/api/v1/categories"
 order: 2000
 auth:
   type: bearer
   credentials:
-    token: "{{adminAccessToken}}"
+    token: "{{accessToken}}"
 headers:
-  - key: Content-Type
-    value: application/json
+  Content-Type: application/json
 body:
   type: json
   content: |-
     {
-      "slug": "sports-equipment",
-      "label": "Sports Equipment",
-      "sort_order": 10
+      "slug": "books",
+      "label": "Books",
+      "sort_order": 1
     }
 docs:
   description: |-

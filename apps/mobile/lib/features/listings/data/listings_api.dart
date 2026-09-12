@@ -29,8 +29,8 @@ abstract class ListingsApiClient {
   Future<ApiResponse<ListListingsResponse>> getList({
     @Query('q') String? q,
     @Query('category_id') int? categoryId,
-    @Query('min_price') double? minPrice,
-    @Query('max_price') double? maxPrice,
+    @Query('min_price') int? minPrice,
+    @Query('max_price') int? maxPrice,
     @Query('status') ListingStatus? status,
     @Query('cursor') String? cursor,
     @Query('limit') int? limit,

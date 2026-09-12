@@ -2,12 +2,13 @@ use sqlx::QueryBuilder;
 use uuid::Uuid;
 
 use crate::{
-    core::error::AppError,
+    core::{error::AppError, money::Currency},
     features::listings::{
         cursor::encode_cursor,
         dtos::{
-            CategorySummary, ImageSummary, InsertListingInput, ListingDetailResponse,
-            ListingFilters, ListingPatch, ListingSummary, SellerSummary,
+            CategorySummary, DEFAULT_CURRENCY, ImageSummary, InsertListingInput,
+            ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary, ListingSummaryRow,
+            SellerSummary,
         },
         models::Listing,
     },
@@ -29,14 +30,16 @@ impl ListingsRepo {
     ) -> Result<Listing, AppError> {
         let listing = sqlx::query_as!(
             Listing,
-            "INSERT INTO listings (seller_id, category_id, title, description, price, condition)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING id, seller_id, category_id, title, description, price, condition, status, reserved_by, reserved_at, created_at, updated_at",
+            "INSERT INTO listings (seller_id, category_id, title, description, price, currency, barter_request, condition)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition, status, reserved_by, reserved_at, created_at, updated_at",
             input.seller_id,
             input.category_id,
             &input.title,
             &input.description,
-            input.price,
+            input.price.as_ref().map(|m| m.amount_minor),
+            input.price.as_ref().map(|m| m.currency).unwrap_or(DEFAULT_CURRENCY).to_string(),
+            input.barter_request,
             input.condition.to_string(),
         )
         .fetch_one(&self.db)
@@ -63,13 +66,13 @@ impl ListingsRepo {
             // CM-5.1 — Full-text search: select with rank for display,
             // but only return the same columns as the non-search path.
             QueryBuilder::new(
-                "SELECT l.id, l.title, l.price, l.condition, l.status, l.created_at
+                "SELECT l.id, l.title, l.price, l.currency AS \"currency: Currency\", l.barter_request, l.condition, l.status, l.created_at
                  FROM listings l
                  WHERE l.status = ",
             )
         } else {
             QueryBuilder::new(
-                "SELECT id, title, price, condition, status, created_at
+                "SELECT id, title, price, currency AS \"currency: Currency\", barter_request, condition, status, created_at
                  FROM listings
                  WHERE status = ",
             )
@@ -141,13 +144,16 @@ impl ListingsRepo {
         query.push(" LIMIT ");
         query.push_bind(limit + 1);
 
-        let rows: Vec<ListingSummary> = query.build_query_as().fetch_all(&self.db).await?;
+        let rows: Vec<ListingSummaryRow> = query.build_query_as().fetch_all(&self.db).await?;
 
         let has_more = rows.len() as i64 > limit;
-        let listings = if has_more {
-            rows.into_iter().take(limit as usize).collect()
+        let listings: Vec<ListingSummary> = if has_more {
+            rows.into_iter()
+                .take(limit as usize)
+                .map(Into::into)
+                .collect()
         } else {
-            rows
+            rows.into_iter().map(Into::into).collect()
         };
 
         // Search results don't use cursor pagination.
@@ -179,7 +185,7 @@ impl ListingsRepo {
         listing_id: Uuid,
     ) -> Result<Option<ListingDetailResponse>, AppError> {
         let row = sqlx::query!(
-            "SELECT l.id, l.title, l.description, l.price, l.condition, l.status, l.created_at,
+            "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,
                     u.id AS seller_id, u.display_name AS seller_display_name,
                     c.id AS category_id, c.slug AS category_slug, c.label AS category_label
              FROM listings l
@@ -208,7 +214,12 @@ impl ListingsRepo {
             id: row.id,
             title: row.title,
             description: row.description,
-            price: row.price,
+            price: row.price.map(|minor| crate::core::money::Money {
+                amount_minor: minor,
+                currency: Currency::from_code(&row.currency)
+                    .expect("currency column holds a valid ISO code"),
+            }),
+            barter_request: row.barter_request,
             condition: row.condition.into(),
             status: row.status.into(),
             created_at: row.created_at,
@@ -286,11 +297,29 @@ impl ListingsRepo {
         }
         if let Some(ref price) = patch.price {
             match price {
-                Some(val) => {
-                    query.push(", price = ").push_bind(*val);
+                Some(money) => {
+                    query.push(", price = ").push_bind(money.amount_minor);
+                    query
+                        .push(", currency = ")
+                        .push_bind(money.currency.to_string());
+                    // Switching to a priced listing clears the barter request.
+                    query.push(", barter_request = NULL");
                 }
                 None => {
                     query.push(", price = NULL");
+                }
+            }
+            has_fields = true;
+        }
+        if let Some(ref barter_request) = patch.barter_request {
+            match barter_request {
+                Some(val) => {
+                    query.push(", barter_request = ").push_bind(val.clone());
+                    // Switching to barter-only clears the price.
+                    query.push(", price = NULL");
+                }
+                None => {
+                    query.push(", barter_request = NULL");
                 }
             }
             has_fields = true;
@@ -310,7 +339,7 @@ impl ListingsRepo {
         query.push(" WHERE id = ");
         query.push_bind(listing_id);
         query.push(
-            " RETURNING id, seller_id, category_id, title, description, price, condition, status, reserved_by, reserved_at, created_at, updated_at",
+            " RETURNING id, seller_id, category_id, title, description, price, currency, barter_request, condition, status, reserved_by, reserved_at, created_at, updated_at",
         );
 
         let listing = query

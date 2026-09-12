@@ -35,6 +35,20 @@ pub async fn create_listing(
 
     body.validate()?;
 
+    // A listing is priced OR barter-only — never both, never neither.
+    if body.price.is_some() && body.barter_request.is_some() {
+        return Err(AppError::ValidationError {
+            field: "price".into(),
+            reason: "a listing cannot have both a price and a barter request".into(),
+        });
+    }
+    if body.price.is_none() && body.barter_request.is_none() {
+        return Err(AppError::ValidationError {
+            field: "price".into(),
+            reason: "a listing must have either a price or a barter request".into(),
+        });
+    }
+
     let description = body.description.clone().unwrap_or_default();
     let input = InsertListingInput {
         seller_id: user.id,
@@ -42,6 +56,7 @@ pub async fn create_listing(
         title: &body.title,
         description: &description,
         price: body.price,
+        barter_request: body.barter_request.as_deref(),
         condition: body.condition.clone(),
     };
     let listing = state.listings_repo.insert_listing(&input).await?;
@@ -154,6 +169,7 @@ pub async fn update_listing(
         description: body.description.clone(),
         category_id: body.category_id,
         price: body.price,
+        barter_request: body.barter_request.clone(),
         condition: body.condition.clone(),
     };
 

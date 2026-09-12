@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE listings\n         SET status = 'reserved', reserved_by = $1, reserved_at = now(), updated_at = now()\n         WHERE id = $2\n         RETURNING id, seller_id, category_id, title, description, price, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
+  "query": "UPDATE listings\n         SET status = 'reserved', reserved_by = $1, reserved_at = now(), updated_at = now()\n         WHERE id = $2\n         RETURNING id, seller_id, category_id, title, description, price, currency AS \"currency: Currency\", barter_request, condition as \"condition: _\", status as \"status: _\", reserved_by, reserved_at, created_at, updated_at",
   "describe": {
     "columns": [
       {
@@ -61,7 +61,7 @@
       {
         "ordinal": 5,
         "name": "price",
-        "type_info": "Int4",
+        "type_info": "Int8",
         "origin": {
           "Table": {
             "table": "listings",
@@ -71,6 +71,28 @@
       },
       {
         "ordinal": 6,
+        "name": "currency: Currency",
+        "type_info": "Bpchar",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "currency"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "barter_request",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "barter_request"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "condition: _",
         "type_info": "Text",
         "origin": {
@@ -81,7 +103,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "status: _",
         "type_info": "Text",
         "origin": {
@@ -92,7 +114,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "reserved_by",
         "type_info": "Uuid",
         "origin": {
@@ -103,7 +125,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "reserved_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -114,7 +136,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -125,7 +147,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -150,6 +172,8 @@
       false,
       true,
       false,
+      true,
+      false,
       false,
       true,
       true,
@@ -157,5 +181,5 @@
       false
     ]
   },
-  "hash": "6924774fdd29717864ae7f84bc8b93d19d967b64c239788660e4ee44695cae37"
+  "hash": "0feda644efb9fec59da851602a6320f009151a0ead84cac968b61c95ee1c4380"
 }

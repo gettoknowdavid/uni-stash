@@ -5,3 +5,31 @@ url: '{{baseUrl}}/api/v1/listings/{{listingId}}'
 order: 3000
 auth:
   type: noauth
+docs:
+  description: |-
+    Public detail view for a single listing (deleted listings are only
+    visible to their owner).
+
+    `price` is a Money object in minor units — ₦2,500.00 is
+    `{"amount_minor": 250000, "currency": "NGN"}` — or `null` for
+    barter-only listings, which carry a `barter_request` string instead
+    (what the seller wants in exchange, max 1000 chars).
+
+    ```json
+    {
+      "status": true,
+      "data": {
+        "id": "…",
+        "title": "Calculus Textbook",
+        "description": "Barely used",
+        "price": { "amount_minor": 250000, "currency": "NGN" },
+        "barter_request": null,
+        "condition": "used",
+        "status": "active",
+        "created_at": "…",
+        "seller": { "id": "…", "display_name": "Ada" },
+        "category": { "id": 1, "slug": "textbooks", "label": "Textbooks" },
+        "images": []
+      }
+    }
+    ```

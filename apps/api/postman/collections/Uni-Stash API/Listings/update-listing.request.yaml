@@ -11,5 +11,39 @@ body:
   content: |-
     {
       "title": "Updated Title",
-      "price": 2000
+      "price": { "amount_minor": 200000, "currency": "NGN" }
     }
+docs:
+  description: |-
+    Partially updates a listing (owner only, active listings only).
+
+    ## Money
+
+    `price` is a Money object in **minor units**: ₦2,000.00 is
+    `{"amount_minor": 200000, "currency": "NGN"}`.
+
+    ## Double-Option semantics
+
+    Each field follows "absent = don't touch":
+
+    | JSON                     | Effect                                  |
+    | ------------------------ | --------------------------------------- |
+    | field omitted            | Unchanged                               |
+    | `"price": {...}`         | Set price; clears `barter_request`      |
+    | `"price": null`          | Clears price (switch to barter-only)    |
+    | `"barter_request": "..."`| Set barter request; clears `price`      |
+    | `"barter_request": null` | Clears barter request                   |
+
+    Switching between priced and barter-only automatically clears the
+    mutually-exclusive sibling field, so the "priced OR barter-only"
+    invariant always holds.
+
+    ### Errors
+
+    | Status | Meaning                                         |
+    | ------ | ----------------------------------------------- |
+    | 401    | Missing/invalid token                           |
+    | 403    | Not the listing owner                           |
+    | 404    | Listing not found                               |
+    | 409    | Listing is not active (reserved/sold/deleted)   |
+    | 422    | Validation failed                               |

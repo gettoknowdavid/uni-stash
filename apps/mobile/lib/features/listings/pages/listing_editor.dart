@@ -219,7 +219,6 @@ class _CategoryField extends SignalHookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
     final model = di<ListingEditorViewModel>();
 
     // Watch all three signals so the picker reacts to the fetch lifecycle.
@@ -229,48 +228,34 @@ class _CategoryField extends SignalHookWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final label = Row(
-          children: [
-            const Text('CATEGORY'),
-            if (isLoading) ...[
-              const SizedBox(width: 8),
-              const ShadSpinner(width: 10, height: 10),
-            ],
-          ],
-        );
-
         // Fetch failed and we have nothing to show: surface a retry
         // affordance instead of an empty, silently-disabled dropdown.
-        if (error != null && categories.isEmpty) {
-          return GestureDetector(
-            onTap: model.loadCategories,
-            child: Column(
-              crossAxisAlignment: .stretch,
-              children: [
-                label,
-                const SizedBox(height: 8),
-                Text(
-                  "Couldn't load categories. Tap to retry.",
-                  style: theme.textTheme.small.copyWith(
-                    color: theme.colorScheme.destructive,
-                  ),
-                ),
-              ],
+        if (error != null || categories.isEmpty) {
+          return ShadSelectFormField<Category>(
+            id: 'category',
+            label: const Text('CATEGORY'),
+            placeholder: const Text('No categories available'),
+            minWidth: constraints.maxWidth,
+            options: const [],
+            trailing: GestureDetector(
+              onTap: model.loadCategories,
+              child: isLoading
+                  ? const ShadSpinner(iconSize: 16, height: 16, width: 16)
+                  : const Icon(LucideIcons.refreshCcw, size: 16),
             ),
+            enabled: !isLoading,
+            selectedOptionBuilder: (_, _) {
+              return const Text('No categories available.');
+            },
           );
         }
 
         return ShadSelectFormField<Category>(
           id: 'category',
-          label: label,
-          placeholder: Text(
-            categories.isEmpty
-                ? 'No categories available'
-                : 'Select a category',
-          ),
+          label: const Text('CATEGORY'),
+          placeholder: const Text('Select a category'),
           minWidth: constraints.maxWidth,
-          enabled:
-              !model.isSubmitting.value && !isLoading && categories.isNotEmpty,
+          enabled: !model.isSubmitting.value && !isLoading,
           options: categories.map((value) {
             return ShadOption(value: value, child: Text(value.label));
           }).toList(),
@@ -385,7 +370,7 @@ class _PriceField extends SignalHookWidget {
       validator: (value) {
         final amount = NairaCurrencyInputFormatter.parse(value);
         if (amount == null) return 'Please enter a price.';
-        if (amount <= 0) return 'Price must be greater than ₦0.';
+        if (amount.amountMinor <= 0) return 'Price must be greater than ₦0.';
         return null;
       },
     );
