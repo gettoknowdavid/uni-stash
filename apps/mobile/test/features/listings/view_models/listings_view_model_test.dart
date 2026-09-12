@@ -23,6 +23,21 @@ Listing makeListing({String id = 'uuid-1', String title = 'Listing'}) {
   );
 }
 
+ListingSummary makeListingSummary({
+  String id = 'listing-uuid-001',
+  String title = 'Test Listing',
+  ListingStatus status = ListingStatus.active,
+}) {
+  return ListingSummary(
+    id: id,
+    title: title,
+    condition: Condition.isNew,
+    status: status,
+    createdAt: DateTime.parse('2025-01-01T00:00:00Z'),
+    price: const Money(amountMinor: 9999),
+  );
+}
+
 void main() {
   late MockListingsRepository mockRepository;
   late ListingsViewModel viewModel;
@@ -78,7 +93,7 @@ void main() {
   // =========================================================================
   group('fetch - Success', () {
     test('populates listings on success', () async {
-      final listing = makeListing();
+      final listing = makeListingSummary();
       when(() => mockRepository.list(any())).thenAnswer(
         (_) async => Result.success(
           ListListingsResponse(listings: [listing]),
@@ -188,7 +203,7 @@ void main() {
       when(() => mockRepository.list(any())).thenAnswer(
         (_) async => Result.success(
           ListListingsResponse(
-            listings: [makeListing(id: '1', title: 'First')],
+            listings: [makeListingSummary(id: '1', title: 'First')],
             nextCursor: 'cursor-1',
           ),
         ),
@@ -202,7 +217,7 @@ void main() {
       when(() => mockRepository.list(any())).thenAnswer(
         (_) async => Result.success(
           ListListingsResponse(
-            listings: [makeListing(id: '2', title: 'Second')],
+            listings: [makeListingSummary(id: '2', title: 'Second')],
           ),
         ),
       );
@@ -243,7 +258,7 @@ void main() {
       when(() => mockRepository.list(any())).thenAnswer(
         (_) async => Result.success(
           ListListingsResponse(
-            listings: [makeListing(id: '1')],
+            listings: [makeListingSummary(id: '1')],
             nextCursor: 'cursor-old',
           ),
         ),
@@ -258,8 +273,8 @@ void main() {
         (_) async => Result.success(
           ListListingsResponse(
             listings: [
-              makeListing(id: 'a', title: 'Fresh'),
-              makeListing(id: 'b', title: 'Fresh2'),
+              makeListingSummary(id: 'a', title: 'Fresh'),
+              makeListingSummary(id: 'b', title: 'Fresh2'),
             ],
           ),
         ),
@@ -282,7 +297,7 @@ void main() {
       when(() => mockRepository.list(any())).thenAnswer(
         (_) async => Result.success(
           ListListingsResponse(
-            listings: [makeListing()],
+            listings: [makeListingSummary()],
             nextCursor: 'c',
           ),
         ),

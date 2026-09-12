@@ -104,7 +104,7 @@ abstract class Listing with _$Listing {
     @JsonKey(name: 'seller_id') required String sellerId,
     @JsonKey(name: 'category_id') required int categoryId,
     required String title,
-    required String description,
+    required String? description,
     required Condition condition,
     required ListingStatus status,
     @JsonKey(name: 'created_at') required DateTime createdAt,
@@ -117,6 +117,21 @@ abstract class Listing with _$Listing {
 
   factory Listing.fromJson(Map<String, dynamic> json) =>
       _$ListingFromJson(json);
+}
+
+@freezed
+abstract class ListingSummary with _$ListingSummary {
+  const factory ListingSummary({
+    required String id,
+    required String title,
+    required Condition condition,
+    required ListingStatus status,
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+    Money? price,
+  }) = _ListingSummary;
+
+  factory ListingSummary.fromJson(Map<String, dynamic> json) =>
+      _$ListingSummaryFromJson(json);
 }
 
 enum ListingStatus { active, reserved, sold, deleted }

@@ -21,43 +21,38 @@ class HomePage extends StatelessWidget {
         decoration: const ShadDecoration(shadows: UsElevation.brutalist),
         onPressed: () => context.push(UsRoutes.listingEditor),
       ),
-      body: const SingleChildScrollView(
-        child: Column(
-          children: [
-            Expanded(child: ListingsGridWidget()),
-          ],
-        ),
+      body: CustomScrollView(
+        slivers: [ListingsSliverGridWidget()],
       ),
     );
   }
 }
 
-class ListingsGridWidget extends SignalHookWidget {
-  const new({super.key});
+class ListingsSliverGridWidget extends SignalHookWidget {
+  const ListingsSliverGridWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
     final model = di<ListingsViewModel>();
-    return GridView.builder(
+    return SliverGrid(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final listing = model.listings.value[index];
+          return GestureDetector(
+            onTap: () => context.push(
+              UsRoutes.listingDetailsRoute(listing.id),
+              extra: listing,
+            ),
+            child: ShadCard(title: Text(listing.title),),
+          );
+        },
+        childCount: model.listings.value.length,
+      ),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
-      itemCount: model.listings.value.length,
-      itemBuilder: (context, index) {
-        final listing = model.listings.value[index];
-        return GestureDetector(
-          onTap: () => context.push(
-            UsRoutes.listingDetailsRoute(listing.id),
-            extra: listing,
-          ),
-          child: ShadCard(
-            title: Text(listing.title),
-            description: Text(listing.description),
-          ),
-        );
-      },
     );
   }
 }

@@ -31,6 +31,7 @@ void configureDependencies() {
 }
 
 void configureAuthenticatedScope() {
+  if (di.hasScope(Scope.authenticated)) return;
   di.pushNewScope(scopeName: Scope.authenticated);
   _registerListings();
   _registerSchools();
@@ -38,8 +39,8 @@ void configureAuthenticatedScope() {
 }
 
 Future<void> tearDownAuthenticatedScope() async {
-  if (di.currentScopeName == Scope.authenticated) {
-    await di.popScopesTill(Scope.root, inclusive: false);
+  if (di.hasScope(Scope.authenticated)) {
+    await di.popScopesTill(Scope.authenticated);
   }
 }
 

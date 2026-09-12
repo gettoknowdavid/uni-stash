@@ -13,7 +13,6 @@ class MockListingsApiClient extends Mock implements ListingsApiClient {}
 
 class MockLogger extends Mock implements Logger {}
 
-/// Creates a [Listing] with sensible defaults.
 Listing makeListing({
   String id = 'listing-uuid-001',
   String title = 'Test Listing',
@@ -29,6 +28,21 @@ Listing makeListing({
     status: status,
     createdAt: DateTime.parse('2025-01-01T00:00:00Z'),
     updatedAt: DateTime.parse('2025-01-01T00:00:00Z'),
+    price: const Money(amountMinor: 9999),
+  );
+}
+
+ListingSummary makeListingSummary({
+  String id = 'listing-uuid-001',
+  String title = 'Test Listing',
+  ListingStatus status = ListingStatus.active,
+}) {
+  return ListingSummary(
+    id: id,
+    title: title,
+    condition: Condition.isNew,
+    status: status,
+    createdAt: DateTime.parse('2025-01-01T00:00:00Z'),
     price: const Money(amountMinor: 9999),
   );
 }
@@ -169,7 +183,7 @@ void main() {
   // =========================================================================
   group('list', () {
     test('returns Success with ListListingsResponse', () async {
-      final listing = makeListing();
+      final listing = makeListingSummary();
       when(
         () => mockApiClient.getList(
           q: any(named: 'q'),

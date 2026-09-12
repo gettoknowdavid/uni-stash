@@ -77,6 +77,7 @@ class AuthViewModel {
     final profile = await _repository.me();
     await profile.fold(
       (user) {
+        configureAuthenticatedScope();
         batch(() {
           _user.value = user;
           _status.value = .authenticated;
@@ -84,6 +85,7 @@ class AuthViewModel {
       },
       (error) async {
         await _clearTokens();
+        await tearDownAuthenticatedScope();
         _status.value = .unauthenticated;
       },
     );
