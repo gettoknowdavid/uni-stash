@@ -66,13 +66,13 @@ impl ListingsRepo {
             // CM-5.1 — Full-text search: select with rank for display,
             // but only return the same columns as the non-search path.
             QueryBuilder::new(
-                "SELECT l.id, l.title, l.price, l.currency AS \"currency: Currency\", l.barter_request, l.condition, l.status, l.created_at
+                "SELECT l.id, l.title, l.price, l.currency::TEXT AS currency, l.barter_request, l.condition, l.status, l.created_at
                  FROM listings l
                  WHERE l.status = ",
             )
         } else {
             QueryBuilder::new(
-                "SELECT id, title, price, currency AS \"currency: Currency\", barter_request, condition, status, created_at
+                "SELECT id, title, price, currency::TEXT AS currency, barter_request, condition, status, created_at
                  FROM listings
                  WHERE status = ",
             )
@@ -339,7 +339,7 @@ impl ListingsRepo {
         query.push(" WHERE id = ");
         query.push_bind(listing_id);
         query.push(
-            " RETURNING id, seller_id, category_id, title, description, price, currency, barter_request, condition, status, reserved_by, reserved_at, created_at, updated_at",
+            " RETURNING id, seller_id, category_id, title, description, price, currency::TEXT AS currency, barter_request, condition, status, reserved_by, reserved_at, created_at, updated_at",
         );
 
         let listing = query

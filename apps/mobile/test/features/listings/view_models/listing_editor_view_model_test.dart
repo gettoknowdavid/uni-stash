@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
@@ -48,6 +49,7 @@ void main() {
     viewModel = ListingEditorViewModel(
       mockRepository,
       mockCategoriesRepository,
+      Logger(level: Level.off),
     );
   });
 

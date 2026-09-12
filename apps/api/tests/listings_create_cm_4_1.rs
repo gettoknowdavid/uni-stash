@@ -256,10 +256,10 @@ async fn create_listing_rejects_negative_price() {
         title: "Laptop".into(),
         description: Some("Used".into()),
         category_id: 1,
-        price: Some(
-            uni_stash_be::core::money::Money::new(-100, uni_stash_be::core::money::Currency::NGN)
-                .unwrap(),
-        ),
+        price: Some(uni_stash_be::core::money::Money {
+            amount_minor: -100,
+            currency: uni_stash_be::core::money::Currency::NGN,
+        }),
         barter_request: None,
         condition: models::Condition::Used,
     };
@@ -417,7 +417,12 @@ async fn create_listing_barter_only_allows_null_price(pool: PgPool) {
     let state = test_state(pool);
     let token = sign_access_token(&state.jwt_keys, user_id, "alice@test.edu", true);
 
-    let body = full_listing_body("Free Couch", category_id, None, "fair");
+    let body = serde_json::json!({
+        "title": "Free Couch",
+        "category_id": category_id,
+        "condition": "fair",
+        "barter_request": "A used textbook",
+    });
     let resp = call_create_listing(&state, &body, Some(&token)).await;
 
     assert_eq!(resp.status(), 201);
