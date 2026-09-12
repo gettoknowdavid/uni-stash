@@ -16,7 +16,7 @@ void main() {
       expect(json['title'], 'Test Title');
       expect(json['condition'], 'new');
       expect(json['category_id'], 1);
-      expect(json['price'], {'amountMinor': 100, 'currency': 'ngn'});
+      expect(json['price'], {'amount_minor': 100, 'currency': 'NGN'});
       expect(json['description'], 'Test Description');
     });
     test('deserializes from JSON with snake_case keys', () {
@@ -24,7 +24,7 @@ void main() {
         'title': 'Test Title',
         'condition': 'new',
         'category_id': 1,
-        'price': {'amountMinor': 100, 'currency': 'ngn'},
+        'price': {'amount_minor': 100, 'currency': 'NGN'},
         'description': 'Test Description',
       };
       final request = CreateListingRequest.fromJson(json);
@@ -60,7 +60,7 @@ void main() {
       expect(json['title'], 'Test Title');
       expect(json['condition'], 'new');
       expect(json['category_id'], 1);
-      expect(json['price'], {'amountMinor': 100, 'currency': 'ngn'});
+      expect(json['price'], {'amount_minor': 100, 'currency': 'NGN'});
       expect(json['description'], 'Test Description');
     });
     test('deserializes from JSON with snake_case keys', () {
@@ -68,7 +68,7 @@ void main() {
         'title': 'Test Title',
         'condition': 'new',
         'category_id': 1,
-        'price': {'amountMinor': 100, 'currency': 'ngn'},
+        'price': {'amount_minor': 100, 'currency': 'NGN'},
         'description': 'Test Description',
       };
       final request = UpdateListingRequest.fromJson(json);
@@ -104,7 +104,7 @@ void main() {
         'condition': 'new',
         'status': 'active',
         'created_at': '2023-01-01T00:00:00Z',
-        'price': {'amountMinor': 100, 'currency': 'ngn'},
+        'price': {'amount_minor': 100, 'currency': 'NGN'},
         'seller': {
           'id': 'uuid-1234',
           'display_name': 'Test Seller',

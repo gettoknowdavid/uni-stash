@@ -56,10 +56,15 @@ enum Condition {
 // Wire format: {"amount_minor": 150000, "currency": "NGN"}.
 // ---------------------------------------------------------------------------
 
+@fda.JsonEnum()
 enum Currency {
+  @fda.JsonValue('NGN')
   ngn('NGN', '₦', 'Naira'),
+  @fda.JsonValue('USD')
   usd('USD', r'$', 'US Dollar'),
+  @fda.JsonValue('EUR')
   eur('EUR', '€', 'Euro'),
+  @fda.JsonValue('GBP')
   gbp('GBP', '£', 'Pound Sterling');
 
   const Currency(this.code, this.symbol, this.label);
@@ -124,7 +129,9 @@ class Money {
   factory Money.fromJson(Map<String, dynamic> json) => _$MoneyFromJson(json);
 
   /// Amount in the currency's smallest unit (kobo/cents). Never negative.
+  @fda.JsonKey(name: 'amount_minor')
   final int amountMinor;
+  @fda.JsonKey()
   final Currency currency;
 
   /// `₦1,500.00` — assembled from integers, never a double.
