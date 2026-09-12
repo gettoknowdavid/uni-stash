@@ -1,8 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
+import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/router/_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
@@ -20,12 +21,43 @@ class HomePage extends StatelessWidget {
         decoration: const ShadDecoration(shadows: UsElevation.brutalist),
         onPressed: () => context.push(UsRoutes.listingEditor),
       ),
-      body: Center(
-        child: ShadButton.outline(
-          onPressed: () => di<AuthViewModel>().unauthenticate(),
-          child: const Text('LOGOUT'),
+      body: const SingleChildScrollView(
+        child: Column(
+          children: [
+            Expanded(child: ListingsGridWidget()),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class ListingsGridWidget extends SignalHookWidget {
+  const new({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final model = di<ListingsViewModel>();
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: model.listings.value.length,
+      itemBuilder: (context, index) {
+        final listing = model.listings.value[index];
+        return GestureDetector(
+          onTap: () => context.push(
+            UsRoutes.listingDetailsRoute(listing.id),
+            extra: listing,
+          ),
+          child: ShadCard(
+            title: Text(listing.title),
+            description: Text(listing.description),
+          ),
+        );
+      },
     );
   }
 }

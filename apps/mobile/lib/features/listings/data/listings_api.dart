@@ -25,7 +25,7 @@ abstract class ListingsApiClient {
   @GET('/api/v1/listings/{id}')
   Future<ApiResponse<ListingDetailResponse?>> getListing(@Path() String id);
 
-  @GET('/api/v1/listings/')
+  @GET('/api/v1/listings')
   Future<ApiResponse<ListListingsResponse>> getList({
     @Query('q') String? q,
     @Query('category_id') int? categoryId,
