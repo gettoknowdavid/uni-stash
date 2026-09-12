@@ -16,6 +16,7 @@ analyzer:
     unused_field: ignore
     prefer_initializing_formals: ignore
     one_member_abstracts: ignore
+    prefer_constructors_over_static_methods: ignore
 
 linter:
   rules:

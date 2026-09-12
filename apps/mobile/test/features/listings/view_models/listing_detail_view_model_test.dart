@@ -17,7 +17,8 @@
 //     status: ListingStatus.active,
 //     createdAt: DateTime(2025),
 //     seller: const Seller(id: 'seller-1', displayName: 'Seller Name'),
-//     category: const Category(id: 1, slug: 'electronics', label: 'Electronics'),
+//     category: const Category(id: 1, slug: 'electronics', label: 
+// 'Electronics'),
 //     images: const [],
 //     price: 42,
 //   );
