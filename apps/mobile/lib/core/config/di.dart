@@ -10,18 +10,37 @@ import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
 
 final GetIt di = GetIt.instance;
 
+final class Scope {
+  const Scope._();
+
+  static const String root = 'root';
+  static const String authenticated = 'authenticated';
+}
+
 void configureDependencies() {
+  di.pushNewScope(scopeName: Scope.root);
   _registerCore();
   _registerAuth();
+}
+
+void configureAuthenticatedScope() {
+  di.pushNewScope(scopeName: Scope.authenticated);
   _registerListings();
   _registerSchools();
   _registerProfile();
+}
+
+Future<void> tearDownAuthenticatedScope() async {
+  if (di.currentScopeName == Scope.authenticated) {
+    await di.popScopesTill(Scope.root, inclusive: false);
+  }
 }
 
 /// App-wide infrastructure shared by every feature.
@@ -80,20 +99,21 @@ void _registerListings() {
     () => ListingsApiClient(di<Dio>()),
     dependsOn: [Dio],
   );
-
   di.registerSingletonWithDependencies<CategoriesApiClient>(
     () => CategoriesApiClient(di<Dio>()),
     dependsOn: [Dio],
   );
-
   di.registerSingletonWithDependencies<ListingsRepository>(
     () => ListingsRepositoryImpl(di<ListingsApiClient>(), di<Logger>()),
     dependsOn: [ListingsApiClient],
   );
-
   di.registerSingletonWithDependencies<CategoriesRepository>(
     () => CategoriesRepositoryImpl(di<CategoriesApiClient>(), di<Logger>()),
     dependsOn: [CategoriesApiClient],
+  );
+  di.registerLazySingleton<ListingsViewModel>(
+    () => ListingsViewModel(di<ListingsRepository>()),
+    onCreated: (instance) => instance.fetch(),
   );
 }
 

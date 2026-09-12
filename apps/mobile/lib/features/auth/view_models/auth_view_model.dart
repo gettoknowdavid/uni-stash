@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
@@ -16,6 +17,7 @@ class AuthViewModel {
         _storage.write(key: _accessTokenKey, value: credentials.accessToken),
         _storage.write(key: _refreshTokenKey, value: credentials.refreshToken),
       ]);
+      configureAuthenticatedScope();
       batch(() {
         _status.value = .authenticated;
         _user.value = credentials.user;
@@ -23,6 +25,7 @@ class AuthViewModel {
     });
     unauthenticate = action0<void>(() async {
       await _clearTokens();
+      await tearDownAuthenticatedScope();
       batch(() {
         _user.value = null;
         _status.value = .unauthenticated;

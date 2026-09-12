@@ -19,7 +19,7 @@ scripts:
     code: |-
       if (pm.response.code === 200) {
           const body = pm.response.json();
-          pm.collectionVariables.set("accessToken", body.access_token);
-          pm.collectionVariables.set("refreshToken", body.refresh_token);
+          pm.collectionVariables.set("accessToken", body.data.access_token);
+          pm.collectionVariables.set("refreshToken", body.data.refresh_token);
       }
     language: text/javascript
