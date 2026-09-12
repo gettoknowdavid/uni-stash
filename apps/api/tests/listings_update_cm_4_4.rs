@@ -191,7 +191,7 @@ async fn partial_update_only_changes_provided_fields(pool: PgPool) {
     let data = json["data"].as_object().expect("data");
     assert_eq!(data["title"], "New Title");
     assert_eq!(data["description"], "Old desc");
-    assert_eq!(data["price"], 50);
+    assert_eq!(data["price"]["amount_minor"], 50);
 }
 
 #[sqlx::test]

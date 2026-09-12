@@ -291,14 +291,12 @@ fn group_thousands(n: i64) -> String {
 }
 
 impl fmt::Display for Money {
-    #[allow(clippy::write_literal)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}{}.{}{:02}",
+            "{}{}.{:02}",
             self.currency.symbol(),
             group_thousands(self.major_part()),
-            ".",
             self.minor_part()
         )
     }
@@ -370,12 +368,12 @@ mod tests {
         assert_eq!(fee.checked_add(&remainder).unwrap(), total);
     }
 
-    // #[test]
-    // fn format_matches_display_and_groups_thousands() {
-    //     let m = Money::from_major(1234567, Currency::NGN).unwrap();
-    //     assert_eq!(m.format_args(), "₦1,234,567.00");
-    //     assert_eq!(m.to_string(), m.format_args());
-    // }
+    #[test]
+    fn format_matches_display_and_groups_thousands() {
+        let m = Money::from_major(1234567, Currency::NGN).unwrap();
+        assert_eq!(m.format_args(), "₦1,234,567.00");
+        assert_eq!(m.to_string(), m.format_args());
+    }
 
     #[test]
     fn currency_serde_roundtrip_by_code() {

@@ -304,7 +304,10 @@ mod tests {
             title: "Laptop".into(),
             description: Some("Used".into()),
             category_id: 1,
-            price: Some(Money::new(-100, DEFAULT_CURRENCY).unwrap()),
+            price: Some(Money {
+                amount_minor: -100,
+                currency: DEFAULT_CURRENCY,
+            }),
             barter_request: None,
             condition: models::Condition::Used,
         };

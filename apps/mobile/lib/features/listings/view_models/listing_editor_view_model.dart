@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
@@ -16,12 +15,17 @@ import 'package:uni_stash_mobile/features/listings/widgets/naira_currency_input_
 /// Registered in a per-page GetIt scope (see `listing_editor.dart`), so every
 /// visit gets a fresh instance that GetIt disposes when the scope pops.
 class ListingEditorViewModel implements Disposable {
-  ListingEditorViewModel(this._repository, this._categoriesRepository) {
+  ListingEditorViewModel(
+    this._repository,
+    this._categoriesRepository,
+    this._logger,
+  ) {
     unawaited(loadCategories());
   }
 
   final ListingsRepository _repository;
   final CategoriesRepository _categoriesRepository;
+  final Logger _logger;
 
   /// Categories for the picker, fetched from `GET /api/v1/categories`
   /// (CM-4.9). Empty until the fetch completes.
@@ -88,7 +92,7 @@ class ListingEditorViewModel implements Disposable {
       barterRequest: barterOnly ? barterRequest : null,
     );
 
-    di<Logger>().w(request.toJson());
+    _logger.w(request.toJson());
 
     isSubmitting.value = true;
     error.value = null;

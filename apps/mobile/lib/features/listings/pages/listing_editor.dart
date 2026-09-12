@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:logger/logger.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
@@ -37,6 +38,7 @@ class _ListingEditorState extends State<ListingEditor> {
           () => ListingEditorViewModel(
             di<ListingsRepository>(),
             di<CategoriesRepository>(),
+            di<Logger>(),
           ),
         );
       },
