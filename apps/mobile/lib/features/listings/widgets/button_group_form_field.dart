@@ -1,3 +1,7 @@
+// The controller's enabled setter is a trivial private-field write by design
+// (see the doc comment on ShadButtonGroupController.enabled).
+// ignore_for_file: unnecessary_getters_setters
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -20,10 +24,16 @@ class ShadButtonGroupController<T> extends ValueNotifier<T?> {
 
   bool _enabled;
   bool get enabled => _enabled;
+
+  /// Toggling enabled-ness intentionally does NOT notify listeners: option
+  /// buttons read `enabled` from the widget tree on every parent rebuild.
+  /// Notifying here fires the state's `_handleChanged` (and therefore the
+  /// wrapping form field's `didChange` -> `setState`) synchronously from
+  /// `didUpdateWidget`, which crashes with "setState() called during build"
+  /// whenever `enabled` flips while the form is rebuilding (e.g. when the
+  /// editor disables the form on submit).
   set enabled(bool value) {
-    if (_enabled == value) return;
     _enabled = value;
-    notifyListeners();
   }
 }
 
@@ -39,10 +49,10 @@ class ShadButtonGroupMultiController<T> extends ValueNotifier<Set<T>> {
 
   bool _enabled;
   bool get enabled => _enabled;
+
+  /// See [ShadButtonGroupController.enabled] for why this does not notify.
   set enabled(bool value) {
-    if (_enabled == value) return;
     _enabled = value;
-    notifyListeners();
   }
 
   /// Whether tapping a selected option deselects it.
@@ -123,6 +133,13 @@ class ShadButtonGroupState<T> extends State<ShadButtonGroup<T>> {
   ShadButtonGroupController<T>? _single;
   ShadButtonGroupMultiController<T>? _multi;
 
+  /// Whether [didUpdateWidget] is currently syncing the controller from the
+  /// widget config. Listener notifications fired during that sync are
+  /// parent-driven (not user interaction) and would call `setState` on the
+  /// wrapping form field while the build cascade is still descending through
+  /// its subtree — an illegal "setState during build".
+  bool _syncingFromWidget = false;
+
   bool get _isMultiple => widget._multiple;
 
   ValueListenable<Object?> get _listenable {
@@ -153,23 +170,28 @@ class ShadButtonGroupState<T> extends State<ShadButtonGroup<T>> {
   @override
   void didUpdateWidget(covariant ShadButtonGroup<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_isMultiple) {
-      final multi = _multi!;
-      final initial = _initialMultiValue;
-      final same =
-          multi.value.length == initial.length &&
-          multi.value.containsAll(initial);
-      if (!same) multi.value = initial;
-      multi
-        ..enabled = widget.enabled
-        ..allowDeselection = widget.allowDeselection
-        ..maxSelections = widget.maxSelections;
-    } else {
-      final single = _single!;
-      if (single.value != widget.initialValue) {
-        single.value = widget.initialValue as T?;
+    _syncingFromWidget = true;
+    try {
+      if (_isMultiple) {
+        final multi = _multi!;
+        final initial = _initialMultiValue;
+        final same =
+            multi.value.length == initial.length &&
+            multi.value.containsAll(initial);
+        if (!same) multi.value = initial;
+        multi
+          ..enabled = widget.enabled
+          ..allowDeselection = widget.allowDeselection
+          ..maxSelections = widget.maxSelections;
+      } else {
+        final single = _single!;
+        if (single.value != widget.initialValue) {
+          single.value = widget.initialValue as T?;
+        }
+        single.enabled = widget.enabled;
       }
-      single.enabled = widget.enabled;
+    } finally {
+      _syncingFromWidget = false;
     }
   }
 
@@ -183,6 +205,12 @@ class ShadButtonGroupState<T> extends State<ShadButtonGroup<T>> {
   }
 
   void _handleChanged() {
+    // Parent-driven syncs (value/enabled reconciliation in didUpdateWidget)
+    // must not synchronously push changes into a wrapping form field: the
+    // field would call setState mid-build. Value syncs still notify the
+    // option items (they listen to the controller directly), so the UI stays
+    // consistent.
+    if (_syncingFromWidget) return;
     if (_isMultiple) {
       (widget.onChanged as ValueChanged<Set<T>>?)?.call(_multi!.value);
     } else {
