@@ -5,6 +5,12 @@ targets:
       freezed:
         options:
           generic_argument_factories: true
+      # Serialize nested model objects (e.g. `Money` inside
+      # `CreateListingRequest.price`) by calling their `toJson`, instead of
+      # embedding the raw object into the JSON map.
+      json_serializable:
+        options:
+          explicit_to_json: true
     sources:
       - $package$
       - lib/**
