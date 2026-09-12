@@ -70,7 +70,7 @@ pub struct ListingResponse {
     pub condition: models::Condition,
     pub status: models::ListingStatus,
     pub reserved_by: Option<uuid::Uuid>,
-    #[serde(with = "timer::serde::rfc3339::option")]
+    #[serde(with = "time::serde::rfc3339::option")]
     pub reserved_at: Option<time::OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
