@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use sqlx::QueryBuilder;
 use uuid::Uuid;
 
@@ -147,7 +149,7 @@ impl ListingsRepo {
         let rows: Vec<ListingSummaryRow> = query.build_query_as().fetch_all(&self.db).await?;
 
         let has_more = rows.len() as i64 > limit;
-        let listings: Vec<ListingSummary> = if has_more {
+        let mut listings: Vec<ListingSummary> = if has_more {
             rows.into_iter()
                 .take(limit as usize)
                 .map(Into::into)
@@ -155,6 +157,10 @@ impl ListingsRepo {
         } else {
             rows.into_iter().map(Into::into).collect()
         };
+
+        // Attach each listing's photos (up to 3) in one batched query keyed
+        // by listing id — never per-listing queries (N+1).
+        self.attach_images(&mut listings).await?;
 
         // Search results don't use cursor pagination.
         let next_cursor = if is_search {
@@ -172,6 +178,45 @@ impl ListingsRepo {
         };
 
         Ok((listings, next_cursor))
+    }
+
+    // ----------------------------------------------------------------
+    // CM-4.2 — Browse: batched images fetch
+    // ----------------------------------------------------------------
+
+    /// Attach each summary's images (up to 3, position-ordered) using one
+    /// batched query — the browse endpoint's `images` field. No-op for an
+    /// empty page.
+    pub async fn attach_images(&self, listings: &mut [ListingSummary]) -> Result<(), AppError> {
+        if listings.is_empty() {
+            return Ok(());
+        }
+
+        let listing_ids: Vec<Uuid> = listings.iter().map(|l| l.id).collect();
+        let images: Vec<ImageSummary> = sqlx::query_as!(
+            ImageSummary,
+            r#"SELECT i.id, i.object_key, i.position, i.listing_id
+               FROM images i
+               WHERE i.listing_id = ANY($1)
+               ORDER BY i.listing_id, i.position"#,
+            &listing_ids
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        let mut images_by_listing: HashMap<Uuid, Vec<ImageSummary>> =
+            listing_ids.iter().map(|&id| (id, Vec::new())).collect();
+        for image in images {
+            images_by_listing
+                .entry(image.listing_id)
+                .or_default()
+                .push(image);
+        }
+        for listing in listings {
+            listing.images = images_by_listing.remove(&listing.id).unwrap_or_default();
+        }
+
+        Ok(())
     }
 
     // ----------------------------------------------------------------
@@ -204,7 +249,7 @@ impl ListingsRepo {
 
         let images: Vec<ImageSummary> = sqlx::query_as!(
             ImageSummary,
-            "SELECT id, object_key, position FROM images WHERE listing_id = $1 ORDER BY position",
+            "SELECT id, object_key, position, listing_id FROM images WHERE listing_id = $1 ORDER BY position",
             listing_id,
         )
         .fetch_all(&self.db)

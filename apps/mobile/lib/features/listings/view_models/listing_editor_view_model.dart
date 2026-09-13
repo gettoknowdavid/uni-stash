@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
+import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
+import 'package:uni_stash_mobile/features/images/models/images_dto.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -18,13 +21,15 @@ class ListingEditorViewModel implements Disposable {
   ListingEditorViewModel(
     this._repository,
     this._categoriesRepository,
-    this._logger,
-  ) {
+    this._logger, {
+    ImagesRepository? imagesRepository,
+  }) : _imagesRepository = imagesRepository ?? di<ImagesRepository>() {
     unawaited(loadCategories());
   }
 
   final ListingsRepository _repository;
   final CategoriesRepository _categoriesRepository;
+  final ImagesRepository _imagesRepository;
   final Logger _logger;
 
   /// Categories for the picker, fetched from `GET /api/v1/categories`
@@ -46,6 +51,11 @@ class ListingEditorViewModel implements Disposable {
   final Signal<String?> error = signal(null);
   final Signal<Listing?> created = signal(null);
 
+  /// Progress label while photos are being uploaded ("Uploading photo 1 of
+  /// 3…"), null when idle. Surfaces real upload progress in the submit
+  /// button instead of an unbounded spinner.
+  final Signal<String?> uploadProgress = signal(null);
+
   /// Fetches the category list from the backend (public endpoint, no auth).
   /// Non-fatal on failure: the editor stays usable and the picker shows the
   /// retry state instead of blocking submission.
@@ -65,6 +75,12 @@ class ListingEditorViewModel implements Disposable {
   }
 
   /// Submits a validated form-value map (`ShadFormState.value`).
+  ///
+  /// Order of operations: create the listing first (photos presign against a
+  /// real listing id), then upload each picked photo presign → PUT →
+  /// confirm. A failed upload fails the submit with a clear message; the
+  /// listing already exists, so re-submitting would duplicate it — the user
+  /// cancels out instead.
   Future<void> submit(Map<String, dynamic> values) async {
     if (isSubmitting.value) return;
 
@@ -92,8 +108,6 @@ class ListingEditorViewModel implements Disposable {
       barterRequest: barterOnly ? barterRequest : null,
     );
 
-    _logger.w(request.toJson());
-
     isSubmitting.value = true;
     error.value = null;
 
@@ -101,12 +115,55 @@ class ListingEditorViewModel implements Disposable {
 
     switch (result) {
       case Success(:final value):
+        final uploadError = await _uploadPhotos(
+          value.id,
+          values['photos'] as List<Image>?,
+        );
+        if (uploadError != null) {
+          error.value = uploadError;
+          isSubmitting.value = false;
+          return;
+        }
         created.value = value;
       case Failure(:final message):
         error.value = message;
     }
 
     isSubmitting.value = false;
+  }
+
+  /// Uploads every picked photo to the freshly-created listing. Returns a
+  /// human-readable message on the first failure, null when all uploads
+  /// succeeded (or there was nothing to upload).
+  Future<String?> _uploadPhotos(String listingId, List<Image>? photos) async {
+    final picked =
+        photos?.where((p) => p.localPath != null).toList() ?? const <Image>[];
+    if (picked.isEmpty) return null;
+
+    for (var i = 0; i < picked.length; i++) {
+      final photo = picked[i];
+      uploadProgress.value = 'Uploading photo ${i + 1} of ${picked.length}…';
+      final contentType = ImageContentType.fromPath(photo.localPath!);
+      final result = await _imagesRepository.upload(
+        listingId,
+        ImageUpload(path: photo.localPath!, contentType: contentType),
+      );
+      switch (result) {
+        case Success():
+          break;
+        case Failure(:final message):
+          _logger.e(
+            '[ListingEditorViewModel] photo upload failed '
+            '(${i + 1}/${picked.length}): $message',
+          );
+          uploadProgress.value = null;
+          return 'Your listing was created but photo ${i + 1} failed to '
+              'upload: $message';
+      }
+    }
+
+    uploadProgress.value = null;
+    return null;
   }
 
   /// Clears one-shot submit state after the UI has reacted to it.
@@ -123,6 +180,7 @@ class ListingEditorViewModel implements Disposable {
     isSubmitting.dispose();
     error.dispose();
     created.dispose();
+    uploadProgress.dispose();
   }
 
   @override

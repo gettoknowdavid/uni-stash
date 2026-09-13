@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, object_key, position FROM images WHERE listing_id = $1 ORDER BY position",
+  "query": "SELECT id, object_key, position, listing_id FROM images WHERE listing_id = $1 ORDER BY position",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,17 @@
             "name": "position"
           }
         }
+      },
+      {
+        "ordinal": 3,
+        "name": "listing_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "images",
+            "name": "listing_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -45,8 +56,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "8a020cb236e3690974a94c3117cb70783ec9c8e9fd2899a16763a57a718ebb24"
+  "hash": "f3ada31988e382897f02a696c79b2e980d5528d08866df7fa8b67c93cf582d44"
 }

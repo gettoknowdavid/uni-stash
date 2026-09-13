@@ -135,6 +135,10 @@ pub struct ListingSummary {
     pub status: models::ListingStatus,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+    /// Up to 3 photos, ordered by position. Filled in by the repo after the
+    /// summary rows are fetched (single batched query), so the browse
+    /// response lets clients render photo cards without an N+1 detail fetch.
+    pub images: Vec<ImageSummary>,
 }
 
 /// DB row shape for browse queries (flat price/currency pair).
@@ -163,6 +167,8 @@ impl From<ListingSummaryRow> for ListingSummary {
             condition: row.condition,
             status: row.status,
             created_at: row.created_at,
+            // The repo attaches images in a batch after the summary fetch.
+            images: Vec::new(),
         }
     }
 }
@@ -217,6 +223,10 @@ pub struct ImageSummary {
     pub id: uuid::Uuid,
     pub object_key: String,
     pub position: i16,
+    /// Not serialized: exists so batched repo queries can group rows by
+    /// listing (browse) while the wire shape stays {id, object_key, position}.
+    #[serde(skip_serializing)]
+    pub listing_id: uuid::Uuid,
 }
 
 // ---------------------------------------------------------------------------

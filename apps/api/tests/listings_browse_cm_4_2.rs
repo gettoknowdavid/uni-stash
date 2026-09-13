@@ -88,6 +88,23 @@ async fn seed_listing(
     .expect("seed listing")
 }
 
+async fn seed_image(
+    pool: &PgPool,
+    listing_id: uuid::Uuid,
+    position: i16,
+    object_key: &str,
+) -> uuid::Uuid {
+    sqlx::query_scalar::<_, uuid::Uuid>(
+        "INSERT INTO images (listing_id, object_key, position) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(listing_id)
+    .bind(object_key)
+    .bind(position)
+    .fetch_one(pool)
+    .await
+    .expect("seed image")
+}
+
 async fn call_browse(state: &web::Data<AppState>, query: &str) -> actix_web::dev::ServiceResponse {
     let app = test::init_service(
         App::new()
@@ -329,6 +346,94 @@ async fn empty_result_set_returns_empty_array_and_null_cursor(pool: PgPool) {
     let data = json["data"].as_object().expect("data");
     assert_eq!(data["listings"].as_array().unwrap().len(), 0);
     assert!(data["next_cursor"].is_null());
+}
+
+// ===========================================================================
+// Images are embedded in browse results (batched, position-ordered)
+// ===========================================================================
+
+#[sqlx::test]
+async fn browse_embeds_images_ordered_by_position(pool: PgPool) {
+    let school = seed_school(&pool).await;
+    let seller = seed_user(&pool, school, "seller@test.edu").await;
+    let cat = seed_category(&pool, "textbooks").await;
+
+    let with_photos =
+        seed_listing(&pool, seller, cat, "With Photos", Some(10), "new", "active").await;
+    let without_photos =
+        seed_listing(&pool, seller, cat, "No Photos", Some(20), "used", "active").await;
+
+    seed_image(&pool, with_photos, 0, "listings/a/0.jpg").await;
+    seed_image(&pool, with_photos, 1, "listings/a/1.jpg").await;
+    // without_photos deliberately gets no images — the empty-array case.
+
+    let state = test_state(pool);
+    let resp = call_browse(&state, "").await;
+    assert_eq!(resp.status(), 200);
+
+    let json: serde_json::Value = test::read_body_json(resp).await;
+    let listings = json["data"]["listings"].as_array().unwrap();
+
+    // Every summary carries an images array — even when empty.
+    for listing in listings {
+        assert!(
+            listing["images"].is_array(),
+            "each listing must embed an images array"
+        );
+    }
+
+    // Browse is ordered by created_at DESC — match on title, not index.
+    let with_photos = listings
+        .iter()
+        .find(|l| l["title"] == "With Photos")
+        .expect("seeded listing in results");
+    let photos = with_photos["images"].as_array().unwrap();
+    assert_eq!(photos.len(), 2, "listing with two images embeds both");
+    assert_eq!(photos[0]["position"], 0);
+    assert_eq!(photos[1]["position"], 1);
+    assert_eq!(photos[0]["object_key"], "listings/a/0.jpg");
+    assert_eq!(photos[1]["object_key"], "listings/a/1.jpg");
+    assert!(photos[0]["listing_id"].is_null(), "listing_id is internal");
+
+    let without_photos = listings
+        .iter()
+        .find(|l| l["title"] == "No Photos")
+        .expect("seeded listing in results");
+    let bare = without_photos["images"].as_array().unwrap();
+    assert!(bare.is_empty(), "photo-less listing embeds an empty array");
+}
+
+#[sqlx::test]
+async fn browse_images_are_scoped_to_their_listing(pool: PgPool) {
+    let school = seed_school(&pool).await;
+    let seller = seed_user(&pool, school, "seller@test.edu").await;
+    let cat = seed_category(&pool, "textbooks").await;
+
+    let a = seed_listing(&pool, seller, cat, "Listing A", Some(10), "new", "active").await;
+    let _b = seed_listing(&pool, seller, cat, "Listing B", Some(20), "used", "active").await;
+
+    seed_image(&pool, a, 0, "listings/a/0.jpg").await;
+
+    let state = test_state(pool);
+    let resp = call_browse(&state, "").await;
+    assert_eq!(resp.status(), 200);
+
+    let json: serde_json::Value = test::read_body_json(resp).await;
+    let listings = json["data"]["listings"].as_array().unwrap();
+    let images_a = listings
+        .iter()
+        .find(|l| l["title"] == "Listing A")
+        .expect("seeded listing in results")["images"]
+        .as_array()
+        .unwrap();
+    let images_b = listings
+        .iter()
+        .find(|l| l["title"] == "Listing B")
+        .expect("seeded listing in results")["images"]
+        .as_array()
+        .unwrap();
+    assert_eq!(images_a.len(), 1);
+    assert!(images_b.is_empty(), "images must not leak across listings");
 }
 
 // ===========================================================================

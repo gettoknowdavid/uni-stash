@@ -6,6 +6,8 @@ import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/images/data/images_api.dart';
+import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
@@ -34,6 +36,7 @@ void configureAuthenticatedScope() {
   if (di.hasScope(Scope.authenticated)) return;
   di.pushNewScope(scopeName: Scope.authenticated);
   _registerListings();
+  _registerImages();
   _registerSchools();
   _registerProfile();
 }
@@ -115,6 +118,21 @@ void _registerListings() {
   di.registerLazySingleton<ListingsViewModel>(
     () => ListingsViewModel(di<ListingsRepository>()),
     onCreated: (instance) => instance.fetch(),
+  );
+}
+
+/// Image upload pipeline registrations (presign → direct PUT → confirm).
+/// The direct-upload Dio lives inside [ImagesRepositoryImpl], so only the
+/// auth-bearing API client is wired here.
+void _registerImages() {
+  di.registerSingletonWithDependencies<ImagesApiClient>(
+    () => ImagesApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<ImagesRepository>(
+    () => ImagesRepositoryImpl(di<ImagesApiClient>(), di<Logger>()),
+    dependsOn: [ImagesApiClient],
   );
 }
 
