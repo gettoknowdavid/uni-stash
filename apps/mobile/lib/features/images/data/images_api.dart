@@ -5,7 +5,7 @@ import 'package:uni_stash_mobile/features/images/models/images_dto.dart';
 
 part 'images_api.g.dart';
 
-/// Image upload pipeline (CM-6.1 / CM-6.2 / CM-6.3).
+/// Image upload pipeline
 ///
 /// The backend never proxies image bytes: it hands out a short-lived presigned
 /// PUT URL (`presign`), the client uploads the file directly to object storage

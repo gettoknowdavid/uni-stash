@@ -1,10 +1,6 @@
 use serde::Deserialize;
 use validator::Validate;
 
-// ---------------------------------------------------------------------------
-// CM-6.1 — POST /images/presign
-// ---------------------------------------------------------------------------
-
 /// Allowed content types for listing images. Must match the B2 bucket's
 /// CORS configuration and the client's image picker.
 const ALLOWED_CONTENT_TYPES: &[&str] = &["image/jpeg", "image/png", "image/webp"];
@@ -38,10 +34,6 @@ pub struct PresignResponse {
     pub position: i16,
 }
 
-// ---------------------------------------------------------------------------
-// CM-6.2 — POST /images/confirm
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Deserialize)]
 pub struct ConfirmRequest {
     pub listing_id: uuid::Uuid,
@@ -58,10 +50,6 @@ pub struct ConfirmResponse {
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
 }
-
-// ---------------------------------------------------------------------------
-// CM-6.3 — DELETE /images/{id} — no body, just path param
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
