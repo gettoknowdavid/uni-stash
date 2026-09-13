@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_error.dart';
-import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/_result.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -103,7 +102,6 @@ class ListingsRepositoryImpl implements ListingsRepository {
         cursor: query.cursor,
         limit: query.limit,
       );
-      di<Logger>().w(response);
       if (!response.status) return Result.failure(response.message);
       final data = response.data;
       if (data == null) return const Result.failure('No data');

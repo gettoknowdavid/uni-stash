@@ -128,6 +128,11 @@ abstract class ListingSummary with _$ListingSummary {
     required ListingStatus status,
     @JsonKey(name: 'created_at') required DateTime createdAt,
     Money? price,
+    @JsonKey(name: 'barter_request') String? barterRequest,
+    /// Up to 3 photos embedded by the browse endpoint, position-ordered.
+    @Default(<Image>[])
+    @JsonKey(name: 'images')
+    List<Image> images,
   }) = _ListingSummary;
 
   factory ListingSummary.fromJson(Map<String, dynamic> json) =>

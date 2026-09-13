@@ -67,7 +67,6 @@ class _ListingEditorState extends State<ListingEditor> {
           );
           _model.consumeResult();
         }
-
         if (_model.created.value != null) {
           _model.consumeResult();
           context.pop();
@@ -146,9 +145,8 @@ class _PhotosField extends SignalHookWidget {
       id: 'photos',
       label: const Text('PHOTOS'),
       onAddPhotos: (remainingSlots) async {
-        // TODO(listings): upload the picked files and swap the local
-        // previews for server-backed `Image`s once the object endpoints
-        // exist; until then photos stay local UI state.
+        // Photos stay local-only in the form; the ViewModel uploads them
+        // (presign → PUT → confirm) after the listing is created, in submit.
         final picked = await picker.pickMultiImage(
           limit: remainingSlots,
           imageQuality: 80,
@@ -414,12 +412,25 @@ class _SubmitButton extends SignalHookWidget {
   Widget build(BuildContext context) {
     final model = di<ListingEditorViewModel>();
     final isBusy = model.isSubmitting.value;
+    final uploadProgress = model.uploadProgress.value;
 
     return SizedBox(
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : () => _handleSubmit(context),
-        child: isBusy ? const ShadSpinner() : const Text('PUBLISH LISTING'),
+        child: isBusy
+            ? Row(
+                mainAxisAlignment: .center,
+                mainAxisSize: .min,
+                children: [
+                  const ShadSpinner(iconSize: 16),
+                  if (uploadProgress != null) ...[
+                    const SizedBox(width: 8),
+                    Text(uploadProgress),
+                  ],
+                ],
+              )
+            : const Text('PUBLISH LISTING'),
       ),
     );
   }
