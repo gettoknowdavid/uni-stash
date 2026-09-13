@@ -360,7 +360,7 @@ async fn browse_embeds_images_ordered_by_position(pool: PgPool) {
 
     let with_photos =
         seed_listing(&pool, seller, cat, "With Photos", Some(10), "new", "active").await;
-    let without_photos =
+    let _without_photos =
         seed_listing(&pool, seller, cat, "No Photos", Some(20), "used", "active").await;
 
     seed_image(&pool, with_photos, 0, "listings/a/0.jpg").await;
