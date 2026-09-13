@@ -13,10 +13,6 @@ use crate::{
     features::images::dtos::{ConfirmRequest, ConfirmResponse, PresignRequest, PresignResponse},
 };
 
-// ---------------------------------------------------------------------------
-// CM-6.1 — POST /images/presign
-// ---------------------------------------------------------------------------
-
 /// Issue a presigned PUT URL for direct client → B2 upload.
 ///
 /// The backend never proxies image bytes. Instead it hands the client a

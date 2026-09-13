@@ -12,7 +12,6 @@ abstract class CategoriesApiClient {
     String? baseUrl,
   }) = _CategoriesApiClient;
 
-  /// Returns all categories ordered by `sort_order` (then label).
   @GET('/api/v1/categories')
   Future<ApiResponse<ListCategoriesResponse>> getCategories();
 }
