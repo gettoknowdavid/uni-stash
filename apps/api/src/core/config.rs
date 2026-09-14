@@ -20,6 +20,7 @@ pub struct Config {
     pub r2_access_key_id: String,
     pub r2_secret_access_key: String,
     pub r2_endpoint: String,
+    pub r2_public_url_base: String,
 }
 
 impl Config {
@@ -102,6 +103,7 @@ impl Config {
             r2_access_key_id: required(&get, "R2_ACCESS_KEY_ID")?,
             r2_secret_access_key: required(&get, "R2_SECRET_ACCESS_KEY")?,
             r2_endpoint: required(&get, "R2_ENDPOINT")?,
+            r2_public_url_base: required(&get, "R2_PUBLIC_URL_BASE")?,
         })
     }
 }
@@ -170,6 +172,7 @@ mod tests {
             ("R2_ACCESS_KEY_ID", "test-access-key"),
             ("R2_SECRET_ACCESS_KEY", "test-secret-key"),
             ("R2_ENDPOINT", "https://r2.example.com"),
+            ("R2_PUBLIC_URL_BASE", "https://pub-test.r2.dev"),
             ("FRONTEND_BASE_URL", "https://uni-stash.com"),
         ]
     }

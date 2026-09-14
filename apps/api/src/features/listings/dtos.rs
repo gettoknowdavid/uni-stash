@@ -221,12 +221,35 @@ pub struct CategorySummary {
 #[derive(serde::Serialize)]
 pub struct ImageSummary {
     pub id: uuid::Uuid,
-    pub object_key: String,
+    pub url: String,
     pub position: i16,
-    /// Not serialized: exists so batched repo queries can group rows by
-    /// listing (browse) while the wire shape stays {id, object_key, position}.
     #[serde(skip_serializing)]
     pub listing_id: uuid::Uuid,
+}
+
+/// Raw DB row shape for an image. Internal only — never serialized
+/// directly. The repo converts each row into `ImageSummary` once it has an
+/// `R2Client` on hand to build the public URL.
+#[derive(sqlx::FromRow)]
+pub struct ImageRow {
+    pub id: uuid::Uuid,
+    pub object_key: String,
+    pub position: i16,
+    pub listing_id: uuid::Uuid,
+}
+
+impl ImageRow {
+    /// Attach a public URL, producing the wire type. Pure/sync — building
+    /// the URL is string formatting, not an API call (see
+    /// `R2Client::public_url`).
+    pub fn into_summary(self, r2: &crate::core::clients::R2Client) -> ImageSummary {
+        ImageSummary {
+            url: r2.public_url(&self.object_key),
+            id: self.id,
+            position: self.position,
+            listing_id: self.listing_id,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

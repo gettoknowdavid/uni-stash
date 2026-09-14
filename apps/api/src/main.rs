@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
     // Spawn background jobs (cleanup, future email scheduling, etc.).
     // Must happen after DB pool is ready but before the server starts
     // accepting requests, so the first cleanup runs promptly.
-    jobs::spawn(state.db.clone());
+    jobs::spawn(state.db.clone(), state.r2_client.clone());
 
     HttpServer::new(move || {
         App::new()
