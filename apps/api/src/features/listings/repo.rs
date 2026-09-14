@@ -4,11 +4,11 @@ use sqlx::QueryBuilder;
 use uuid::Uuid;
 
 use crate::{
-    core::{error::AppError, money::Currency},
+    core::{clients::R2Client, error::AppError, money::Currency},
     features::listings::{
         cursor::encode_cursor,
         dtos::{
-            CategorySummary, DEFAULT_CURRENCY, ImageSummary, InsertListingInput,
+            CategorySummary, DEFAULT_CURRENCY, ImageRow, ImageSummary, InsertListingInput,
             ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary, ListingSummaryRow,
             SellerSummary,
         },
@@ -19,11 +19,12 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct ListingsRepo {
     db: sqlx::PgPool,
+    r2: R2Client,
 }
 
 impl ListingsRepo {
-    pub fn new(db: sqlx::PgPool) -> Self {
-        Self { db }
+    pub fn new(db: sqlx::PgPool, r2: R2Client) -> Self {
+        Self { db, r2 }
     }
 
     pub async fn insert_listing<'e>(
@@ -193,12 +194,12 @@ impl ListingsRepo {
         }
 
         let listing_ids: Vec<Uuid> = listings.iter().map(|l| l.id).collect();
-        let images: Vec<ImageSummary> = sqlx::query_as!(
-            ImageSummary,
+        let images: Vec<ImageRow> = sqlx::query_as!(
+            ImageRow,
             r#"SELECT i.id, i.object_key, i.position, i.listing_id
-               FROM images i
-               WHERE i.listing_id = ANY($1)
-               ORDER BY i.listing_id, i.position"#,
+                FROM images i
+                WHERE i.listing_id = ANY($1)
+                ORDER BY i.listing_id, i.position"#,
             &listing_ids
         )
         .fetch_all(&self.db)
@@ -207,10 +208,11 @@ impl ListingsRepo {
         let mut images_by_listing: HashMap<Uuid, Vec<ImageSummary>> =
             listing_ids.iter().map(|&id| (id, Vec::new())).collect();
         for image in images {
+            let listing_id = image.listing_id;
             images_by_listing
-                .entry(image.listing_id)
+                .entry(listing_id)
                 .or_default()
-                .push(image);
+                .push(image.into_summary(&self.r2));
         }
         for listing in listings {
             listing.images = images_by_listing.remove(&listing.id).unwrap_or_default();
@@ -247,13 +249,18 @@ impl ListingsRepo {
             None => return Ok(None),
         };
 
-        let images: Vec<ImageSummary> = sqlx::query_as!(
-            ImageSummary,
+        let images: Vec<ImageRow> = sqlx::query_as!(
+            ImageRow,
             "SELECT id, object_key, position, listing_id FROM images WHERE listing_id = $1 ORDER BY position",
             listing_id,
         )
         .fetch_all(&self.db)
         .await?;
+
+        let images: Vec<ImageSummary> = images
+            .into_iter()
+            .map(|row| row.into_summary(&self.r2))
+            .collect();
 
         Ok(Some(ListingDetailResponse {
             id: row.id,

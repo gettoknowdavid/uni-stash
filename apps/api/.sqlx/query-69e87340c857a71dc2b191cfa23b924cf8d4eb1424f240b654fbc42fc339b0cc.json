@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT i.id, i.object_key, i.position, i.listing_id\n               FROM images i\n               WHERE i.listing_id = ANY($1)\n               ORDER BY i.listing_id, i.position",
+  "query": "SELECT i.id, i.object_key, i.position, i.listing_id\n                FROM images i\n                WHERE i.listing_id = ANY($1)\n                ORDER BY i.listing_id, i.position",
   "describe": {
     "columns": [
       {
@@ -60,5 +60,5 @@
       false
     ]
   },
-  "hash": "10e76c532fbda37c67ff3bd4e9b487c7a6694c72b298f9c073c62cad7f47a08f"
+  "hash": "69e87340c857a71dc2b191cfa23b924cf8d4eb1424f240b654fbc42fc339b0cc"
 }

@@ -46,6 +46,7 @@ pub struct ConfirmResponse {
     pub id: uuid::Uuid,
     pub listing_id: uuid::Uuid,
     pub object_key: String,
+    pub url: String,
     pub position: i16,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,

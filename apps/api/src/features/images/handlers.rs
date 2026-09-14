@@ -91,12 +91,15 @@ pub async fn confirm_image(
         .confirm_image(listing_id, object_key, user.id)
         .await?;
 
+    let url = state.r2_client.public_url(&confirmed.object_key);
+
     Ok(
         HttpResponse::Created().json(ApiResponse::<ConfirmResponse, ErrorBody>::success(
             ConfirmResponse {
                 id: confirmed.id,
                 listing_id: confirmed.listing_id,
                 object_key: confirmed.object_key,
+                url,
                 position: confirmed.position,
                 created_at: confirmed.created_at,
             },

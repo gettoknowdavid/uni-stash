@@ -38,19 +38,20 @@ pub struct AppState {
 impl AppState {
     pub fn new(config: &Config, db: Db) -> anyhow::Result<Self, AppError> {
         let pool = db.pool.clone();
+        let r2_client = R2Client::from_config(config);
         Ok(Self {
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
-            r2_client: R2Client::from_config(config),
             smtp: SmtpClient::new(config)?,
             ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(pool.clone()),
             admin_auth_repo: AdminAuthRepo::new(pool.clone()),
             admin_management_repo: AdminManagementRepo::new(pool.clone()),
-            listings_repo: ListingsRepo::new(pool.clone()),
+            listings_repo: ListingsRepo::new(pool.clone(), r2_client.clone()),
             images_repo: ImagesRepo::new(pool.clone()),
             schools_repo: SchoolsRepo::new(pool.clone()),
             categories_repo: CategoriesRepo::new(pool.clone()),
             email_limiter: PerEmailLimiter::new(),
+            r2_client,
             db: db.pool,
         })
     }
@@ -83,6 +84,7 @@ mod tests {
             r2_access_key_id: "".into(),
             r2_secret_access_key: "".into(),
             r2_endpoint: "".into(),
+            r2_public_url_base: "".into(),
             frontend_base_url: "https://uni-stash.com".into(),
         }
     }

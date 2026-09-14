@@ -1,5 +1,21 @@
 use sqlx::PgPool;
-use uni_stash_be::features::listings::{repo::ListingsRepo, state_machine};
+use uni_stash_be::{
+    core::clients::R2Client,
+    features::listings::{repo::ListingsRepo, state_machine},
+};
+
+/// Dummy R2 client for tests that only exercise DB logic through
+/// `ListingsRepo` — never actually calls out to R2, so the values just
+/// need to be well-formed strings.
+fn test_r2_client() -> R2Client {
+    R2Client::new(
+        "test-bucket",
+        "test-access-key",
+        "test-secret-key",
+        "https://example.r2.cloudflarestorage.com",
+        "https://pub-test.r2.dev",
+    )
+}
 
 async fn seed_school(p: &PgPool) -> i16 {
     sqlx::query_scalar("INSERT INTO schools (name, domain) VALUES ('T', 't.edu') RETURNING id")
@@ -71,7 +87,7 @@ async fn finds_reservations_older_than_48_hours(pool: PgPool) {
         .await
         .unwrap();
 
-    let repo = ListingsRepo::new(pool);
+    let repo = ListingsRepo::new(pool, test_r2_client());
     let ids = repo.find_stale_reservation_ids(48).await.unwrap();
     assert!(ids.contains(&id));
 }
@@ -84,7 +100,7 @@ async fn excludes_reservations_within_48_hours(pool: PgPool) {
     let cat = seed_category(&pool).await;
     let id = create_and_reserve(&pool, seller, buyer, cat).await;
 
-    let repo = ListingsRepo::new(pool);
+    let repo = ListingsRepo::new(pool, test_r2_client());
     let ids = repo.find_stale_reservation_ids(48).await.unwrap();
     assert!(!ids.contains(&id), "fresh reservation must not be stale");
 }
@@ -117,7 +133,7 @@ async fn excludes_active_and_sold_listings(pool: PgPool) {
     .await
     .unwrap();
 
-    let repo = ListingsRepo::new(pool);
+    let repo = ListingsRepo::new(pool, test_r2_client());
     let ids = repo.find_stale_reservation_ids(48).await.unwrap();
     assert!(!ids.contains(&active_id));
     assert!(!ids.contains(&sold_id));
@@ -139,7 +155,7 @@ async fn stale_reservation_is_auto_unreserved(pool: PgPool) {
         .unwrap();
 
     // Simulate the job logic
-    let repo = ListingsRepo::new(pool.clone());
+    let repo = ListingsRepo::new(pool.clone(), test_r2_client());
     let stale_ids = repo.find_stale_reservation_ids(48).await.unwrap();
     for lid in stale_ids {
         let _ = state_machine::unreserve_system(&pool, lid).await;
@@ -158,7 +174,7 @@ async fn fresh_reservation_is_untouched(pool: PgPool) {
     let cat = seed_category(&pool).await;
     let id = create_and_reserve(&pool, seller, buyer, cat).await;
 
-    let repo = ListingsRepo::new(pool.clone());
+    let repo = ListingsRepo::new(pool.clone(), test_r2_client());
     let stale_ids = repo.find_stale_reservation_ids(48).await.unwrap();
     assert!(stale_ids.is_empty());
 

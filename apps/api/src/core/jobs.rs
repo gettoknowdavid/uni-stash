@@ -42,7 +42,7 @@ const STALE_RESERVATION_HOURS: i64 = 48;
 ///
 /// Call once at server startup (after DB pool is ready).  Each job runs
 /// independently — a panic or error in one does not affect the others.
-pub fn spawn(pool: PgPool) {
+pub fn spawn(pool: PgPool, r2: crate::core::clients::R2Client) {
     tracing::info!("spawning background jobs");
 
     spawn_job(
@@ -80,28 +80,33 @@ pub fn spawn(pool: PgPool) {
         "auto_unreserve_stale_listings",
         pool,
         STALE_RESERVATION_INTERVAL,
-        |pool| async move {
-            let repo = crate::features::listings::repo::ListingsRepo::new(pool.clone());
-            let stale_ids = repo
-                .find_stale_reservation_ids(STALE_RESERVATION_HOURS)
-                .await?;
-            for listing_id in stale_ids {
-                match crate::features::listings::state_machine::unreserve_system(&pool, listing_id)
+        move |pool| {
+            let r2 = r2.clone();
+            async move {
+                let repo = crate::features::listings::repo::ListingsRepo::new(pool.clone(), r2);
+                let stale_ids = repo
+                    .find_stale_reservation_ids(STALE_RESERVATION_HOURS)
+                    .await?;
+                for listing_id in stale_ids {
+                    match crate::features::listings::state_machine::unreserve_system(
+                        &pool, listing_id,
+                    )
                     .await
-                {
-                    Ok(_) => {
-                        tracing::info!(listing_id = %listing_id, "auto-unreserved stale listing");
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            listing_id = %listing_id,
-                            error = %e,
-                            "failed to auto-unreserve listing"
-                        );
+                    {
+                        Ok(_) => {
+                            tracing::info!(listing_id = %listing_id, "auto-unreserved stale listing");
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                listing_id = %listing_id,
+                                error = %e,
+                                "failed to auto-unreserve listing"
+                            );
+                        }
                     }
                 }
+                Ok::<_, anyhow::Error>(())
             }
-            Ok::<_, anyhow::Error>(())
         },
     );
 }

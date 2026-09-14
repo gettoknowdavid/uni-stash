@@ -53,6 +53,7 @@ fn test_config() -> Config {
         r2_access_key_id: "".into(),
         r2_secret_access_key: "".into(),
         r2_endpoint: "".into(),
+        r2_public_url_base: "".into(),
         frontend_base_url: "https://uni-stash.com".into(),
     }
 }
