@@ -216,6 +216,10 @@ ShadThemeData get usLightTheme {
     height: 60,
     width: 48,
     padding: const .symmetric(vertical: 16),
+    style: textTheme.large.copyWith(
+      fontWeight: .bold,
+      height: 1,
+    ),
     decoration: ShadDecoration(
       labelStyle: textTheme.custom['labelMd'],
       errorLabelStyle: textTheme.custom['labelMd']?.copyWith(

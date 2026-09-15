@@ -2,7 +2,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get_it/get_it.dart';
 import 'package:material_ui/material_ui.dart' hide GlobalMaterialLocalizations;
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/env_dev.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/router/us_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/back_button.dart';
@@ -10,7 +12,12 @@ import 'package:uni_stash_mobile/theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  configureDependencies();
+  final config = Config(
+    baseUrl: DevEnv.baseUrl,
+    wsUrl: DevEnv.wsUrl,
+    env: DevEnv.env,
+  );
+  configureDependencies(config);
   await GetIt.I.allReady();
   await GetIt.I<AuthViewModel>().bootstrap();
   runApp(const UniStashApp());

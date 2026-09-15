@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
-import 'package:uni_stash_mobile/core/config/env.dart';
+import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
@@ -22,6 +22,7 @@ import 'package:uni_stash_mobile/features/auth/models/models.dart';
 /// [httpClientAdapter] is optional and only used by tests to script
 /// responses; production leaves it unset so Dio's default adapter is used.
 Future<Dio> initDio({
+  required Config config,
   required Logger logger,
   required FlutterSecureStorage storage,
   required void Function(UserCredentials credentials) onSessionRefreshed,
@@ -29,7 +30,7 @@ Future<Dio> initDio({
   HttpClientAdapter? httpClientAdapter,
 }) async {
   final options = BaseOptions(
-    baseUrl: Env.baseUrl,
+    baseUrl: config.baseUrl,
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     sendTimeout: const Duration(seconds: 15),
@@ -46,6 +47,7 @@ Future<Dio> initDio({
 
   dio.interceptors.addAll([
     _AuthInterceptor(
+      config: config,
       storage: storage,
       logger: logger,
       onSessionRefreshed: onSessionRefreshed,
@@ -60,17 +62,20 @@ Future<Dio> initDio({
 
 class _AuthInterceptor extends Interceptor {
   _AuthInterceptor({
+    required Config config,
     required FlutterSecureStorage storage,
     required Logger logger,
     required void Function(UserCredentials credentials) onSessionRefreshed,
     required void Function() onSessionExpired,
     HttpClientAdapter? httpClientAdapter,
-  })  : _storage = storage,
-        _logger = logger,
-        _onSessionRefreshed = onSessionRefreshed,
-        _onSessionExpired = onSessionExpired,
-        _httpClientAdapter = httpClientAdapter;
+  }) : _config = config,
+       _storage = storage,
+       _logger = logger,
+       _onSessionRefreshed = onSessionRefreshed,
+       _onSessionExpired = onSessionExpired,
+       _httpClientAdapter = httpClientAdapter;
 
+  final Config _config;
   final FlutterSecureStorage _storage;
   final Logger _logger;
   final void Function(UserCredentials credentials) _onSessionRefreshed;
@@ -159,7 +164,7 @@ class _AuthInterceptor extends Interceptor {
 
     final refreshDio = Dio(
       BaseOptions(
-        baseUrl: Env.baseUrl,
+        baseUrl: _config.baseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {

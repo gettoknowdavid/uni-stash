@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:get_it/get_it.dart';
+import 'package:logger/web.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -149,6 +150,7 @@ class _VerifyPageState extends State<VerifyPage> {
       },
       child: UsPage(
         header: const UsPageHeader(),
+        gutters: .zero,
         body: SingleChildScrollView(
           padding: const .only(top: 16),
           child: AuthPageShell(
@@ -232,6 +234,8 @@ class _VerifyPageState extends State<VerifyPage> {
   }
 
   Future<void> _handleVerify(BuildContext context) async {
+    di<Logger>().w(_model.code.value);
+    di<Logger>().w(_model.code.value.length);
     if (_model.code.value.length != 6) {
       setState(() => _codeError = 'Please enter the complete 6-digit code.');
       return;

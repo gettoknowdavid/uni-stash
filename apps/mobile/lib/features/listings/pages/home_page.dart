@@ -41,13 +41,22 @@ class ListingsSliverGridWidget extends SignalHookWidget {
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final listing = model.listings.value[index];
+
+          const image = SizedBox(height: 155, child: Placeholder());
+          // if (listing.images.isNotEmpty) {
+          //   final imageUrl = listing.images[0].objectKey;
+          //   image = CachedNetworkImage(imageUrl: imageUrl);
+          // }
+
           return GestureDetector(
             onTap: () => context.push(
               UsRoutes.listingDetailsRoute(listing.id),
               extra: listing,
             ),
             child: ShadCard(
+              padding: .zero,
               title: Text(listing.title),
+              child: image,
             ),
           );
         },

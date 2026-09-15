@@ -93,7 +93,7 @@ abstract class Image with _$Image {
     // uploaded yet. Never serialized to/from JSON.
     @JsonKey(includeFromJson: false, includeToJson: false) String? localPath,
   }) = _Image;
-
+  
   factory Image.fromJson(Map<String, dynamic> json) => _$ImageFromJson(json);
 }
 
@@ -113,6 +113,7 @@ abstract class Listing with _$Listing {
     @JsonKey(name: 'reserved_by') String? reservedBy,
     @JsonKey(name: 'reserved_at') DateTime? reservedAt,
     @JsonKey(name: 'barter_request') String? barterRequest,
+    @Default(<Image>[]) @JsonKey(name: 'images') List<Image> images,
   }) = _Listing;
 
   factory Listing.fromJson(Map<String, dynamic> json) =>
@@ -129,10 +130,7 @@ abstract class ListingSummary with _$ListingSummary {
     @JsonKey(name: 'created_at') required DateTime createdAt,
     Money? price,
     @JsonKey(name: 'barter_request') String? barterRequest,
-    /// Up to 3 photos embedded by the browse endpoint, position-ordered.
-    @Default(<Image>[])
-    @JsonKey(name: 'images')
-    List<Image> images,
+    @Default(<Image>[]) @JsonKey(name: 'images') List<Image> images,
   }) = _ListingSummary;
 
   factory ListingSummary.fromJson(Map<String, dynamic> json) =>

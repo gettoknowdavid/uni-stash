@@ -14,6 +14,7 @@ class UsOtpInput extends StatelessWidget {
     super.key,
     this.enabled = true,
     this.initialValue,
+    this.addSpacerIcon = false,
   });
 
   /// Called with the digits entered so far (e.g. `'123'`, then `'123456'`).
@@ -23,6 +24,9 @@ class UsOtpInput extends StatelessWidget {
 
   /// Optional seed for the slots (used by tests and code recovery).
   final String? initialValue;
+
+  /// Whether to add a spacer icon between the groups of slots.
+  final bool addSpacerIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +48,15 @@ class UsOtpInput extends StatelessWidget {
             ShadInputOTPSlot(),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Icon(
-            LucideIcons.dot,
-            size: 18,
-            color: theme.colorScheme.border,
+        if (addSpacerIcon)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Icon(
+              LucideIcons.dot,
+              size: 18,
+              color: theme.colorScheme.border,
+            ),
           ),
-        ),
         const ShadInputOTPGroup(
           children: [
             ShadInputOTPSlot(),

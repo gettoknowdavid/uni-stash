@@ -5,7 +5,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart' hide Image;
 import 'package:flutter/widgets.dart' as flutter;
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:uni_stash_mobile/core/config/env.dart';
+import 'package:uni_stash_mobile/core/config/config.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 /// A [ShadForm] form field managing the list of photos of a listing.
@@ -40,59 +41,57 @@ class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
        _onAddPhotos = onAddPhotos,
        _onPhotosChanged = onPhotosChanged,
        super(
-          initialValue: const <Image>[],
-          validator: validator ?? _defaultValidator(maxPhotos),
-          builder: (state) {
-            final fieldState =
-                state as ShadFormBuilderFieldState<
-                  ShadFormBuilderField<List<Image>>,
-                  List<Image>
-                >;
-            final photos = fieldState.value ?? const <Image>[];
-            final canAdd =
-                fieldState.enabled && photos.length < maxPhotos;
+         initialValue: const <Image>[],
+         validator: validator ?? _defaultValidator(maxPhotos),
+         builder: (state) {
+           final fieldState =
+               state
+                   as ShadFormBuilderFieldState<
+                     ShadFormBuilderField<List<Image>>,
+                     List<Image>
+                   >;
+           final photos = fieldState.value ?? const <Image>[];
+           final canAdd = fieldState.enabled && photos.length < maxPhotos;
 
-            void update(List<Image> next) {
-              final reindexed = _reindexed(next);
-              fieldState.didChange(reindexed);
-              onPhotosChanged?.call(reindexed);
-            }
+           void update(List<Image> next) {
+             final reindexed = _reindexed(next);
+             fieldState.didChange(reindexed);
+             onPhotosChanged?.call(reindexed);
+           }
 
-            return Row(
-              spacing: 8,
-              children: [
-                for (var i = 0; i < photos.length; i++)
-                  _PhotoTile(
-                    key: ValueKey(photos[i].id),
-                    photo: photos[i],
-                    tileSize: tileSize,
-                    enabled: fieldState.enabled,
-                    onRemove: () => update([...photos]..removeAt(i)),
-                  ),
-                if (canAdd)
-                  ShadButton.outline(
-                    height: tileSize,
-                    width: tileSize,
-                    onPressed: onAddPhotos == null
-                        ? null
-                        : () async {
-                            final added = await onAddPhotos(
-                              maxPhotos - photos.length,
-                            );
-                            if (!fieldState.mounted) return;
-                            if (added.isEmpty) return;
-                            update(
-                              [...photos, ...added]
-                                  .take(maxPhotos)
-                                  .toList(),
-                            );
-                          },
-                    child: const Icon(LucideIcons.plus),
-                  ),
-              ],
-            );
-          },
-        );
+           return Row(
+             spacing: 8,
+             children: [
+               for (var i = 0; i < photos.length; i++)
+                 _PhotoTile(
+                   key: ValueKey(photos[i].id),
+                   photo: photos[i],
+                   tileSize: tileSize,
+                   enabled: fieldState.enabled,
+                   onRemove: () => update([...photos]..removeAt(i)),
+                 ),
+               if (canAdd)
+                 ShadButton.outline(
+                   height: tileSize,
+                   width: tileSize,
+                   onPressed: onAddPhotos == null
+                       ? null
+                       : () async {
+                           final added = await onAddPhotos(
+                             maxPhotos - photos.length,
+                           );
+                           if (!fieldState.mounted) return;
+                           if (added.isEmpty) return;
+                           update(
+                             [...photos, ...added].take(maxPhotos).toList(),
+                           );
+                         },
+                   child: const Icon(LucideIcons.plus),
+                 ),
+             ],
+           );
+         },
+       );
 
   final int _maxPhotos;
   final Future<List<Image>> Function(int remainingSlots)? _onAddPhotos;
@@ -113,8 +112,9 @@ class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
   final double tileSize;
 
   /// Object-serving route of the backend. Adjust here if the API changes.
-  static String objectUrl(String objectKey) =>
-      '${Env.baseUrl}/api/v1/objects/$objectKey';
+  static String objectUrl(String objectKey) {
+    return '${di<Config>().baseUrl}/api/v1/objects/$objectKey';
+  }
 
   static String? Function(List<Image>?) _defaultValidator(int maxPhotos) {
     return (photos) {
@@ -130,8 +130,7 @@ class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
 
   static List<Image> _reindexed(List<Image> photos) {
     return [
-      for (var i = 0; i < photos.length; i++)
-        photos[i].copyWith(position: i),
+      for (var i = 0; i < photos.length; i++) photos[i].copyWith(position: i),
     ];
   }
 }
