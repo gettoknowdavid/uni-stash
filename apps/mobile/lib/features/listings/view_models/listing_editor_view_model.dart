@@ -117,7 +117,7 @@ class ListingEditorViewModel implements Disposable {
       case Success(:final value):
         final uploadError = await _uploadPhotos(
           value.id,
-          values['photos'] as List<Image>?,
+          values['photos'] as List<ListingImage>?,
         );
         if (uploadError != null) {
           error.value = uploadError;
@@ -135,18 +135,21 @@ class ListingEditorViewModel implements Disposable {
   /// Uploads every picked photo to the freshly-created listing. Returns a
   /// human-readable message on the first failure, null when all uploads
   /// succeeded (or there was nothing to upload).
-  Future<String?> _uploadPhotos(String listingId, List<Image>? photos) async {
+  Future<String?> _uploadPhotos(
+    String listingId,
+    List<ListingImage>? photos,
+  ) async {
     final picked =
-        photos?.where((p) => p.localPath != null).toList() ?? const <Image>[];
+        photos?.whereType<LocalImage>().toList() ?? const <LocalImage>[];
     if (picked.isEmpty) return null;
 
     for (var i = 0; i < picked.length; i++) {
       final photo = picked[i];
       uploadProgress.value = 'Uploading photo ${i + 1} of ${picked.length}…';
-      final contentType = ImageContentType.fromPath(photo.localPath!);
+      final contentType = ImageContentType.fromPath(photo.localPath);
       final result = await _imagesRepository.upload(
         listingId,
-        ImageUpload(path: photo.localPath!, contentType: contentType),
+        ImageUpload(path: photo.localPath, contentType: contentType),
       );
       switch (result) {
         case Success():

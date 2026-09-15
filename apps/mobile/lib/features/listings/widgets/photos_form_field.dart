@@ -2,58 +2,57 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/widgets.dart' hide Image;
+import 'package:flutter/widgets.dart';
 import 'package:flutter/widgets.dart' as flutter;
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:uni_stash_mobile/core/config/config.dart';
-import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 /// A [ShadForm] form field managing the list of photos of a listing.
 ///
-/// Renders one tile per [Image] plus an "add" tile. Photo tiles show a small
-/// remove button; the add tile invokes [onAddPhotos] (e.g. an image_picker
-/// flow) with the number of free slots left and appends the returned photos,
-/// never exceeding [maxPhotos].
+/// Renders one tile per [ListingImage] plus an "add" tile. Photo tiles show
+/// a small remove button; the add tile invokes [onAddPhotos] (e.g. an
+/// image_picker flow) with the number of free slots left and appends the
+/// returned photos, never exceeding [maxPhotos].
 ///
-/// The form value is the current `List<Image>`; the built-in validator
+/// The form value is the current `List<ListingImage>`; the built-in validator
 /// requires at least one photo and at most [maxPhotos].
 ///
-/// Previews: freshly picked photos carry a [Image.localPath] and render from
-/// the local file; server photos (edit flow) render from the object URL with
-/// `cached_network_image`, so reopening the editor does not re-download
-/// already-seen photos.
-class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
+/// Previews: freshly picked photos carry a [LocalImage.localPath] and render
+/// from the local file; server photos (edit flow) render from the
+/// [ServerImage.url] with `cached_network_image`, so reopening the editor
+/// does not re-download already-seen photos.
+class ShadPhotosFormField extends ShadFormBuilderField<List<ListingImage>> {
   ShadPhotosFormField({
-    required Future<List<Image>> Function(int remainingSlots)? onAddPhotos,
+    required Future<List<ListingImage>> Function(int remainingSlots)?
+    onAddPhotos,
     super.key,
     super.id,
     super.label,
     super.description,
-    FormFieldValidator<List<Image>>? validator,
+    FormFieldValidator<List<ListingImage>>? validator,
     super.autovalidateMode,
     super.onSaved,
     super.enabled = true,
     int maxPhotos = 3,
-    ValueChanged<List<Image>>? onPhotosChanged,
+    ValueChanged<List<ListingImage>>? onPhotosChanged,
     this.tileSize = 80,
   }) : _maxPhotos = maxPhotos,
        _onAddPhotos = onAddPhotos,
        _onPhotosChanged = onPhotosChanged,
        super(
-         initialValue: const <Image>[],
+         initialValue: const <ListingImage>[],
          validator: validator ?? _defaultValidator(maxPhotos),
          builder: (state) {
            final fieldState =
                state
                    as ShadFormBuilderFieldState<
-                     ShadFormBuilderField<List<Image>>,
-                     List<Image>
+                     ShadFormBuilderField<List<ListingImage>>,
+                     List<ListingImage>
                    >;
-           final photos = fieldState.value ?? const <Image>[];
+           final photos = fieldState.value ?? const <ListingImage>[];
            final canAdd = fieldState.enabled && photos.length < maxPhotos;
 
-           void update(List<Image> next) {
+           void update(List<ListingImage> next) {
              final reindexed = _reindexed(next);
              fieldState.didChange(reindexed);
              onPhotosChanged?.call(reindexed);
@@ -94,29 +93,26 @@ class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
        );
 
   final int _maxPhotos;
-  final Future<List<Image>> Function(int remainingSlots)? _onAddPhotos;
-  final ValueChanged<List<Image>>? _onPhotosChanged;
+  final Future<List<ListingImage>> Function(int remainingSlots)? _onAddPhotos;
+  final ValueChanged<List<ListingImage>>? _onPhotosChanged;
 
   /// Maximum number of photos the field accepts.
   int get maxPhotos => _maxPhotos;
 
   /// Called when the add tile is tapped with the number of free slots left;
   /// return the newly picked photos.
-  Future<List<Image>> Function(int remainingSlots)? get onAddPhotos =>
+  Future<List<ListingImage>> Function(int remainingSlots)? get onAddPhotos =>
       _onAddPhotos;
 
   /// Notified with the new list every time photos change.
-  ValueChanged<List<Image>>? get onPhotosChanged => _onPhotosChanged;
+  ValueChanged<List<ListingImage>>? get onPhotosChanged => _onPhotosChanged;
 
   /// Edge size of each photo / add tile.
   final double tileSize;
 
-  /// Object-serving route of the backend. Adjust here if the API changes.
-  static String objectUrl(String objectKey) {
-    return '${di<Config>().baseUrl}/api/v1/objects/$objectKey';
-  }
-
-  static String? Function(List<Image>?) _defaultValidator(int maxPhotos) {
+  static String? Function(List<ListingImage>?) _defaultValidator(
+    int maxPhotos,
+  ) {
     return (photos) {
       if (photos == null || photos.isEmpty) {
         return 'Please add at least one photo.';
@@ -128,9 +124,15 @@ class ShadPhotosFormField extends ShadFormBuilderField<List<Image>> {
     };
   }
 
-  static List<Image> _reindexed(List<Image> photos) {
+  static List<ListingImage> _reindexed(List<ListingImage> photos) {
     return [
-      for (var i = 0; i < photos.length; i++) photos[i].copyWith(position: i),
+      for (var i = 0; i < photos.length; i++)
+        photos[i].when(
+          server: (id, url, _) =>
+              ListingImage.server(id: id, url: url, position: i),
+          local: (id, _, localPath) =>
+              ListingImage.local(id: id, position: i, localPath: localPath),
+        ),
     ];
   }
 }
@@ -144,7 +146,7 @@ class _PhotoTile extends StatelessWidget {
     super.key,
   });
 
-  final Image photo;
+  final ListingImage photo;
   final double tileSize;
   final bool enabled;
   final VoidCallback onRemove;
@@ -158,25 +160,26 @@ class _PhotoTile extends StatelessWidget {
       color: theme.colorScheme.mutedForeground,
     );
 
-    final Widget preview;
-    final localPath = photo.localPath;
-    if (localPath != null) {
-      preview = flutter.Image.file(
-        File(localPath),
-        width: tileSize,
-        height: tileSize,
-        fit: BoxFit.cover,
-      );
-    } else {
-      preview = CachedNetworkImage(
-        imageUrl: ShadPhotosFormField.objectUrl(photo.objectKey),
-        width: tileSize,
-        height: tileSize,
-        fit: BoxFit.cover,
-        placeholder: (_, _) => Center(child: placeholder),
-        errorWidget: (_, _, _) => Center(child: placeholder),
-      );
-    }
+    final preview = photo.when(
+      local: (id, position, localPath) {
+        return flutter.Image.file(
+          File(localPath),
+          width: tileSize,
+          height: tileSize,
+          fit: BoxFit.cover,
+        );
+      },
+      server: (id, url, position) {
+        return CachedNetworkImage(
+          imageUrl: url,
+          width: tileSize,
+          height: tileSize,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => Center(child: placeholder),
+          errorWidget: (_, _, _) => Center(child: placeholder),
+        );
+      },
+    );
 
     return SizedBox(
       width: tileSize,
