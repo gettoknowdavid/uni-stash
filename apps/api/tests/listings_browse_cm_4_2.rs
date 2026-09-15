@@ -24,7 +24,7 @@ fn test_config() -> Config {
         r2_access_key_id: "".into(),
         r2_secret_access_key: "".into(),
         r2_endpoint: "".into(),
-        r2_public_url_base: "".into(),
+        r2_public_url_base: "https://pub-test.r2.dev".into(),
         frontend_base_url: "https://uni-stash.com".into(),
     }
 }
@@ -392,8 +392,14 @@ async fn browse_embeds_images_ordered_by_position(pool: PgPool) {
     assert_eq!(photos.len(), 2, "listing with two images embeds both");
     assert_eq!(photos[0]["position"], 0);
     assert_eq!(photos[1]["position"], 1);
-    assert_eq!(photos[0]["object_key"], "listings/a/0.jpg");
-    assert_eq!(photos[1]["object_key"], "listings/a/1.jpg");
+    // Since d0c19d4 the API no longer exposes the raw object_key on the wire
+    // — it resolves each key into a public URL via R2_PUBLIC_URL_BASE.
+    assert_eq!(photos[0]["url"], "https://pub-test.r2.dev/listings/a/0.jpg");
+    assert_eq!(photos[1]["url"], "https://pub-test.r2.dev/listings/a/1.jpg");
+    assert!(
+        photos[0]["object_key"].is_null(),
+        "raw object_key is internal"
+    );
     assert!(photos[0]["listing_id"].is_null(), "listing_id is internal");
 
     let without_photos = listings
