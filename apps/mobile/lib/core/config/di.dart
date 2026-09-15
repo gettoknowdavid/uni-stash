@@ -3,6 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
+import 'package:uni_stash_mobile/core/config/config.dart';
+import 'package:uni_stash_mobile/core/config/scope.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
@@ -19,32 +21,16 @@ import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
 
 final GetIt di = GetIt.instance;
 
-final class Scope {
-  const Scope._();
-
-  static const String root = 'root';
-  static const String authenticated = 'authenticated';
-}
-
-void configureDependencies() {
+void configureDependencies(Config config) {
   di.pushNewScope(scopeName: Scope.root);
+
+  _setupConfig(config);
   _registerCore();
   _registerAuth();
 }
 
-void configureAuthenticatedScope() {
-  if (di.hasScope(Scope.authenticated)) return;
-  di.pushNewScope(scopeName: Scope.authenticated);
-  _registerListings();
-  _registerImages();
-  _registerSchools();
-  _registerProfile();
-}
-
-Future<void> tearDownAuthenticatedScope() async {
-  if (di.hasScope(Scope.authenticated)) {
-    await di.popScopesTill(Scope.authenticated);
-  }
+void _setupConfig(Config config) {
+  di.registerSingleton<Config>(config);
 }
 
 /// App-wide infrastructure shared by every feature.
@@ -59,6 +45,7 @@ void _registerCore() {
   // ever forming, since nothing is resolved at registration time.
   di.registerSingletonAsync<Dio>(
     () => initDio(
+      config: di<Config>(),
       logger: di<Logger>(),
       storage: di<FlutterSecureStorage>(),
       onSessionExpired: () => di<AuthViewModel>().unauthenticate(),
@@ -162,4 +149,22 @@ void _registerProfile() {
     () => ProfileRepositoryImpl(di<AuthApiClient>(), di<Logger>()),
     dependsOn: [AuthApiClient],
   );
+}
+
+// Scopes
+//
+
+void configureAuthenticatedScope() {
+  if (di.hasScope(Scope.authenticated)) return;
+  di.pushNewScope(scopeName: Scope.authenticated);
+  _registerListings();
+  _registerImages();
+  _registerSchools();
+  _registerProfile();
+}
+
+Future<void> tearDownAuthenticatedScope() async {
+  if (di.hasScope(Scope.authenticated)) {
+    await di.popScopesTill(Scope.authenticated);
+  }
 }

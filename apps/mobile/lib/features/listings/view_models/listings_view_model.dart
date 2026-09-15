@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:get_it/get_it.dart';
+import 'package:logger/logger.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -28,6 +30,7 @@ class ListingsViewModel implements Disposable {
 
       switch (result) {
         case Success(:final value):
+          di<Logger>().w(value.listings);
           listings.value = value.listings;
           _cursor = value.nextCursor;
           hasMore.value = value.nextCursor != null;
@@ -77,6 +80,7 @@ class ListingsViewModel implements Disposable {
 
       switch (result) {
         case Success(:final value):
+          di<Logger>().w(value.listings);
           listings.value = value.listings;
           _cursor = value.nextCursor;
           hasMore.value = value.nextCursor != null;
