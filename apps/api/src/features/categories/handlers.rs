@@ -24,10 +24,6 @@ pub async fn list_categories(
     )
 }
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/categories — admin-only, create a new category
-// ---------------------------------------------------------------------------
-
 pub async fn create_category(
     session: AdminSession,
     state: web::Data<AppState>,
@@ -57,10 +53,6 @@ pub async fn create_category(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// PATCH /api/v1/categories/{id} — admin-only, partial update
-// ---------------------------------------------------------------------------
 
 pub async fn update_category(
     session: AdminSession,
