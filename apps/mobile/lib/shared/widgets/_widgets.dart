@@ -2,6 +2,7 @@ export 'auth_page_shell.dart';
 export 'back_button.dart';
 export 'green_notice_card.dart';
 export 'main_shell.dart';
+export 'not_found_page.dart';
 export 'spinner.dart';
 export 'us_bottom_nav_bar.dart';
 export 'us_page.dart';

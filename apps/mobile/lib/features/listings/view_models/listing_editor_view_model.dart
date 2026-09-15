@@ -8,7 +8,9 @@ import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
 import 'package:uni_stash_mobile/features/images/models/images_dto.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/models/listing_draft.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/naira_currency_input_formatter.dart';
@@ -23,13 +25,16 @@ class ListingEditorViewModel implements Disposable {
     this._categoriesRepository,
     this._logger, {
     ImagesRepository? imagesRepository,
-  }) : _imagesRepository = imagesRepository ?? di<ImagesRepository>() {
+    ListingDraftRepository? draftRepository,
+  })  : _imagesRepository = imagesRepository ?? di<ImagesRepository>(),
+        _draftRepository = draftRepository ?? di<ListingDraftRepository>() {
     unawaited(loadCategories());
   }
 
   final ListingsRepository _repository;
   final CategoriesRepository _categoriesRepository;
   final ImagesRepository _imagesRepository;
+  final ListingDraftRepository _draftRepository;
   final Logger _logger;
 
   /// Categories for the picker, fetched from `GET /api/v1/categories`
@@ -56,6 +61,71 @@ class ListingEditorViewModel implements Disposable {
   /// button instead of an unbounded spinner.
   final Signal<String?> uploadProgress = signal(null);
 
+  /// When a listing is successfully created but photo uploads fail, the
+  /// listing ID is saved here so the next [submit] call PATCHes the
+  /// existing listing instead of creating a duplicate.
+  String? _createdListingId;
+
+  /// The most recently loaded draft, if any. The editor page reads this
+  /// in `initState` to decide whether to show a "Resume draft?" prompt.
+  ListingDraft? lastLoadedDraft;
+
+  // ---------------------------------------------------------------------------
+  // Draft persistence
+  // ---------------------------------------------------------------------------
+
+  /// Loads any saved draft from local storage. Call once in the editor's
+  /// `initState`. Returns the draft (for the UI to offer a resume prompt) or
+  /// `null` if there's nothing to resume.
+  Future<ListingDraft?> loadDraft() async {
+    final draft = await _draftRepository.load();
+    lastLoadedDraft = draft;
+    return draft;
+  }
+
+  /// Populates the ViewModel signals from a [draft] so the editor page can
+  /// pre-fill its form fields.
+  void applyDraft(ListingDraft draft) {
+    _createdListingId = draft.listingId;
+    barterOnly.value = draft.barterOnly;
+  }
+
+  /// Discards the saved draft without submitting. Called when the user taps
+  /// "Start fresh" on the resume prompt.
+  Future<void> discardDraft() async {
+    lastLoadedDraft = null;
+    await _draftRepository.clear();
+  }
+
+  /// Saves the current form state as a draft so it survives crashes.
+  Future<void> _saveDraft({
+    required String title,
+    required String description,
+    required int categoryId,
+    required Condition condition,
+    required bool barterOnly,
+    required List<String> imagePaths,
+    int? price,
+    String? barterRequest,
+  }) async {
+    final draft = ListingDraft(
+      title: title,
+      description: description,
+      categoryId: categoryId,
+      condition: condition.name,
+      price: price,
+      barterRequest: barterRequest,
+      barterOnly: barterOnly,
+      imagePaths: imagePaths,
+      listingId: _createdListingId,
+    );
+    await _draftRepository.save(draft);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Categories
+  // ---------------------------------------------------------------------------
+
   /// Fetches the category list from the backend (public endpoint, no auth).
   /// Non-fatal on failure: the editor stays usable and the picker shows the
   /// retry state instead of blocking submission.
@@ -74,13 +144,17 @@ class ListingEditorViewModel implements Disposable {
     isLoadingCategories.value = false;
   }
 
+  // ---------------------------------------------------------------------------
+  // Submit
+  // ---------------------------------------------------------------------------
+
   /// Submits a validated form-value map (`ShadFormState.value`).
   ///
-  /// Order of operations: create the listing first (photos presign against a
-  /// real listing id), then upload each picked photo presign → PUT →
-  /// confirm. A failed upload fails the submit with a clear message; the
-  /// listing already exists, so re-submitting would duplicate it — the user
-  /// cancels out instead.
+  /// Order of operations:
+  /// 1. Persist a draft (so a crash doesn't lose state).
+  /// 2. Create the listing (or PATCH an existing one on retry).
+  /// 3. Upload each picked photo presign → PUT → confirm.
+  /// 4. Clear the draft on full success.
   Future<void> submit(Map<String, dynamic> values) async {
     if (isSubmitting.value) return;
 
@@ -96,38 +170,100 @@ class ListingEditorViewModel implements Disposable {
     final priceText = values['price'] as String?;
     final barterRequest = (values['barter_request'] as String?)?.trim();
 
-    // A listing is priced OR barter-only — mirrors the API's constraint.
-    final request = CreateListingRequest(
+    final photos = values['photos'] as List<ListingImage>?;
+    final imagePaths = photos
+        ?.whereType<LocalImage>()
+        .map((img) => img.localPath)
+        .toList();
+    final parsedPrice =
+        barterOnly ? null : NairaCurrencyInputFormatter.parse(priceText ?? '');
+
+    // 1. Persist draft before touching the network.
+    await _saveDraft(
       title: title,
       description: description,
-      condition: condition ?? Condition.isNew,
       categoryId: category.id,
-      price: barterOnly
-          ? null
-          : NairaCurrencyInputFormatter.parse(priceText ?? ''),
-      barterRequest: barterOnly ? barterRequest : null,
+      condition: condition ?? Condition.isNew,
+      price: parsedPrice?.amountMinor,
+      barterRequest: barterRequest,
+      barterOnly: barterOnly,
+      imagePaths: imagePaths ?? const [],
     );
 
     isSubmitting.value = true;
     error.value = null;
 
-    final result = await _repository.create(request);
+    final listingId = _createdListingId;
 
-    switch (result) {
-      case Success(:final value):
-        final uploadError = await _uploadPhotos(
-          value.id,
-          values['photos'] as List<ListingImage>?,
-        );
-        if (uploadError != null) {
-          error.value = uploadError;
+    Listing? listing;
+    if (listingId != null) {
+      // --- Retry path: the listing already exists, PATCH it ---
+      final patch = UpdateListingRequest(
+        title: title,
+        description: description,
+        condition: condition ?? Condition.isNew,
+        categoryId: category.id,
+        price: parsedPrice,
+        barterRequest: barterOnly ? barterRequest : null,
+      );
+
+      final result = await _repository.update(listingId, patch);
+      switch (result) {
+        case Success(:final value):
+          listing = value;
+        case Failure(:final message):
+          error.value = message;
           isSubmitting.value = false;
           return;
-        }
-        created.value = value;
-      case Failure(:final message):
-        error.value = message;
+      }
+    } else {
+      // --- First attempt: create the listing ---
+      final request = CreateListingRequest(
+        title: title,
+        description: description,
+        condition: condition ?? Condition.isNew,
+        categoryId: category.id,
+        price: parsedPrice,
+        barterRequest: barterOnly ? barterRequest : null,
+      );
+
+      final result = await _repository.create(request);
+      switch (result) {
+        case Success(:final value):
+          listing = value;
+        case Failure(:final message):
+          error.value = message;
+          isSubmitting.value = false;
+          return;
+      }
     }
+
+    // Update the draft with the listing ID so a crash during upload
+    // still has enough state to resume.
+    _createdListingId = listing.id;
+    await _saveDraft(
+      title: title,
+      description: description,
+      categoryId: category.id,
+      condition: condition ?? Condition.isNew,
+      price: parsedPrice?.amountMinor,
+      barterRequest: barterRequest,
+      barterOnly: barterOnly,
+      imagePaths: imagePaths ?? const [],
+    );
+
+    // 2. Upload photos.
+    final uploadError = await _uploadPhotos(listing.id, photos);
+    if (uploadError != null) {
+      error.value = uploadError;
+      isSubmitting.value = false;
+      return;
+    }
+
+    // 3. All done — clear the draft and signal success.
+    _createdListingId = null;
+    await _draftRepository.clear();
+    created.value = listing;
 
     isSubmitting.value = false;
   }

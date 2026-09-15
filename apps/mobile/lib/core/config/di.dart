@@ -12,6 +12,7 @@ import 'package:uni_stash_mobile/features/images/data/images_api.dart';
 import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
@@ -101,6 +102,9 @@ void _registerListings() {
   di.registerSingletonWithDependencies<CategoriesRepository>(
     () => CategoriesRepositoryImpl(di<CategoriesApiClient>(), di<Logger>()),
     dependsOn: [CategoriesApiClient],
+  );
+  di.registerLazySingleton<ListingDraftRepository>(
+    () => ListingDraftRepository(di<FlutterSecureStorage>()),
   );
   di.registerLazySingleton<ListingsViewModel>(
     () => ListingsViewModel(di<ListingsRepository>()),

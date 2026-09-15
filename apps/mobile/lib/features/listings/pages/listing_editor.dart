@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
@@ -8,6 +8,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
+import 'package:uni_stash_mobile/features/listings/models/listing_draft.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/_widgets.dart';
@@ -44,6 +45,88 @@ class _ListingEditorState extends State<ListingEditor> {
       },
     );
     _model = di<ListingEditorViewModel>();
+    unawaited(_checkForDraft());
+  }
+
+  Future<void> _checkForDraft() async {
+    final draft = await _model.loadDraft();
+    if (draft == null || !mounted) return;
+
+    final resume = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Resume draft?'),
+        content: Text(
+          draft.hasListingId
+              ? 'You have an unfinished listing. '
+                  'Would you like to resume where you left off?'
+              : 'You have an unfinished listing draft. '
+                  'Would you like to resume or start fresh?',
+        ),
+        actions: [
+          ShadButton.ghost(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('START FRESH'),
+          ),
+          ShadButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('RESUME'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (resume == true) {
+      _model.applyDraft(draft);
+      _applyDraftToForm(draft);
+    } else {
+      await _model.discardDraft();
+    }
+  }
+
+  void _applyDraftToForm(ListingDraft draft) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final form = _formKey.currentState;
+      if (form == null) return;
+
+      // Restore scalar fields.
+      form.fields['title']?.didChange(draft.title);
+      form.fields['description']?.didChange(draft.description);
+      if (draft.price != null) {
+        form.fields['price']?.didChange(draft.price.toString());
+      }
+      if (draft.barterRequest != null) {
+        form.fields['barter_request']?.didChange(draft.barterRequest);
+      }
+
+      // Restore the barter switch (drives which price branch is shown).
+      _model.barterOnly.value = draft.barterOnly;
+
+      // Restore category and condition once they've loaded.
+      _restoreDropdownFields(draft);
+    });
+  }
+
+  void _restoreDropdownFields(ListingDraft draft) {
+    // Categories load async; poll until available, then set.
+    _model.categories.subscribe((categories) {
+      if (categories.isEmpty) return;
+      final match = categories.where((c) => c.id == draft.categoryId);
+      if (match.isNotEmpty) {
+        _formKey.currentState?.fields['category']?.didChange(match.first);
+      }
+    });
+
+    // Condition is synchronous (enum values available immediately).
+    final condition = Condition.values.firstWhere(
+      (c) => c.name == draft.condition,
+      orElse: () => Condition.isNew,
+    );
+    _formKey.currentState?.fields['condition']?.didChange(condition);
   }
 
   @override
@@ -69,7 +152,7 @@ class _ListingEditorState extends State<ListingEditor> {
         }
         if (_model.created.value != null) {
           _model.consumeResult();
-          context.pop();
+          context.pop(true);
         }
       },
       child: UsPage(

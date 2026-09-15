@@ -5,6 +5,7 @@ import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
 import 'package:uni_stash_mobile/features/auth/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
+import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/schools/pages/_pages.dart';
@@ -25,6 +26,7 @@ final GoRouter routerConfig = GoRouter(
   // session verifies its email (e.g. OTP success) as well as on sign-in/out.
   refreshListenable: SignalListenable(di<AuthViewModel>().routerRefresh),
   redirect: usRedirect,
+  errorBuilder: (context, state) => const NotFoundPage(),
   routes: [
     GoRoute(
       path: UsRoutes.login,
@@ -80,6 +82,15 @@ final GoRouter routerConfig = GoRouter(
             );
           },
           child: const ListingEditor(),
+        );
+      },
+    ),
+    GoRoute(
+      path: UsRoutes.listingDetails,
+      builder: (context, state) {
+        final extra = state.extra as ListingSummary?;
+        return ListingDetailPage(
+          listing: extra!,
         );
       },
     ),
