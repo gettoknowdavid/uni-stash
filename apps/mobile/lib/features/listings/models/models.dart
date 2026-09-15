@@ -83,18 +83,56 @@ enum Currency {
   );
 }
 
+List<ListingImage> listingImagesFromJson(List<dynamic> json) {
+  return json
+      .map((e) => ListingImage.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
+
+List<Map<String, dynamic>> listingImagesToJson(List<ListingImage> images) {
+  return images
+      .map(
+        (img) => img.when(
+          server: (id, url, position) => {
+            'id': id,
+            'url': url,
+            'position': position,
+          },
+          local: (id, position, _) => {
+            'id': id,
+            'url': '',
+            'position': position,
+          },
+        ),
+      )
+      .toList();
+}
+
 @freezed
-abstract class Image with _$Image {
-  const factory Image({
+abstract class ListingImage with _$ListingImage {
+  /// An image stored on the server, with a direct Cloudflare URL.
+  const factory ListingImage.server({
     required String id,
-    @JsonKey(name: 'object_key') required String objectKey,
+    required String url,
     required int position,
-    // Local-only preview path for freshly picked photos that have not been
-    // uploaded yet. Never serialized to/from JSON.
-    @JsonKey(includeFromJson: false, includeToJson: false) String? localPath,
-  }) = _Image;
-  
-  factory Image.fromJson(Map<String, dynamic> json) => _$ImageFromJson(json);
+  }) = ServerImage;
+
+  /// A freshly-picked local image that hasn't been uploaded yet.
+  const factory ListingImage.local({
+    required String id,
+    required int position,
+    required String localPath,
+  }) = LocalImage;
+
+  /// Only [ListingImage.server] images are deserialized from API JSON.
+  /// [ListingImage.local] is only ever created in Dart code.
+  factory ListingImage.fromJson(Map<String, dynamic> json) {
+    return ListingImage.server(
+      id: json['id'] as String,
+      url: json['url'] as String,
+      position: json['position'] as int,
+    );
+  }
 }
 
 @freezed
@@ -113,7 +151,13 @@ abstract class Listing with _$Listing {
     @JsonKey(name: 'reserved_by') String? reservedBy,
     @JsonKey(name: 'reserved_at') DateTime? reservedAt,
     @JsonKey(name: 'barter_request') String? barterRequest,
-    @Default(<Image>[]) @JsonKey(name: 'images') List<Image> images,
+    @Default(<ListingImage>[])
+    @JsonKey(
+      name: 'images',
+      fromJson: listingImagesFromJson,
+      toJson: listingImagesToJson,
+    )
+    List<ListingImage> images,
   }) = _Listing;
 
   factory Listing.fromJson(Map<String, dynamic> json) =>
@@ -130,7 +174,13 @@ abstract class ListingSummary with _$ListingSummary {
     @JsonKey(name: 'created_at') required DateTime createdAt,
     Money? price,
     @JsonKey(name: 'barter_request') String? barterRequest,
-    @Default(<Image>[]) @JsonKey(name: 'images') List<Image> images,
+    @Default(<ListingImage>[])
+    @JsonKey(
+      name: 'images',
+      fromJson: listingImagesFromJson,
+      toJson: listingImagesToJson,
+    )
+    List<ListingImage> images,
   }) = _ListingSummary;
 
   factory ListingSummary.fromJson(Map<String, dynamic> json) =>

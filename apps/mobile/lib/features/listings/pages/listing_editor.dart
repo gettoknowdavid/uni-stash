@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart' hide Image;
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
@@ -154,9 +154,8 @@ class _PhotosField extends SignalHookWidget {
         final stamp = DateTime.now().microsecondsSinceEpoch;
         return [
           for (var i = 0; i < picked.length; i++)
-            Image(
+            ListingImage.local(
               id: 'local-$stamp-$i',
-              objectKey: picked[i].path,
               position: i,
               localPath: picked[i].path,
             ),

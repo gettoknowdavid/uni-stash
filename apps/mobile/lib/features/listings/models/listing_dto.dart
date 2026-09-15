@@ -39,6 +39,7 @@ abstract class ListListingsQuery with _$ListListingsQuery {
   const factory ListListingsQuery({
     String? q,
     @JsonKey(name: 'category_id') int? categoryId,
+
     /// Price filter bounds in minor units (kobo).
     @JsonKey(name: 'min_price') int? minPrice,
     @JsonKey(name: 'max_price') int? maxPrice,
@@ -85,7 +86,8 @@ abstract class ListingDetailResponse with _$ListingDetailResponse {
     @JsonKey(name: 'created_at') required DateTime createdAt,
     required Seller seller,
     required Category category,
-    required List<Image> images,
+    @JsonKey(fromJson: listingImagesFromJson, toJson: listingImagesToJson)
+    required List<ListingImage> images,
     Money? price,
     @JsonKey(name: 'barter_request') String? barterRequest,
   }) = _ListingDetailResponse;
