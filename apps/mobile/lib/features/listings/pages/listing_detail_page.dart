@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -130,24 +131,7 @@ class _ListingDetailView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: .stretch,
               children: [
-                SizedBox(
-                  height: 360,
-                  width: double.infinity,
-                  child: ShadDecorator(
-                    decoration: ShadDecoration(
-                      color: theme.colorScheme.muted,
-                      border: ShadBorder(
-                        bottom: ShadBorderSide(
-                          color: theme.colorScheme.borderStrong,
-                        ),
-                      ),
-                    ),
-                    child: Icon(
-                      LucideIcons.image,
-                      color: theme.colorScheme.mutedForeground,
-                    ),
-                  ),
-                ),
+                _ImageCarousel(images: detail.images),
                 const SizedBox(height: 16),
                 Padding(
                   padding: const .symmetric(horizontal: 16),
@@ -267,6 +251,155 @@ class _BookmarkButton extends StatelessWidget {
         onPressed: () {},
         icon: Icon(LucideIcons.bookmark, size: size * 0.6),
       ),
+    );
+  }
+}
+
+class _ImageCarousel extends StatefulWidget {
+  const _ImageCarousel({required this.images});
+
+  final List<ListingImage> images;
+
+  @override
+  State<_ImageCarousel> createState() => _ImageCarouselState();
+}
+
+class _ImageCarouselState extends State<_ImageCarousel> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 1);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  String? _imageUrl(ListingImage image) {
+    return image.when(
+      server: (_, url, __) => url,
+      local: (_, __, ___) => null,
+    );
+  }
+
+  bool _hasUrl(ListingImage image) => _imageUrl(image) != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final images = widget.images;
+
+    // Filter to server images only
+    final serverImages = images.where(_hasUrl).toList();
+
+    if (serverImages.isEmpty) {
+      return SizedBox(
+        height: 360,
+        width: double.infinity,
+        child: ShadDecorator(
+          decoration: ShadDecoration(
+            color: theme.colorScheme.muted,
+            border: ShadBorder(
+              bottom: ShadBorderSide(
+                color: theme.colorScheme.borderStrong,
+              ),
+            ),
+          ),
+          child: Icon(
+            LucideIcons.image,
+            color: theme.colorScheme.mutedForeground,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        // Main carousel
+        SizedBox(
+          height: 360,
+          width: double.infinity,
+          child: ShadDecorator(
+            decoration: ShadDecoration(
+              color: theme.colorScheme.muted,
+              border: ShadBorder(
+                bottom: ShadBorderSide(
+                  color: theme.colorScheme.borderStrong,
+                ),
+              ),
+            ),
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: serverImages.length,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              itemBuilder: (context, index) {
+                final url = _imageUrl(serverImages[index])!;
+                return CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) => const Center(
+                    child: ShadSpinner(),
+                  ),
+                  errorWidget: (_, __, ___) => Center(
+                    child: Icon(
+                      LucideIcons.imageOff,
+                      color: theme.colorScheme.mutedForeground,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+
+        // Thumbnail strip
+        if (serverImages.length > 1)
+          Container(
+            height: 48,
+            color: theme.colorScheme.background,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const .symmetric(horizontal: 16, vertical: 8),
+              itemCount: serverImages.length,
+              itemBuilder: (context, index) {
+                final isSelected = index == _currentPage;
+                return GestureDetector(
+                  onTap: () => _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  ),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    margin: const .only(right: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.muted,
+                      border: Border.all(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.border,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: _imageUrl(serverImages[index])!,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

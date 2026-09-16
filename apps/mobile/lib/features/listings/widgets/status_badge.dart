@@ -35,22 +35,26 @@ class StatusBadge extends StatelessWidget {
       ),
     };
 
-    return ShadDecorator(
-      decoration: ShadDecoration(
-        color: bgColor,
-        border: .all(color: theme.colorScheme.borderStrong),
-      ),
-      child: Padding(
-        padding: const .symmetric(
-          horizontal: UsSpacing.sm,
-          vertical: UsSpacing.xxs,
+    return Transform.rotate(
+      angle: 0.05, // ~3% rotation (≈1.7°)
+      alignment: Alignment.bottomLeft,
+      child: ShadDecorator(
+        decoration: ShadDecoration(
+          color: bgColor,
+          border: .all(color: theme.colorScheme.borderStrong),
         ),
-        child: Text(
-          label,
-          style: theme.textTheme.labelSm.copyWith(
-            color: fgColor,
-            fontWeight: .w700,
-            letterSpacing: 0.6,
+        child: Padding(
+          padding: const .symmetric(
+            horizontal: UsSpacing.sm,
+            vertical: UsSpacing.xxs,
+          ),
+          child: Text(
+            label,
+            style: theme.textTheme.labelSm.copyWith(
+              color: fgColor,
+              fontWeight: .w700,
+              letterSpacing: 0.6,
+            ),
           ),
         ),
       ),
