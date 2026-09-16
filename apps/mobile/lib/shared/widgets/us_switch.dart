@@ -2,20 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-/// A brutalist box-style switch that matches the UniStash design system.
-///
-/// Unlike the default pill-shaped switch, this uses a rectangular box
-/// with a thin border and a simple square thumb.
-///
-/// Colors are derived from [ShadSwitchTheme] and [ShadColorScheme],
-/// so switching between light/dark themes will work automatically.
-///
-/// ```dart
-/// UsSwitch(
-///   value: isOn,
-///   onChanged: (v) => setState(() => isOn = v),
-/// )
-/// ```
 class UsSwitch extends StatelessWidget {
   const UsSwitch({
     required this.value,
