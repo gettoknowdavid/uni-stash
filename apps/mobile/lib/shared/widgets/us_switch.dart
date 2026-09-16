@@ -22,8 +22,9 @@ class UsSwitch extends StatelessWidget {
     this.onChanged,
     this.enabled = true,
     this.height = 20,
-    this.width = 40,
+    this.width = 34,
     this.border,
+    this.showBorder = true,
     super.key,
   });
 
@@ -47,14 +48,16 @@ class UsSwitch extends StatelessWidget {
   /// Defaults to a 1px border using the theme's borderStrong color.
   final BorderSide? border;
 
+  /// Whether to show the border around the track.
+  final bool showBorder;
+
   bool get _interactive => onChanged != null && enabled;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final borderSide = border ?? BorderSide(
-      color: theme.colorScheme.borderStrong,
-    );
+    final borderSide =
+        border ?? BorderSide(color: theme.colorScheme.borderStrong, width: 1.5);
     final thumbInset = borderSide.width;
     final thumbSize = height - thumbInset * 4;
 
@@ -68,16 +71,15 @@ class UsSwitch extends StatelessWidget {
           color: value
               ? theme.switchTheme.checkedTrackColor
               : theme.switchTheme.uncheckedTrackColor,
-          border: Border.all(
-            width: borderSide.width,
-            color: borderSide.color,
-          ),
+          border: showBorder
+              ? Border.all(width: borderSide.width, color: borderSide.color)
+              : null,
         ),
         child: AnimatedAlign(
           duration: const Duration(milliseconds: 150),
           alignment: value ? .centerRight : .centerLeft,
           child: Container(
-            margin: EdgeInsets.all(thumbInset * 2),
+            margin: .all(thumbInset * 2),
             width: thumbSize,
             height: thumbSize,
             color: theme.switchTheme.thumbColor,

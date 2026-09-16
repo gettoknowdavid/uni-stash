@@ -202,10 +202,13 @@ class Money {
   @fda.JsonKey()
   final Currency currency;
 
-  /// `₦1,500.00` — assembled from integers, never a double.
-  String get display =>
-      '${currency.symbol}${_groupThousands(majorPart)}.'
-      '${minorPart.toString().padLeft(2, '0')}';
+  /// `₦1,500` or `₦1,500.50` — assembled from integers, never a double.
+  /// Trailing `.00` is omitted.
+  String get display {
+    final major = '${currency.symbol}${_groupThousands(majorPart)}';
+    if (minorPart == 0) return major;
+    return '$major.${minorPart.toString().padLeft(2, '0')}';
+  }
 
   @override
   int get hashCode => Object.hash(amountMinor, currency);
