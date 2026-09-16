@@ -36,6 +36,8 @@ final class UsRoutes {
   static const String settings = '/profile/settings';
   static const String editProfile = '/profile/edit';
   static const String listingEditor = '/listings/editor';
+  static const String listingEdit = '/listings/:id/edit';
 
   static String listingDetailsRoute(String id) => '/listings/$id';
+  static String listingEditRoute(String id) => '/listings/$id/edit';
 }

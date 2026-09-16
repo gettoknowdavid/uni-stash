@@ -91,6 +91,38 @@ final GoRouter routerConfig = GoRouter(
         return ListingDetailPage(id: id);
       },
     ),
+    GoRoute(
+      path: UsRoutes.listingEdit,
+      builder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return ListingEditor(listingId: id);
+      },
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 310),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final slideTween = Tween<Offset>(
+              begin: const Offset(0, 0.15),
+              end: Offset.zero,
+            ).chain(CurveTween(curve: Curves.easeOutCubic));
+
+            final fadeTween = CurveTween(curve: Curves.easeInOut);
+
+            return FadeTransition(
+              opacity: animation.drive(fadeTween),
+              child: SlideTransition(
+                position: animation.drive(slideTween),
+                child: child,
+              ),
+            );
+          },
+          child: ListingEditor(listingId: id),
+        );
+      },
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(
         navigationShell: navigationShell,

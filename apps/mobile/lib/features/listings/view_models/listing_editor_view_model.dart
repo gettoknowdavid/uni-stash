@@ -15,7 +15,7 @@ import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/naira_currency_input_formatter.dart';
 
-/// Page-scoped ViewModel that drives the listing editor (create flow).
+/// Page-scoped ViewModel that drives the listing editor (create & edit flows).
 ///
 /// Registered in a per-page GetIt scope (see `listing_editor.dart`), so every
 /// visit gets a fresh instance that GetIt disposes when the scope pops.
@@ -52,9 +52,16 @@ class ListingEditorViewModel implements Disposable {
   /// decides how [submit] maps the form values into the request.
   final Signal<bool> barterOnly = signal(false);
 
+  /// The listing being edited, or `null` when creating a new one.
+  final Signal<ListingDetailResponse?> existingListing = signal(null);
+
+  /// Whether we're in edit mode (vs create).
+  bool get isEditMode => existingListing.value != null;
+
   final Signal<bool> isSubmitting = signal(false);
   final Signal<String?> error = signal(null);
   final Signal<Listing?> created = signal(null);
+  final Signal<bool> isUpdating = signal(false);
 
   /// Progress label while photos are being uploaded ("Uploading photo 1 of
   /// 3…"), null when idle. Surfaces real upload progress in the submit
@@ -305,6 +312,74 @@ class ListingEditorViewModel implements Disposable {
     return null;
   }
 
+  // ---------------------------------------------------------------------------
+  // Edit mode
+  // ---------------------------------------------------------------------------
+
+  /// Fetches an existing listing and populates the editor for editing.
+  Future<void> loadListingForEdit(String id) async {
+    isLoadingCategories.value = true;
+
+    final result = await _repository.getListing(id);
+    switch (result) {
+      case Success(:final value):
+        if (value == null) {
+          error.value = 'Listing not found.';
+          return;
+        }
+        existingListing.value = value;
+        barterOnly.value = value.price == null && value.barterRequest != null;
+      case Failure(:final message):
+        error.value = message;
+    }
+
+    isLoadingCategories.value = false;
+  }
+
+  /// Submits an edit (PATCH) for an existing listing.
+  Future<void> submitEdit(Map<String, dynamic> values) async {
+    if (isSubmitting.value) return;
+    if (!isEditMode) return;
+
+    final listing = existingListing.value!;
+
+    final title = (values['title'] as String?)?.trim() ?? '';
+    final description = (values['description'] as String?)?.trim() ?? '';
+    final category = values['category'] as Category?;
+    if (category == null) {
+      error.value = 'Please select a category.';
+      return;
+    }
+    final condition = values['condition'] as Condition?;
+    final barterOnly = this.barterOnly.value;
+    final priceText = values['price'] as String?;
+    final barterRequest = (values['barter_request'] as String?)?.trim();
+    final parsedPrice =
+        barterOnly ? null : NairaCurrencyInputFormatter.parse(priceText ?? '');
+
+    isSubmitting.value = true;
+    error.value = null;
+
+    final patch = UpdateListingRequest(
+      title: title,
+      description: description,
+      condition: condition ?? listing.condition,
+      categoryId: category.id,
+      price: parsedPrice,
+      barterRequest: barterOnly ? barterRequest : null,
+    );
+
+    final result = await _repository.update(listing.id, patch);
+    switch (result) {
+      case Success(:final value):
+        created.value = value;
+      case Failure(:final message):
+        error.value = message;
+    }
+
+    isSubmitting.value = false;
+  }
+
   /// Clears one-shot submit state after the UI has reacted to it.
   void consumeResult() {
     created.value = null;
@@ -320,6 +395,8 @@ class ListingEditorViewModel implements Disposable {
     error.dispose();
     created.dispose();
     uploadProgress.dispose();
+    existingListing.dispose();
+    isUpdating.dispose();
   }
 
   @override

@@ -9,6 +9,7 @@ import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_draft.dart';
+import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/_widgets.dart';
@@ -16,7 +17,10 @@ import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
 class ListingEditor extends StatefulWidget {
-  const new({super.key});
+  const ListingEditor({this.listingId, super.key});
+
+  /// When provided, the editor operates in edit mode.
+  final String? listingId;
 
   @override
   State<ListingEditor> createState() => _ListingEditorState();
@@ -26,6 +30,8 @@ class _ListingEditorState extends State<ListingEditor> {
   final _formKey = GlobalKey<ShadFormState>();
 
   late final ListingEditorViewModel _model;
+
+  bool get _isEditMode => widget.listingId != null;
 
   @override
   void initState() {
@@ -45,7 +51,55 @@ class _ListingEditorState extends State<ListingEditor> {
       },
     );
     _model = di<ListingEditorViewModel>();
-    unawaited(_checkForDraft());
+
+    if (_isEditMode) {
+      unawaited(_loadListingForEdit());
+    } else {
+      unawaited(_checkForDraft());
+    }
+  }
+
+  Future<void> _loadListingForEdit() async {
+    await _model.loadListingForEdit(widget.listingId!);
+    if (!mounted) return;
+    final listing = _model.existingListing.value;
+    if (listing == null) return;
+    _applyListingToForm(listing);
+    _restoreDropdownFieldsFromListing(listing);
+  }
+
+  void _applyListingToForm(ListingDetailResponse listing) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final form = _formKey.currentState;
+      if (form == null) return;
+
+      form.fields['title']?.didChange(listing.title);
+      form.fields['description']?.didChange(listing.description);
+      if (listing.price != null) {
+        form.fields['price']?.didChange(listing.price!.display);
+      }
+      if (listing.barterRequest != null) {
+        form.fields['barter_request']?.didChange(listing.barterRequest);
+      }
+
+      _model.barterOnly.value =
+          listing.price == null && listing.barterRequest != null;
+
+      _restoreDropdownFieldsFromListing(listing);
+    });
+  }
+
+  void _restoreDropdownFieldsFromListing(ListingDetailResponse listing) {
+    _model.categories.subscribe((categories) {
+      if (categories.isEmpty) return;
+      final match = categories.where((c) => c.id == listing.category.id);
+      if (match.isNotEmpty) {
+        _formKey.currentState?.fields['category']?.didChange(match.first);
+      }
+    });
+
+    _formKey.currentState?.fields['condition']?.didChange(listing.condition);
   }
 
   Future<void> _checkForDraft() async {
@@ -157,7 +211,7 @@ class _ListingEditorState extends State<ListingEditor> {
       },
       child: UsPage(
         header: UsPageHeader(
-          title: const Text('NEW LISTING'),
+          title: Text(_isEditMode ? 'EDIT LISTING' : 'NEW LISTING'),
           titleStyle: theme.textTheme.large,
           foregroundColor: theme.colorScheme.foreground,
           automaticallyImplyLeading: false,
@@ -494,6 +548,7 @@ class _SubmitButton extends SignalHookWidget {
     final model = di<ListingEditorViewModel>();
     final isBusy = model.isSubmitting.value;
     final uploadProgress = model.uploadProgress.value;
+    final isEdit = model.isEditMode;
 
     return SizedBox(
       width: double.infinity,
@@ -511,7 +566,7 @@ class _SubmitButton extends SignalHookWidget {
                   ],
                 ],
               )
-            : const Text('PUBLISH LISTING'),
+            : Text(isEdit ? 'UPDATE LISTING' : 'PUBLISH LISTING'),
       ),
     );
   }
@@ -519,6 +574,11 @@ class _SubmitButton extends SignalHookWidget {
   Future<void> _handleSubmit(BuildContext context) async {
     final form = ShadForm.of(context);
     if (!form.saveAndValidate()) return;
-    await di<ListingEditorViewModel>().submit(form.value);
+    final model = di<ListingEditorViewModel>();
+    if (model.isEditMode) {
+      await model.submitEdit(form.value);
+    } else {
+      await model.submit(form.value);
+    }
   }
 }
