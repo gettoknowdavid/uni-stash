@@ -416,11 +416,10 @@ class _PriceSection extends SignalHookWidget {
           mainAxisAlignment: .spaceBetween,
           children: [
             Text('BARTER ONLY, NO PRICE', style: theme.textTheme.labelMd),
-            ShadSwitch(
+            UsSwitch(
               value: useBarter,
               enabled: !isBusy,
               onChanged: (v) => model.barterOnly.value = v,
-              direction: .rtl,
             ),
           ],
         ),
