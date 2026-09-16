@@ -36,7 +36,7 @@ class StatusBadge extends StatelessWidget {
     };
 
     return Transform.rotate(
-      angle: 0.05, // ~3% rotation (≈1.7°)
+      angle: -0.05, // ~3% rotation (≈1.7°) counter-clockwise
       alignment: Alignment.bottomLeft,
       child: ShadDecorator(
         decoration: ShadDecoration(
