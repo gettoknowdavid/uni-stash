@@ -2,13 +2,14 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class UsBackButton extends StatelessWidget {
-  const UsBackButton({super.key});
+  const UsBackButton({this.size = 40, super.key});
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     return SizedBox.square(
-      dimension: 40,
+      dimension: size,
       child: ShadIconButton(
         backgroundColor: theme.colorScheme.accent,
         foregroundColor: theme.colorScheme.foreground,
@@ -25,7 +26,7 @@ class UsBackButton extends StatelessWidget {
         onPressed: () => ModalRoute.canPopOf(context) == true
             ? Navigator.maybePop(context)
             : null,
-        icon: const Icon(LucideIcons.chevronLeft),
+        icon: Icon(LucideIcons.chevronLeft, size: size * 0.7),
       ),
     );
   }

@@ -5,7 +5,6 @@ import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
 import 'package:uni_stash_mobile/features/auth/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
-import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/schools/pages/_pages.dart';
@@ -88,10 +87,8 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       path: UsRoutes.listingDetails,
       builder: (context, state) {
-        final extra = state.extra as ListingSummary?;
-        return ListingDetailPage(
-          listing: extra!,
-        );
+        final id = state.pathParameters['id']!;
+        return ListingDetailPage(id: id);
       },
     ),
     StatefulShellRoute.indexedStack(

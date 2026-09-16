@@ -111,7 +111,7 @@ class UsPageHeader extends StatelessWidget implements PreferredSizeWidget {
             children: [
               if (resolvedLeading != null) ...[
                 resolvedLeading,
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
               ],
               Expanded(
                 child: Align(
