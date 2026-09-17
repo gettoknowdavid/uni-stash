@@ -1,4 +1,5 @@
 export 'auth_page_shell.dart';
+export 'us_avatar.dart';
 export 'back_button.dart';
 export 'green_notice_card.dart';
 export 'main_shell.dart';

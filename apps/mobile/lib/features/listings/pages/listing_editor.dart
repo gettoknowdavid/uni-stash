@@ -74,6 +74,10 @@ class _ListingEditorState extends State<ListingEditor> {
       final form = _formKey.currentState;
       if (form == null) return;
 
+      // Pre-populate existing server images so the photo grid shows them
+      // and validation passes without requiring the user to re-pick.
+      form.fields['photos']?.didChange(listing.images);
+
       form.fields['title']?.didChange(listing.title);
       form.fields['description']?.didChange(listing.description);
       if (listing.price != null) {

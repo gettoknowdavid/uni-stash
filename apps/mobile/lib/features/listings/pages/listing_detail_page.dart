@@ -10,8 +10,6 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
-import 'package:uni_stash_mobile/features/listings/widgets/condition_badge.dart';
-import 'package:uni_stash_mobile/features/listings/widgets/status_badge.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
@@ -143,9 +141,34 @@ class _ListingDetailView extends StatelessWidget {
                 Padding(
                   padding: const .symmetric(horizontal: 16),
                   child: Row(
+                    crossAxisAlignment: .start,
                     mainAxisAlignment: .spaceBetween,
                     children: [
-                      StatusBadge(status: detail.status),
+                      // StatusBadge(status: detail.status),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: .stretch,
+                          children: [
+                            Text(
+                              detail.title,
+                              style: theme.textTheme.h1,
+                              overflow: .ellipsis,
+                              maxLines: 2,
+                            ),
+                            const SizedBox(height: 4),
+                            RichText(
+                              text: TextSpan(
+                                style: theme.textTheme.small,
+                                children: [
+                                  TextSpan(text: 'Listed $date'),
+                                  const TextSpan(text: ' • '),
+                                  TextSpan(text: detail.category.label),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       Text(
                         detail.price?.display ?? '—',
                         style: theme.textTheme.labelLg.copyWith(
@@ -157,46 +180,46 @@ class _ListingDetailView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Padding(
-                  padding: const .symmetric(horizontal: 16),
-                  child: Text(
-                    detail.title,
-                    style: theme.textTheme.h1,
-                    overflow: .ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const .symmetric(horizontal: 16),
-                  child: RichText(
-                    text: TextSpan(
-                      style: theme.textTheme.small,
-                      children: [
-                        TextSpan(text: 'Listed $date'),
-                        const TextSpan(text: ' • '),
-                        TextSpan(text: detail.category.label),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const .symmetric(horizontal: 16),
-                  child: Text(
-                    'CONDITION',
-                    style: theme.textTheme.labelSm,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: .centerLeft,
-                  child: Padding(
-                    padding: const .symmetric(horizontal: 16),
-                    child: ConditionBadge(condition: detail.condition),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                // Padding(
+                //   padding: const .symmetric(horizontal: 16),
+                //   child: Text(
+                //     detail.title,
+                //     style: theme.textTheme.h1,
+                //     overflow: .ellipsis,
+                //     maxLines: 2,
+                //   ),
+                // ),
+                // const SizedBox(height: 8),
+                // Padding(
+                //   padding: const .symmetric(horizontal: 16),
+                //   child: RichText(
+                //     text: TextSpan(
+                //       style: theme.textTheme.small,
+                //       children: [
+                //         TextSpan(text: 'Listed $date'),
+                //         const TextSpan(text: ' • '),
+                //         TextSpan(text: detail.category.label),
+                //       ],
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(height: 24),
+                // Padding(
+                //   padding: const .symmetric(horizontal: 16),
+                //   child: Text(
+                //     'CONDITION',
+                //     style: theme.textTheme.labelSm,
+                //   ),
+                // ),
+                // const SizedBox(height: 10),
+                // Align(
+                //   alignment: .centerLeft,
+                //   child: Padding(
+                //     padding: const .symmetric(horizontal: 16),
+                //     child: ConditionBadge(condition: detail.condition),
+                //   ),
+                // ),
+                // const SizedBox(height: 24),
                 Padding(
                   padding: const .symmetric(horizontal: 16),
                   child: Text(
@@ -224,32 +247,19 @@ class _ListingDetailView extends StatelessWidget {
                   child: Row(
                     spacing: 12,
                     children: [
-                      SizedBox.square(
-                        dimension: 40,
-                        child: ShadDecorator(
-                          decoration: ShadDecoration(
-                            color: theme.colorScheme.secondary,
-                            border: .all(
-                              color: theme.colorScheme.borderStrong,
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'AB',
-                              style: theme.textTheme.h2.copyWith(
-                                fontWeight: .bold,
-                              ),
-                            ),
-                          ),
-                        ),
+                      UsAvatar(
+                        name: detail.seller.displayName,
+                        photoUrl: detail.seller.photoUrl,
+                        size: 40,
+                        verified: detail.seller.emailVerified,
+                        verifiedLabel: '✓',
                       ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: .stretch,
                           children: [
                             Text(
-                              'Adaeze B.',
+                              detail.seller.displayName,
                               style: theme.textTheme.h2.copyWith(
                                 fontWeight: .bold,
                               ),
@@ -257,7 +267,7 @@ class _ListingDetailView extends StatelessWidget {
                               maxLines: 1,
                             ),
                             Text(
-                              'Verified student • @uniport.edu.ng',
+                              '${detail.seller.emailVerified ? 'Verified student' : 'Student'} • @${detail.seller.domain}',
                               style: theme.textTheme.muted,
                               overflow: .ellipsis,
                               maxLines: 1,
@@ -366,7 +376,7 @@ class _ImageCarouselState extends State<_ImageCarousel> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 1);
+    _pageController = PageController();
   }
 
   @override
@@ -377,8 +387,8 @@ class _ImageCarouselState extends State<_ImageCarousel> {
 
   String? _imageUrl(ListingImage image) {
     return image.when(
-      server: (_, url, __) => url,
-      local: (_, __, ___) => null,
+      server: (_, url, _) => url,
+      local: (_, _, _) => null,
     );
   }
 
@@ -438,10 +448,10 @@ class _ImageCarouselState extends State<_ImageCarousel> {
                 return CachedNetworkImage(
                   imageUrl: url,
                   fit: BoxFit.contain,
-                  placeholder: (_, __) => const Center(
+                  placeholder: (_, _) => const Center(
                     child: ShadSpinner(),
                   ),
-                  errorWidget: (_, __, ___) => Center(
+                  errorWidget: (_, _, _) => Center(
                     child: Icon(
                       LucideIcons.imageOff,
                       color: theme.colorScheme.mutedForeground,

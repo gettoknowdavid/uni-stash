@@ -267,6 +267,9 @@ abstract class Seller with _$Seller {
   const factory Seller({
     required String id,
     @JsonKey(name: 'display_name') required String displayName,
+    @JsonKey(name: 'email_verified') required bool emailVerified,
+    required String domain,
+    @JsonKey(name: 'photo_url') String? photoUrl,
   }) = _Seller;
 
   factory Seller.fromJson(Map<String, dynamic> json) => _$SellerFromJson(json);

@@ -118,7 +118,10 @@ class _ProfileContent extends SignalHookWidget {
         crossAxisAlignment: .stretch,
         children: [
           const SizedBox(height: 24),
-          _Avatar(verified: profile.emailVerified),
+          UsAvatar(
+            name: profile.displayName,
+            verified: profile.emailVerified,
+          ),
           const SizedBox(height: 24),
           Text(
             _shortDisplayName(profile.displayName),
@@ -169,73 +172,6 @@ String _emailTag(String email) {
   return '@${domain.toUpperCase()}';
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.verified});
-
-  final bool verified;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-    const size = 112.0;
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        clipBehavior: .none,
-        children: [
-          // No avatar URL on the profile yet — render the initials
-          // placeholder until the avatar-upload endpoint lands.
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.muted,
-              border: Border.all(color: theme.colorScheme.border),
-            ),
-            alignment: .center,
-            child: Text(
-              _initials,
-              style: theme.textTheme.h1.copyWith(
-                color: theme.colorScheme.textSecondary,
-              ),
-            ),
-          ),
-          if (verified)
-            Positioned(
-              top: 6,
-              left: -12,
-              child: Transform.rotate(
-                angle: -0.06,
-                child: Container(
-                  padding: const .symmetric(horizontal: 8, vertical: 4),
-                  color: UsPrimitives.sage300,
-                  child: Text(
-                    'VERIFIED',
-                    style: theme.textTheme.labelMd.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: UsPrimitives.neutral900,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  String get _initials {
-    final model = di<ProfileViewModel>();
-    final name = model.profile.value?.displayName ?? '';
-    final parts = name.trim().split(RegExp(r'\s+'))
-      ..removeWhere((part) => part.isEmpty);
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return (parts.first[0] + parts.last[0]).toUpperCase();
-  }
-}
 
 class _VerifiedStatusRow extends StatelessWidget {
   const _VerifiedStatusRow();
