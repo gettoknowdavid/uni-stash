@@ -209,6 +209,9 @@ pub struct ListingDetailResponse {
 pub struct SellerSummary {
     pub id: uuid::Uuid,
     pub display_name: String,
+    pub email_verified: bool,
+    pub domain: String,
+    pub photo_url: Option<String>,
 }
 
 #[derive(serde::Serialize)]

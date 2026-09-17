@@ -116,6 +116,7 @@ fn sign_access_token(
         display_name: "Test User".to_string(),
         email_verified,
         role: "student".to_string(),
+        photo_url: None,
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: String::new(),

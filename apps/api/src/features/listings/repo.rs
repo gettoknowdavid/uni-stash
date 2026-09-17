@@ -233,10 +233,12 @@ impl ListingsRepo {
     ) -> Result<Option<ListingDetailResponse>, AppError> {
         let row = sqlx::query!(
             "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,
-                    u.id AS seller_id, u.display_name AS seller_display_name,
+                    u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,
+                    sc.domain AS seller_domain,
                     c.id AS category_id, c.slug AS category_slug, c.label AS category_label
              FROM listings l
              JOIN users u ON u.id = l.seller_id
+             JOIN schools sc ON sc.id = u.school_id
              JOIN categories c ON c.id = l.category_id
              WHERE l.id = $1",
             listing_id,
@@ -278,6 +280,9 @@ impl ListingsRepo {
             seller: SellerSummary {
                 id: row.seller_id,
                 display_name: row.seller_display_name,
+                email_verified: row.seller_email_verified,
+                domain: row.seller_domain,
+                photo_url: row.seller_photo_url,
             },
             category: CategorySummary {
                 id: row.category_id,
@@ -347,34 +352,45 @@ impl ListingsRepo {
             query.push(", category_id = ").push_bind(category_id);
             has_fields = true;
         }
-        if let Some(ref price) = patch.price {
-            match price {
-                Some(money) => {
-                    query.push(", price = ").push_bind(money.amount_minor);
-                    query
-                        .push(", currency = ")
-                        .push_bind(money.currency.to_string());
-                    // Switching to a priced listing clears the barter request.
-                    query.push(", barter_request = NULL");
-                }
-                None => {
-                    query.push(", price = NULL");
-                }
+        // price and barter_request are mutually exclusive — a listing
+        // has either a price OR a barter request, never both.  Handle
+        // them together to avoid duplicate SET clauses when the client
+        // sends both fields in the same PATCH (e.g. toggling barter ON).
+        match (&patch.price, &patch.barter_request) {
+            // --- Barter request is being set to a value: clear price ---
+            (_, Some(Some(barter_val))) => {
+                query.push(", price = NULL");
+                query
+                    .push(", barter_request = ")
+                    .push_bind(barter_val.clone());
+                has_fields = true;
             }
-            has_fields = true;
-        }
-        if let Some(ref barter_request) = patch.barter_request {
-            match barter_request {
-                Some(val) => {
-                    query.push(", barter_request = ").push_bind(val.clone());
-                    // Switching to barter-only clears the price.
-                    query.push(", price = NULL");
-                }
-                None => {
-                    query.push(", barter_request = NULL");
-                }
+            // --- Price is being set to a value: clear barter_request ---
+            (Some(Some(money)), _) => {
+                query.push(", price = ").push_bind(money.amount_minor);
+                query
+                    .push(", currency = ")
+                    .push_bind(money.currency.to_string());
+                query.push(", barter_request = NULL");
+                has_fields = true;
             }
-            has_fields = true;
+            // --- Both explicitly nulled (unlikely but valid) ---
+            (Some(None), Some(None)) => {
+                query.push(", price = NULL");
+                query.push(", barter_request = NULL");
+                has_fields = true;
+            }
+            // --- Only price nulled (switch to barter with no value yet) ---
+            (Some(None), _) => {
+                query.push(", price = NULL");
+                has_fields = true;
+            }
+            // --- Only barter_request nulled (switch to priced with no value yet) ---
+            (_, Some(None)) => {
+                query.push(", barter_request = NULL");
+                has_fields = true;
+            }
+            _ => {}
         }
         if let Some(ref condition) = patch.condition {
             query

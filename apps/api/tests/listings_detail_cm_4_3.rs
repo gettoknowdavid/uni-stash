@@ -128,6 +128,9 @@ async fn active_listing_returns_full_detail(pool: PgPool) {
     assert_eq!(data["title"], "Item");
     assert_eq!(data["seller"]["id"], seller.to_string());
     assert_eq!(data["seller"]["display_name"], "U");
+    assert_eq!(data["seller"]["email_verified"], false);
+    assert_eq!(data["seller"]["domain"], "t.edu");
+    assert!(data["seller"]["photo_url"].is_null());
     assert_eq!(data["category"]["slug"], "books");
     assert_eq!(data["images"].as_array().unwrap().len(), 2);
 }

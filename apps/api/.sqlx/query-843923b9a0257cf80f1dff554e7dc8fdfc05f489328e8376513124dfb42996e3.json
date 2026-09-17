@@ -106,6 +106,17 @@
             "name": "updated_at"
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "photo_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "photo_url"
+          }
+        }
       }
     ],
     "parameters": {
@@ -122,7 +133,8 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
   "hash": "843923b9a0257cf80f1dff554e7dc8fdfc05f489328e8376513124dfb42996e3"

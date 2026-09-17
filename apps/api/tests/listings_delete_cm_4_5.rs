@@ -75,6 +75,7 @@ fn sign_token(keys: &uni_stash_be::core::clients::JwtKeys, uid: uuid::Uuid, emai
         display_name: "U".into(),
         email_verified: true,
         role: "student".into(),
+        photo_url: None,
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: String::new(),

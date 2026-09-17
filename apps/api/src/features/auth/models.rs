@@ -15,6 +15,7 @@ pub struct User {
     pub display_name: String,
     pub email_verified: bool,
     pub role: String,
+    pub photo_url: Option<String>,
     pub created_at: time::OffsetDateTime,
     pub updated_at: time::OffsetDateTime,
 }

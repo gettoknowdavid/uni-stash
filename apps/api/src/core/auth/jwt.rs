@@ -103,6 +103,7 @@ mod tests {
             display_name: "Some User".to_string(),
             email_verified: true,
             role: "student".to_string(),
+            photo_url: None,
             created_at: time::OffsetDateTime::now_utc(),
             updated_at: time::OffsetDateTime::now_utc(),
             password_hash: "".to_string(),

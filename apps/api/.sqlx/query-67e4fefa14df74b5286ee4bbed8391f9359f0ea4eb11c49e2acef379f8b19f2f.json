@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,\n                    u.id AS seller_id, u.display_name AS seller_display_name,\n                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label\n             FROM listings l\n             JOIN users u ON u.id = l.seller_id\n             JOIN categories c ON c.id = l.category_id\n             WHERE l.id = $1",
+  "query": "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,\n                    u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,\n                    sc.domain AS seller_domain,\n                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label\n             FROM listings l\n             JOIN users u ON u.id = l.seller_id\n             JOIN schools sc ON sc.id = u.school_id\n             JOIN categories c ON c.id = l.category_id\n             WHERE l.id = $1",
   "describe": {
     "columns": [
       {
@@ -126,6 +126,44 @@
       },
       {
         "ordinal": 11,
+        "name": "seller_email_verified",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email_verified"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "seller_photo_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "photo_url"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "seller_domain",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "schools",
+            "name": "domain"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
         "name": "category_id",
         "type_info": "Int2",
         "origin": {
@@ -136,7 +174,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 15,
         "name": "category_slug",
         "type_info": "Text",
         "origin": {
@@ -147,7 +185,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 16,
         "name": "category_label",
         "type_info": "Text",
         "origin": {
@@ -176,9 +214,12 @@
       false,
       false,
       false,
+      true,
+      false,
+      false,
       false,
       false
     ]
   },
-  "hash": "4c0b19c182c0942329c89e83bf9533d982d3ba197cd3b5084eac8eff7abe1a5d"
+  "hash": "67e4fefa14df74b5286ee4bbed8391f9359f0ea4eb11c49e2acef379f8b19f2f"
 }
