@@ -267,7 +267,9 @@ class _ListingDetailView extends StatelessWidget {
                               maxLines: 1,
                             ),
                             Text(
-                              '${detail.seller.emailVerified ? 'Verified student' : 'Student'} • @${detail.seller.domain}',
+                              detail.seller.emailVerified
+                                  ? 'Verified student'
+                                  : 'Student • @${detail.seller.domain}',
                               style: theme.textTheme.muted,
                               overflow: .ellipsis,
                               maxLines: 1,
@@ -322,8 +324,8 @@ class _EditButton extends StatelessWidget {
             radius: .zero,
           ),
         ),
-        onPressed: () {
-          context.push(UsRoutes.listingEditRoute(id));
+        onPressed: () async {
+          await context.push<void>(UsRoutes.listingEditRoute(id));
         },
         icon: Icon(LucideIcons.pencil, size: size * 0.6),
       ),
