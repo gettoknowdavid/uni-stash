@@ -37,12 +37,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   @override
-  void dispose() {
-    unawaited(di.popScope());
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 

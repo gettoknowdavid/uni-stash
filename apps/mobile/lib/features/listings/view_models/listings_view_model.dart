@@ -26,6 +26,8 @@ class ListingsViewModel implements Disposable {
         ),
       );
 
+      if (_disposed) return;
+
       switch (result) {
         case Success(:final value):
           listings.value = value.listings;
@@ -52,6 +54,8 @@ class ListingsViewModel implements Disposable {
         ),
       );
 
+      if (_disposed) return;
+
       switch (result) {
         case Success(:final value):
           listings.value = [...listings.value, ...value.listings];
@@ -75,6 +79,8 @@ class ListingsViewModel implements Disposable {
         ),
       );
 
+      if (_disposed) return;
+
       switch (result) {
         case Success(:final value):
           listings.value = value.listings;
@@ -94,6 +100,7 @@ class ListingsViewModel implements Disposable {
   final Signal<String?> error = signal(null);
   final Signal<bool> hasMore = signal(true);
 
+  bool _disposed = false;
   String? _cursor;
 
   /// Current search / filter query, exposed so the UI can bind to it.
@@ -121,6 +128,7 @@ class ListingsViewModel implements Disposable {
   }
 
   void dispose() {
+    _disposed = true;
     listings.dispose();
     isLoading.dispose();
     isLoadingMore.dispose();

@@ -44,9 +44,15 @@ class LoginViewModel implements Disposable {
   /// not yet verified, signalling the page to take the user to `/verify`.
   final Signal<bool> needsVerification = Signal(false);
 
-  void setEmail(String? value) => email.value = value ?? '';
+  void setEmail(String? value) {
+    if (email.disposed) return;
+    email.value = value ?? '';
+  }
 
-  void setPassword(String? value) => password.value = value ?? '';
+  void setPassword(String? value) {
+    if (password.disposed) return;
+    password.value = value ?? '';
+  }
 
   late final void Function() submit;
 

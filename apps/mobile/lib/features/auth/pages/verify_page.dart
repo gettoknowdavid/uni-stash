@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:get_it/get_it.dart';
 import 'package:logger/web.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,14 +10,6 @@ import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/auth/widgets/us_otp_input.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 
-/// Email-verification (OTP) screen.
-///
-/// Reached right after signup and — crucially — again on app restart when a
-/// stored session exists but the account's email is not yet verified: the
-/// router bounces any authenticated-but-unverified session here. It is also
-/// reachable while signed out (e.g. after a login attempt that failed with
-/// `email_not_verified`) when [email] is supplied, since verifying the code
-/// issues fresh tokens and signs the user in.
 class VerifyPage extends SignalStatefulWidget {
   const VerifyPage({this.email, this.code, super.key});
 
@@ -41,6 +31,7 @@ class _VerifyPageState extends State<VerifyPage> {
   /// Which email the code was sent to: the signed-in user's address wins,
   /// falling back to the one carried on the route (login-rejection path).
   late final String _email;
+
   String? _code;
 
   String? _codeError;
@@ -52,11 +43,6 @@ class _VerifyPageState extends State<VerifyPage> {
     _email = signedInEmail.isNotEmpty ? signedInEmail : (widget.email ?? '');
     _code = widget.code;
 
-    // Each visit gets its own page-scoped ViewModel (same pattern as
-    // login_page.dart / signup_page.dart): the scope is popped in dispose().
-    // Use a unique scope name so dispose() can safely check ownership —
-    // GoRouter may create a new VerifyPage for the same path with different
-    // query params, causing two pages to coexist briefly.
     di.pushNewScope(
       scopeName: 'verifyPage',
       init: (getIt) {
@@ -93,12 +79,6 @@ class _VerifyPageState extends State<VerifyPage> {
   }
 
   @override
-  void dispose() {
-    unawaited(di.popScope());
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
@@ -106,10 +86,6 @@ class _VerifyPageState extends State<VerifyPage> {
       effect: (context) {
         final response = _model.result.value;
         if (response != null && response.verified) {
-          // The backend re-issues tokens with the now-verified user for the
-          // email_verify flow; authenticate with them so the router can send
-          // the session into the shell. (Signed-in sessions that verify just
-          // update their stored credentials.)
           final user = response.user;
           final accessToken = response.accessToken;
           final refreshToken = response.refreshToken;

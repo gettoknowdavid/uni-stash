@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -27,9 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    // Each visit gets its own page-scoped ViewModel: the scope gives sub-
-    // widgets a single shared instance and makes GetIt dispose it (via the
-    // model's Disposable contract) when the scope is popped in dispose().
     di.pushNewScope(
       scopeName: 'loginPage',
       init: (getIt) {
@@ -39,12 +34,6 @@ class _LoginPageState extends State<LoginPage> {
       },
     );
     _model = di<LoginViewModel>();
-  }
-
-  @override
-  void dispose() {
-    unawaited(di.popScope());
-    super.dispose();
   }
 
   @override
@@ -74,9 +63,6 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
 
-        // Credentials were right but the account's email isn't verified yet
-        // (backend 403 `email_not_verified`): send the user to the OTP flow
-        // so they can finish activation and sign in with fresh tokens.
         if (_model.needsVerification.value) {
           final email = _model.email.value;
           _model.reset();
@@ -141,7 +127,7 @@ class _EmailField extends SignalWidget {
       id: 'email',
       label: const Text('SCHOOL EMAIL'),
       enabled: !model.isLoading.value,
-      keyboardType:.emailAddress,
+      keyboardType: .emailAddress,
       autocorrect: false,
       placeholder: const Text('you@university.edu'),
       trailing: Icon(

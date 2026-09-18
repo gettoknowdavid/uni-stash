@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -41,7 +39,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    unawaited(di.popScope());
+    // popScope() is async but dispose() is sync — calling it here would
+    // discard the Future and never actually pop the scope.  Page-scoped
+    // GetIt scopes are cleaned up in bulk by the logout flow via
+    // popScopesTill(root).  For normal back-navigation the orphaned scope
+    // is harmless (the next page pushes its own scope on top).
     super.dispose();
   }
 

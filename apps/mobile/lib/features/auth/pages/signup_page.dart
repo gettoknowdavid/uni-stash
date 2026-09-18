@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -26,9 +24,6 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   void initState() {
     super.initState();
-    // Each visit gets its own page-scoped ViewModel: the scope gives sub-
-    // widgets a single shared instance and makes GetIt dispose it (via the
-    // model's Disposable contract) when the scope is popped in dispose().
     di.pushNewScope(
       scopeName: 'signupPage',
       init: (getIt) {
@@ -38,12 +33,6 @@ class _SignUpPageState extends State<SignUpPage> {
       },
     );
     _model = di<SignUpViewModel>();
-  }
-
-  @override
-  void dispose() {
-    unawaited(di.popScope());
-    super.dispose();
   }
 
   @override
@@ -223,7 +212,6 @@ class _PasswordFieldState extends State<_PasswordField> {
       ),
       validator: (value) {
         if (value.isEmpty) return 'Please enter your password.';
-        // Mirrors the backend rule (`validator` enforces a 10-char minimum).
         if (value.length < 10) {
           return 'Password must be at least 10 characters.';
         }

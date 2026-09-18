@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -11,11 +9,6 @@ import 'package:uni_stash_mobile/features/auth/widgets/us_otp_input.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 
-/// Reset-password screen: the 6-digit recovery code plus a new password.
-///
-/// Arrives after the forgot-password step, which dispatches the code to
-/// [email]. Submitting verifies the code and updates the password in one call
-/// (`POST /auth/reset-password`), then returns the user to the login screen.
 class ResetPasswordPage extends SignalStatefulWidget {
   const ResetPasswordPage({this.email, super.key});
 
@@ -49,12 +42,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       },
     );
     _model = di<ResetPasswordViewModel>();
-  }
-
-  @override
-  void dispose() {
-    unawaited(di.popScope());
-    super.dispose();
   }
 
   @override
