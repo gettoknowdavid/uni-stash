@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
@@ -45,9 +47,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return const UsPage(
-      header: UsPageHeader(title: Text('PROFILE')),
-      body: _ProfileBody(),
+    return UsPage(
+      header: UsPageHeader(
+        title: const Text('PROFILE'),
+        actions: [
+          ShadIconButton.ghost(
+            icon: const Icon(LucideIcons.settings),
+            onPressed: () => context.push(UsRoutes.settings),
+          ),
+        ],
+      ),
+      body: const _ProfileBody(),
     );
   }
 }

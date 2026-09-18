@@ -57,6 +57,10 @@ final GoRouter routerConfig = GoRouter(
       builder: (context, state) => const SchoolsPage(),
     ),
     GoRoute(
+      path: UsRoutes.settings,
+      builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(
       path: UsRoutes.listingEditor,
       builder: (context, state) => const ListingEditor(),
       pageBuilder: (context, state) {
