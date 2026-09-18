@@ -46,6 +46,12 @@ enum Condition {
     used => 'USED',
     fair => 'FAIR',
   };
+
+  String get name => switch (this) {
+    isNew => 'New',
+    used => 'Used',
+    fair => 'Fair',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +193,19 @@ abstract class ListingSummary with _$ListingSummary {
       _$ListingSummaryFromJson(json);
 }
 
-enum ListingStatus { active, reserved, sold, deleted }
+enum ListingStatus {
+  active,
+  reserved,
+  sold,
+  deleted;
+
+  String get name => switch (this) {
+    active => 'Active',
+    reserved => 'Reserved',
+    sold => 'Sold',
+    deleted => 'Deleted',
+  };
+}
 
 @immutable
 @fda.JsonSerializable()

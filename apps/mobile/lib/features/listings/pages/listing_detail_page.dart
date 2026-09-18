@@ -133,6 +133,7 @@ class _ListingDetailView extends StatelessWidget {
         return UsPage(
           gutters: .zero,
           body: SingleChildScrollView(
+            padding: const .only(bottom: 48),
             child: Column(
               crossAxisAlignment: .stretch,
               children: [
@@ -180,46 +181,6 @@ class _ListingDetailView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Padding(
-                //   padding: const .symmetric(horizontal: 16),
-                //   child: Text(
-                //     detail.title,
-                //     style: theme.textTheme.h1,
-                //     overflow: .ellipsis,
-                //     maxLines: 2,
-                //   ),
-                // ),
-                // const SizedBox(height: 8),
-                // Padding(
-                //   padding: const .symmetric(horizontal: 16),
-                //   child: RichText(
-                //     text: TextSpan(
-                //       style: theme.textTheme.small,
-                //       children: [
-                //         TextSpan(text: 'Listed $date'),
-                //         const TextSpan(text: ' • '),
-                //         TextSpan(text: detail.category.label),
-                //       ],
-                //     ),
-                //   ),
-                // ),
-                // const SizedBox(height: 24),
-                // Padding(
-                //   padding: const .symmetric(horizontal: 16),
-                //   child: Text(
-                //     'CONDITION',
-                //     style: theme.textTheme.labelSm,
-                //   ),
-                // ),
-                // const SizedBox(height: 10),
-                // Align(
-                //   alignment: .centerLeft,
-                //   child: Padding(
-                //     padding: const .symmetric(horizontal: 16),
-                //     child: ConditionBadge(condition: detail.condition),
-                //   ),
-                // ),
-                // const SizedBox(height: 24),
                 Padding(
                   padding: const .symmetric(horizontal: 16),
                   child: Text(
@@ -236,8 +197,77 @@ class _ListingDetailView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: .spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        'CATEGORY',
+                        style: theme.textTheme.labelSm,
+                      ),
+                    ),
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        detail.category.label,
+                        style: theme.textTheme.p,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 ShadSeparator.horizontal(
-                  thickness: 2,
+                  margin: const .symmetric(horizontal: 16),
+                  color: theme.colorScheme.borderStrong,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: .spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        'CONDITION',
+                        style: theme.textTheme.labelSm,
+                      ),
+                    ),
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        detail.condition.name,
+                        style: theme.textTheme.p,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ShadSeparator.horizontal(
+                  margin: const .symmetric(horizontal: 16),
+                  color: theme.colorScheme.borderStrong,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: .spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        'STATUS',
+                        style: theme.textTheme.labelSm,
+                      ),
+                    ),
+                    Padding(
+                      padding: const .symmetric(horizontal: 16),
+                      child: Text(
+                        detail.status.name,
+                        style: theme.textTheme.p,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ShadSeparator.horizontal(
                   margin: const .symmetric(horizontal: 16),
                   color: theme.colorScheme.borderStrong,
                 ),
@@ -286,13 +316,23 @@ class _ListingDetailView extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                ShadSeparator.horizontal(
-                  thickness: 2,
-                  margin: const .symmetric(horizontal: 16),
-                  color: theme.colorScheme.borderStrong,
-                ),
               ],
+            ),
+          ),
+          footer: ShadDecorator(
+            decoration: ShadDecoration(
+              border: ShadBorder(
+                top: ShadBorderSide(
+                  color: theme.colorScheme.border,
+                ),
+              ),
+            ),
+            child: const Padding(
+              padding:  .all(16),
+              child: ShadButton(
+                width: double.infinity,
+                child: Text('MESSAGE SELLER'),
+              ),
             ),
           ),
         );
