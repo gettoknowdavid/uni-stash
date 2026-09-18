@@ -11,50 +11,32 @@ class LogoutDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return ShadDialog(
-      child: Column(
-        mainAxisSize: .min,
-        crossAxisAlignment: .stretch,
-        children: [
-          Icon(
-            LucideIcons.triangleAlert,
-            size: 48,
-            color: theme.colorScheme.destructive,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'LOG OUT?',
-            textAlign: .center,
-            style: theme.textTheme.h2,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Are you sure you want to log out of UniStash?',
-            textAlign: .center,
-            style: theme.textTheme.p.copyWith(
-              color: theme.colorScheme.mutedForeground,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: ShadButton.outline(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('CANCEL'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ShadButton.destructive(
-                  onPressed: () => _logout(context),
-                  child: const Text('LOG OUT'),
-                ),
-              ),
-            ],
-          ),
-        ],
+    return ShadDialog.alert(
+      padding: const .fromLTRB(24, 0, 24, 24),
+      title: const Text('LOGOUT?'),
+      titleStyle: theme.textTheme.h1,
+      titleTextAlign: .center,
+      description: const Padding(
+        padding: .only(bottom: 24),
+        child: Text('Are you sure you want to logout of UniStash?'),
       ),
+      descriptionTextAlign: .center,
+      actionsAxis: .horizontal,
+      expandActionsWhenTiny: false,
+      actions: [
+        ShadButton.outline(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          child: const Text('CANCEL'),
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        ShadButton(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          onPressed: () => _logout(context),
+          child: const Text('LOG OUT'),
+        ),
+      ],
     );
   }
 

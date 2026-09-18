@@ -12,68 +12,74 @@ class SettingsPage extends StatelessWidget {
     return UsPage(
       header: const UsPageHeader(title: Text('SETTINGS')),
       body: SingleChildScrollView(
+        padding: const .symmetric(vertical: 16),
         child: Column(
           crossAxisAlignment: .stretch,
           children: [
-            const _SectionHeader(label: 'ACCOUNT'),
-            const _SettingsRow(
-              label: 'Email',
-              trailing: _Chevron(),
-            ),
-            const _SettingsRow(
-              label: 'Phone',
-              trailing: _Chevron(),
-            ),
-            const _SettingsRow(
-              label: 'Change Password',
-              trailing: _Chevron(),
-            ),
-            const SizedBox(height: 24),
-            const _SectionHeader(label: 'NOTIFICATIONS'),
-            _SettingsRow(
-              label: 'Push Notifications',
-              description: 'Alerts for new messages and offers',
-              trailing: ShadSwitch(
-                value: true,
-                onChanged: (_) {},
-              ),
-            ),
-            _SettingsRow(
-              label: 'Email Notifications',
-              description: 'Weekly digests and major updates',
-              trailing: ShadSwitch(
-                value: false,
-                onChanged: (_) {},
-              ),
+            const _SectionCard(
+              headerLabel: 'ACCOUNT',
+              children: [
+                _SettingsRow(
+                  label: 'Email',
+                  subtitle: 'adaeze.b@uniport.edu.ng',
+                  trailing: _Chevron(),
+                ),
+                _SettingsRow(
+                  label: 'Phone',
+                  subtitle: '+234 *** *** 1234',
+                  trailing: _Chevron(),
+                ),
+                _SettingsRow(
+                  label: 'Change Password',
+                  trailing: _Chevron(),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
-            const _SectionHeader(label: 'PRIVACY'),
-            _SettingsRow(
-              label: 'Profile Visibility',
-              description: 'Allow others to see my listings history',
-              trailing: ShadSwitch(
-                value: true,
-                onChanged: (_) {},
-              ),
+            const _SectionCard(
+              headerLabel: 'NOTIFICATIONS',
+              children: [
+                _SettingsRow(
+                  label: 'Push Notifications',
+                  subtitle: 'Alerts for new messages and offers',
+                  trailing: UsSwitch(value: true),
+                ),
+                _SettingsRow(
+                  label: 'Email Notifications',
+                  subtitle: 'Weekly digests and major updates',
+                  trailing: UsSwitch(value: false),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
-            const _SectionHeader(label: 'LEGAL'),
-            const _SettingsRow(
-              label: 'Terms of Service',
-              trailing: _ExternalLink(),
+            const _SectionCard(
+              headerLabel: 'PRIVACY',
+              children: [
+                _SettingsRow(
+                  label: 'Profile Visibility',
+                  subtitle: 'Allow others to see my listings history',
+                  trailing: UsSwitch(value: true),
+                ),
+              ],
             ),
-            const _SettingsRow(
-              label: 'Privacy Policy',
-              trailing: _ExternalLink(),
+            const SizedBox(height: 24),
+            const _SectionCard(
+              headerLabel: 'LEGAL',
+              children: [
+                _SettingsRow(
+                  label: 'Terms of Service',
+                  trailing: _ExternalLink(),
+                ),
+                _SettingsRow(
+                  label: 'Privacy Policy',
+                  trailing: _ExternalLink(),
+                ),
+              ],
             ),
             const SizedBox(height: 32),
-            Padding(
-              padding: const .symmetric(horizontal: 16),
-              child: ShadButton.destructive(
-                width: double.infinity,
-                onPressed: () => _showLogoutDialog(context),
-                child: const Text('LOG OUT'),
-              ),
+            ShadButton.outline(
+              child: const Text('LOG OUT'),
+              onPressed: () => _showLogoutDialog(context),
             ),
             const SizedBox(height: 32),
           ],
@@ -84,25 +90,51 @@ class SettingsPage extends StatelessWidget {
 }
 
 Future<void> _showLogoutDialog(BuildContext context) {
-  return showShadDialog<void>(
+  return showShadDialog<bool>(
     context: context,
     builder: (context) => const LogoutDialog(),
   );
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-  final String label;
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.headerLabel,
+    required this.children,
+  });
+
+  final String headerLabel;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     return Padding(
-      padding: const .symmetric(horizontal: 16, vertical: 12),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSm.copyWith(
-          color: theme.colorScheme.mutedForeground,
+      // Adding this padding to the right of the card to ensure the
+      // brutalist border shows. Should have been fixed by the setting
+      // `clipBehavior: Clip.none` in the top level `SingleChildScrollView`.
+      // but it caused unexpected overlapping for the header.
+      // Will find a better solution later
+      padding: const .only(right: 2),
+      child: ShadCard(
+        padding: .zero,
+        border: .all(color: UsPrimitives.neutral900, width: 2),
+        shadows: UsElevation.brutalist,
+        child: Column(
+          crossAxisAlignment: .stretch,
+          children: [
+            Container(
+              padding: const .symmetric(horizontal: 16, vertical: 10),
+              color: theme.colorScheme.muted,
+              child: Text(
+                headerLabel,
+                style: theme.textTheme.labelSm.copyWith(
+                  color: theme.colorScheme.mutedForeground,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ...children,
+          ],
         ),
       ),
     );
@@ -112,12 +144,12 @@ class _SectionHeader extends StatelessWidget {
 class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.label,
-    this.description,
+    this.subtitle,
     this.trailing,
   });
 
   final String label;
-  final String? description;
+  final String? subtitle;
   final Widget? trailing;
 
   @override
@@ -139,10 +171,10 @@ class _SettingsRow extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (description != null) ...[
+                    if (subtitle != null) ...[
                       const SizedBox(height: 2),
                       Text(
-                        description!,
+                        subtitle!,
                         style: theme.textTheme.small.copyWith(
                           color: theme.colorScheme.mutedForeground,
                         ),

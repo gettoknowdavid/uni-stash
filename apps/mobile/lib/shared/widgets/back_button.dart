@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class UsBackButton extends StatelessWidget {
-  const UsBackButton({this.size = 40, super.key});
+  const UsBackButton({this.size = 30, super.key});
   final double size;
 
   @override
