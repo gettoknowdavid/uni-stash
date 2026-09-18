@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
+import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
-import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
 part 'auth_api.g.dart';
 

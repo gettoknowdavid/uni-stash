@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
-import 'package:uni_stash_mobile/features/auth/models/models.dart';
+import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 
 /// Stats displayed in the profile screen's three-cell strip.

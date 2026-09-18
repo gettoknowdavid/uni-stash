@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/core/config/scope.dart';
+import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
@@ -38,6 +39,7 @@ void _setupConfig(Config config) {
 void _registerCore() {
   di.registerSingleton<FlutterSecureStorage>(const FlutterSecureStorage());
   di.registerSingleton<Logger>(Logger());
+  di.registerSingleton<UserViewModel>(UserViewModel());
 
   // Dio is wired through callbacks rather than a direct AuthViewModel
   // dependency: the closures resolve `di<AuthViewModel>()` lazily, only when

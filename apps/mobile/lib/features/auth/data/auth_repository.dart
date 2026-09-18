@@ -4,9 +4,9 @@ import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_error.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
+import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
-import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
 /// Machine-readable codes returned by the backend in
 /// `{ "error": { "code": ... } }` envelopes.

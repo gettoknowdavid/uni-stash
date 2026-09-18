@@ -1,6 +1,8 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/user/models.dart';
+import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 
@@ -22,6 +24,7 @@ class AuthViewModel {
         _status.value = .authenticated;
         _user.value = credentials.user;
       });
+      di<UserViewModel>().setUser(credentials.user);
     });
     unauthenticate = action0<void>(() async {
       await _clearTokens();
@@ -30,6 +33,7 @@ class AuthViewModel {
         _user.value = null;
         _status.value = .unauthenticated;
       });
+      di<UserViewModel>().setUser(null);
     });
   }
 
@@ -82,6 +86,7 @@ class AuthViewModel {
           _user.value = user;
           _status.value = .authenticated;
         });
+        di<UserViewModel>().setUser(user);
       },
       (error) async {
         await _clearTokens();

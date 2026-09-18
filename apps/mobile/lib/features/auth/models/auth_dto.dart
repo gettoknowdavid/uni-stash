@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:uni_stash_mobile/features/auth/models/models.dart';
+import 'package:uni_stash_mobile/core/user/models.dart';
 
 part 'auth_dto.freezed.dart';
 part 'auth_dto.g.dart';
