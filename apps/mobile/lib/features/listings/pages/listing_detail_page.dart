@@ -7,7 +7,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
+import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
@@ -100,10 +102,10 @@ class _ListingDetailView extends StatelessWidget {
     final theme = ShadTheme.of(context);
     return SignalBuilder(
       builder: (context) {
-        final model = di<ListingDetailViewModel>();
-        final detail = model.detail.value;
-        final isLoading = model.isLoading.value;
-        final error = model.error.value;
+        final listingModel = di<ListingDetailViewModel>();
+        final detail = listingModel.detail.value;
+        final isLoading = listingModel.isLoading.value;
+        final error = listingModel.error.value;
 
         if (detail == null && isLoading && error == null) {
           return const UsPage(
@@ -116,7 +118,7 @@ class _ListingDetailView extends StatelessWidget {
             body: Center(
               child: _ErrorView(
                 message: error,
-                onRetry: () => model.fetch(id),
+                onRetry: () => listingModel.fetch(id),
               ),
             ),
           );
@@ -127,6 +129,9 @@ class _ListingDetailView extends StatelessWidget {
             body: Center(child: Text('Listing not found')),
           );
         }
+
+        final authModel = di<AuthViewModel>();
+        final isMe = authModel.user.value?.id == detail.seller.id;
 
         final date = timeago.format(detail.createdAt);
 
@@ -267,76 +272,100 @@ class _ListingDetailView extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ShadSeparator.horizontal(
-                  margin: const .symmetric(horizontal: 16),
-                  color: theme.colorScheme.borderStrong,
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const .symmetric(horizontal: 16),
-                  child: Row(
-                    spacing: 12,
-                    children: [
-                      UsAvatar(
-                        name: detail.seller.displayName,
-                        photoUrl: detail.seller.photoUrl,
-                        size: 40,
-                        verified: detail.seller.emailVerified,
-                        verifiedLabel: '✓',
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: .stretch,
-                          children: [
-                            Text(
-                              detail.seller.displayName,
-                              style: theme.textTheme.h2.copyWith(
-                                fontWeight: .bold,
-                              ),
-                              overflow: .ellipsis,
-                              maxLines: 1,
-                            ),
-                            Text(
-                              detail.seller.emailVerified
-                                  ? 'Verified student'
-                                  : 'Student • @${detail.seller.domain}',
-                              style: theme.textTheme.muted,
-                              overflow: .ellipsis,
-                              maxLines: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                      ShadIconButton.outline(
-                        onPressed: () {},
-                        height: 40,
-                        width: 40,
-                        icon: const Icon(LucideIcons.messageSquare),
-                      ),
-                    ],
+                if (!isMe) ...[
+                  ShadSeparator.horizontal(
+                    margin: const .symmetric(horizontal: 16),
+                    color: theme.colorScheme.borderStrong,
                   ),
+                  const SizedBox(height: 24),
+                  _SellerDetails(detail: detail),
+                ],
+              ],
+            ),
+          ),
+          footer: isMe ? null : const _MessageSellerButton(),
+        );
+      },
+    );
+  }
+}
+
+class _SellerDetails extends StatelessWidget {
+  const new({required this.detail});
+
+  final ListingDetailResponse detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Padding(
+      padding: const .symmetric(horizontal: 16),
+      child: Row(
+        spacing: 12,
+        children: [
+          UsAvatar(
+            name: detail.seller.displayName,
+            photoUrl: detail.seller.photoUrl,
+            size: 40,
+            verified: detail.seller.emailVerified,
+            verifiedLabel: '✓',
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: .stretch,
+              children: [
+                Text(
+                  detail.seller.displayName,
+                  style: theme.textTheme.h2.copyWith(
+                    fontWeight: .bold,
+                  ),
+                  overflow: .ellipsis,
+                  maxLines: 1,
+                ),
+                Text(
+                  detail.seller.emailVerified
+                      ? 'Verified student'
+                      : 'Student • @${detail.seller.domain}',
+                  style: theme.textTheme.muted,
+                  overflow: .ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),
           ),
-          footer: ShadDecorator(
-            decoration: ShadDecoration(
-              border: ShadBorder(
-                top: ShadBorderSide(
-                  color: theme.colorScheme.border,
-                ),
-              ),
-            ),
-            child: const Padding(
-              padding:  .all(16),
-              child: ShadButton(
-                width: double.infinity,
-                child: Text('MESSAGE SELLER'),
-              ),
-            ),
+          ShadIconButton.outline(
+            onPressed: () {},
+            height: 40,
+            width: 40,
+            icon: const Icon(LucideIcons.messageSquare),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+}
+
+class _MessageSellerButton extends StatelessWidget {
+  const new();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return ShadDecorator(
+      decoration: ShadDecoration(
+        border: ShadBorder(
+          top: ShadBorderSide(
+            color: theme.colorScheme.border,
+          ),
+        ),
+      ),
+      child: const Padding(
+        padding: .all(16),
+        child: ShadButton(
+          width: double.infinity,
+          child: Text('MESSAGE SELLER'),
+        ),
+      ),
     );
   }
 }
