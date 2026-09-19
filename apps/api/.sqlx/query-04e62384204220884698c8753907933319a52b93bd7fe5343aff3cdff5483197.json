@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM users WHERE deleted_at IS NOT NULL\n             AND deletion_scheduled_at < now()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "04e62384204220884698c8753907933319a52b93bd7fe5343aff3cdff5483197"
+}

@@ -159,3 +159,30 @@ pub struct ResetPasswordRequest {
     #[validate(length(min = 10, message = "password must be at least 10 characters"))]
     pub new_password: String,
 }
+
+// -------------------------------------------------------------------
+// Delete account
+// -------------------------------------------------------------------
+
+/// Request body for soft-deleting the authenticated user's account.
+///
+/// The user must confirm with their password.  After soft-deletion,
+/// the account enters a 30-day grace period during which it can be
+/// recovered by contacting support.  After the grace period, the
+/// account is permanently hard-deleted from the database.
+#[derive(serde::Deserialize, validator::Validate)]
+pub struct DeleteAccountRequest {
+    /// Current password to confirm identity.
+    #[validate(length(min = 1, message = "password is required"))]
+    pub password: String,
+}
+
+// -------------------------------------------------------------------
+// Response types for delete account
+// -------------------------------------------------------------------
+
+#[derive(serde::Serialize)]
+pub struct DeleteAccountResponse {
+    pub message: String,
+    pub deletion_scheduled_at: String,
+}

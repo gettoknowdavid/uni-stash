@@ -86,6 +86,58 @@ impl SmtpClient {
         tracing::info!(to = to_email, purpose = purpose, "OTP email sent");
         Ok(())
     }
+
+    /// Send a warning email about upcoming account deletion.
+    ///
+    /// `days_remaining` determines the subject and body:
+    /// - `7` — "Your UniStash account will be deleted in 7 days"
+    /// - `1` — "Your UniStash account will be deleted tomorrow"
+    pub async fn send_deletion_warning_email(
+        &self,
+        to_email: &str,
+        days_remaining: i64,
+    ) -> Result<(), AppError> {
+        let (subject, body_text) = match days_remaining {
+            1 => (
+                "Your UniStash account will be deleted tomorrow",
+                "<p>Your UniStash account is scheduled for <strong>permanent deletion tomorrow</strong>.</p>
+                 <p>If this was a mistake, please log in to your account to cancel the deletion.</p>
+                 <p>If you take no action, all your data will be permanently erased.</p>",
+            ),
+            _ => (
+                "Your UniStash account will be deleted in 7 days",
+                "<p>Your UniStash account was soft-deleted and is scheduled for <strong>permanent deletion in 7 days</strong>.</p>
+                 <p>If this was a mistake, please log in to your account to cancel the deletion before it expires.</p>
+                 <p>If you take no action, all your data will be permanently erased after the grace period.</p>",
+            ),
+        };
+
+        let html = format!(
+            "{body_text}
+             <p style=\"margin-top:24px;color:#666;font-size:13px;\">This is an automated message from UniStash.</p>"
+        );
+
+        let email =
+            Message::builder()
+                .from(self.0.from_address.parse().map_err(|e| {
+                    AppError::Internal(anyhow::anyhow!("invalid from address: {e}"))
+                })?)
+                .to(to_email
+                    .parse()
+                    .map_err(|e| AppError::Internal(anyhow::anyhow!("invalid to address: {e}")))?)
+                .subject(subject)
+                .header(ContentType::TEXT_HTML)
+                .body(html)
+                .map_err(|e| AppError::Internal(anyhow::anyhow!("failed to build email: {e}")))?;
+
+        self.0.transport.send(email).await.map_err(|e| {
+            tracing::error!(error = %e, to = to_email, "SMTP send failed for deletion warning");
+            AppError::Internal(anyhow::anyhow!("failed to send deletion warning email: {e}"))
+        })?;
+
+        tracing::info!(to = to_email, days_remaining = days_remaining, "deletion warning email sent");
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -63,9 +63,13 @@ impl AuthRepo {
     }
 
     pub async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        let user = sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", email)
-            .fetch_optional(&self.db)
-            .await?;
+        let user = sqlx::query_as!(
+            User,
+            "SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL",
+            email,
+        )
+        .fetch_optional(&self.db)
+        .await?;
         Ok(user)
     }
 
@@ -86,10 +90,90 @@ impl AuthRepo {
     }
 
     pub async fn find_user_by_id(&self, user_id: &uuid::Uuid) -> Result<Option<User>, AppError> {
+        let user = sqlx::query_as!(
+            User,
+            "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL",
+            user_id,
+        )
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(user)
+    }
+
+    /// Find a user by ID, **including** soft-deleted accounts.
+    ///
+    /// Used by the delete-account handler (to verify the password of an
+    /// account that may already be soft-deleted) and by the background
+    /// cleanup job.
+    pub async fn find_user_by_id_including_deleted(
+        &self,
+        user_id: &uuid::Uuid,
+    ) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
             .fetch_optional(&self.db)
             .await?;
         Ok(user)
+    }
+
+    // ------------------------------------------------------------------
+    // Soft-delete (account deletion)
+    // ------------------------------------------------------------------
+
+    /// Soft-delete a user account.
+    ///
+    /// Sets `deleted_at` and `deletion_scheduled_at` (now + 30 days).
+    /// Returns `Err(NotFound)` if the user doesn't exist or is already
+    /// soft-deleted.
+    pub async fn soft_delete_user(&self, user_id: &uuid::Uuid) -> Result<(), AppError> {
+        let grace_period = time::Duration::days(30);
+        let now = time::OffsetDateTime::now_utc();
+        let scheduled = now + grace_period;
+
+        let result = sqlx::query!(
+            "UPDATE users
+             SET deleted_at = $2, deletion_scheduled_at = $3, updated_at = now()
+             WHERE id = $1 AND deleted_at IS NULL",
+            user_id,
+            now,
+            scheduled,
+        )
+        .execute(&self.db)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::NotFound(
+                "user not found or already deleted".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Revoke **all** refresh tokens for a user.
+    ///
+    /// Called during account deletion to invalidate every session.
+    pub async fn revoke_all_user_tokens(&self, user_id: &uuid::Uuid) -> Result<u64, AppError> {
+        let result = sqlx::query!(
+            "UPDATE refresh_tokens SET revoked = true, revoked_at = now()
+             WHERE user_id = $1 AND revoked = false",
+            user_id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    /// Hard-delete users whose grace period has expired.
+    ///
+    /// Called by the background cleanup job.  Returns the number of
+    /// accounts permanently removed.
+    pub async fn hard_delete_expired_accounts(&self) -> Result<u64, AppError> {
+        let result = sqlx::query!(
+            "DELETE FROM users WHERE deleted_at IS NOT NULL
+             AND deletion_scheduled_at < now()",
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected())
     }
 
     /// Issues a new refresh token for `user_id` within the given `family_id`.
@@ -216,7 +300,7 @@ impl AuthRepo {
         let profile = sqlx::query_as!(
             UserProfile,
             "SELECT id, email, display_name, email_verified, role
-             FROM users WHERE id = $1",
+             FROM users WHERE id = $1 AND deleted_at IS NULL",
             user_id,
         )
         .fetch_optional(&self.db)

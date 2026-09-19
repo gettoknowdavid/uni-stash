@@ -38,6 +38,10 @@ const STALE_RESERVATION_INTERVAL: time::Duration = time::Duration::from_secs(5 *
 /// How long before a reservation is considered stale (48 hours).
 const STALE_RESERVATION_HOURS: i64 = 48;
 
+/// Interval between hard-delete sweeps for expired soft-deleted accounts.
+const CLEANUP_DELETED_ACCOUNTS_INTERVAL: time::Duration =
+    time::Duration::from_secs(60 * 60); // every 1 hour
+
 /// Spawns all background jobs on the current Tokio runtime.
 ///
 /// Call once at server startup (after DB pool is ready).  Each job runs
@@ -78,7 +82,7 @@ pub fn spawn(pool: PgPool, r2: crate::core::clients::R2Client) {
     // CM-4.8 — Auto-unreserve stale listings (48h)
     spawn_job(
         "auto_unreserve_stale_listings",
-        pool,
+        pool.clone(),
         STALE_RESERVATION_INTERVAL,
         move |pool| {
             let r2 = r2.clone();
@@ -107,6 +111,21 @@ pub fn spawn(pool: PgPool, r2: crate::core::clients::R2Client) {
                 }
                 Ok::<_, anyhow::Error>(())
             }
+        },
+    );
+
+    // Hard-delete soft-deleted accounts whose grace period has expired.
+    spawn_job(
+        "cleanup_expired_deleted_accounts",
+        pool.clone(),
+        CLEANUP_DELETED_ACCOUNTS_INTERVAL,
+        |pool| async move {
+            let repo = crate::features::auth::repo::AuthRepo::new(pool);
+            let deleted = repo.hard_delete_expired_accounts().await?;
+            if deleted > 0 {
+                tracing::info!(deleted, "cleanup: hard-deleted expired soft-deleted accounts");
+            }
+            Ok::<_, anyhow::Error>(())
         },
     );
 }

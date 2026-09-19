@@ -8,9 +8,9 @@ use crate::core::json::ValidatedJson;
 use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    AuthData, ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginTokens, LogoutRequest,
-    RefreshRequest, RefreshTokens, ResetPasswordRequest, SignUpRequest, SignUpTokens,
-    VerifyOtpRequest, VerifyOtpTokens,
+    AuthData, DeleteAccountRequest, DeleteAccountResponse, ForgotPasswordRequest,
+    InsertUserInput, LoginRequest, LoginTokens, LogoutRequest, RefreshRequest, RefreshTokens,
+    ResetPasswordRequest, SignUpRequest, SignUpTokens, VerifyOtpRequest, VerifyOtpTokens,
 };
 use crate::features::auth::repo::AuthRepo;
 
@@ -412,4 +412,74 @@ pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpRespon
         .await?
         .ok_or_else(|| AppError::NotFound("user not found".into()))?;
     Ok(HttpResponse::Ok().json(ApiResponse::success(profile, "ok")))
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/auth/delete-account — soft-delete the user's account
+// ---------------------------------------------------------------------------
+
+/// Soft-delete the authenticated user's account.
+///
+/// The user must provide their current password for confirmation.
+/// The account enters a 30-day grace period, after which it is
+/// permanently hard-deleted by a background job.
+pub async fn delete_account(
+    state: web::Data<AppState>,
+    auth_user: AuthUser,
+    body: ValidatedJson<DeleteAccountRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+
+    // Fetch the user (including already soft-deleted check)
+    let user = state
+        .auth_repo
+        .find_user_by_id_including_deleted(&auth_user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+    // Already soft-deleted?
+    if user.deleted_at.is_some() {
+        return Err(AppError::BadRequest(
+            "account is already scheduled for deletion".into(),
+        ));
+    }
+
+    // Verify password
+    let password_ok = auth::password::verify_password(&body.password, &user.password_hash)?;
+    if !password_ok {
+        return Err(AppError::Unauthorized("invalid password".into()));
+    }
+
+    // Soft-delete the account
+    state.auth_repo.soft_delete_user(&user.id).await?;
+
+    // Revoke all refresh tokens (invalidate all sessions)
+    state
+        .auth_repo
+        .revoke_all_user_tokens(&user.id)
+        .await?;
+
+    // Fetch updated user to get the scheduled deletion timestamp
+    let updated_user = state
+        .auth_repo
+        .find_user_by_id_including_deleted(&user.id)
+        .await?
+        .ok_or_else(|| AppError::Internal(anyhow::anyhow!(
+            "user disappeared after soft-delete",
+        )))?;
+
+    let scheduled_at = updated_user
+        .deletion_scheduled_at
+        .map(|t| t.to_string())
+        .unwrap_or_default();
+
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<DeleteAccountResponse, ErrorBody>::success(
+            DeleteAccountResponse {
+                message: "account scheduled for deletion. It will be permanently deleted after 30 days.".to_string(),
+                deletion_scheduled_at: scheduled_at,
+            },
+            "account soft-deleted successfully",
+        )),
+    )
 }

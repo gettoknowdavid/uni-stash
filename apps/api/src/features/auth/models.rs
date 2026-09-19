@@ -18,6 +18,9 @@ pub struct User {
     pub photo_url: Option<String>,
     pub created_at: time::OffsetDateTime,
     pub updated_at: time::OffsetDateTime,
+    pub deleted_at: Option<time::OffsetDateTime>,
+    pub deletion_scheduled_at: Option<time::OffsetDateTime>,
+    pub deletion_warning_level: i16,
 }
 
 #[derive(sqlx::FromRow)]

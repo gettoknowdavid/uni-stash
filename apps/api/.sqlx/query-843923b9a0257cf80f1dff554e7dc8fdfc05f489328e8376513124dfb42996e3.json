@@ -117,6 +117,28 @@
             "name": "photo_url"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "deleted_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "deletion_scheduled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "deletion_scheduled_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -134,6 +156,8 @@
       false,
       false,
       false,
+      true,
+      true,
       true
     ]
   },

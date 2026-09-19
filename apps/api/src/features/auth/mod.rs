@@ -32,7 +32,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 .route("/login", web::post().to(handlers::login))
                 .route("/refresh", web::post().to(handlers::refresh))
                 .route("/logout", web::post().to(handlers::logout))
-                .route("/me", web::get().to(handlers::me));
+                .route("/me", web::get().to(handlers::me))
+                .route(
+                    "/delete-account",
+                    web::post().to(handlers::delete_account),
+                );
         },
     );
 }

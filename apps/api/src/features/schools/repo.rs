@@ -128,11 +128,42 @@ impl SchoolsRepo {
     // Delete
     // -----------------------------------------------------------------------
 
+    /// Count users referencing the given school.
+    pub async fn count_users_by_school(&self, school_id: i16) -> Result<i64, AppError> {
+        let row = sqlx::query_scalar!(
+            "SELECT COUNT(*)::BIGINT AS \"count!\" FROM users WHERE school_id = $1",
+            school_id,
+        )
+        .fetch_one(&self.db)
+        .await?;
+        Ok(row)
+    }
+
     /// Delete a school by ID.
     ///
-    /// Fails with `AppError::NotFound` if the school doesn't exist, or
-    /// `AppError::BadRequest` if any users reference this school (FK violation).
+    /// First checks whether any users reference this school.  If so, returns
+    /// `AppError::Conflict` with a clear message instead of relying on the
+    /// opaque foreign-key-violation error from PostgreSQL.
     pub async fn delete_school(&self, id: i16) -> Result<(), AppError> {
+        // Guard: check existence first
+        let exists = sqlx::query_scalar!(
+            "SELECT EXISTS(SELECT 1 FROM schools WHERE id = $1) AS \"exists!\"",
+            id,
+        )
+        .fetch_one(&self.db)
+        .await?;
+        if !exists {
+            return Err(AppError::NotFound(format!("school with id {id} not found")));
+        }
+
+        // Guard: reject if users still reference this school
+        let user_count = self.count_users_by_school(id).await?;
+        if user_count > 0 {
+            return Err(AppError::Conflict(format!(
+                "cannot delete school: {user_count} user(s) are still assigned to this school",
+            )));
+        }
+
         let result = sqlx::query!("DELETE FROM schools WHERE id = $1", id)
             .execute(&self.db)
             .await?;

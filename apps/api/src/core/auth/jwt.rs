@@ -107,6 +107,9 @@ mod tests {
             created_at: time::OffsetDateTime::now_utc(),
             updated_at: time::OffsetDateTime::now_utc(),
             password_hash: "".to_string(),
+            deleted_at: None,
+            deletion_scheduled_at: None,
+            deletion_warning_level: 0,
         }
     }
 
