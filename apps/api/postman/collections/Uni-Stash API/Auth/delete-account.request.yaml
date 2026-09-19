@@ -1,0 +1,17 @@
+$kind: http-request
+name: Delete Account
+method: POST
+url: '{{baseUrl}}/api/v1/auth/delete-account'
+order: 8000
+auth:
+  type: bearer
+  token: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "password": "Prdha9phd?"
+    }

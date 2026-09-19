@@ -238,6 +238,9 @@ async fn tampered_signature_returns_401() {
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: "".into(),
+        deleted_at: None,
+        deletion_scheduled_at: None,
+        deletion_warning_level: 0,
     };
 
     let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
@@ -326,6 +329,9 @@ async fn valid_token_returns_200_with_user_info() {
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: "".into(),
+        deleted_at: None,
+        deletion_scheduled_at: None,
+        deletion_warning_level: 0,
     };
 
     let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
@@ -369,6 +375,9 @@ async fn unverified_email_round_trips_through_extractor() {
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: "".into(),
+        deleted_at: None,
+        deletion_scheduled_at: None,
+        deletion_warning_level: 0,
     };
     let token = jwt::sign_access_token(&state.jwt_keys, &user).unwrap();
 

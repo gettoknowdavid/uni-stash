@@ -77,6 +77,9 @@ fn sign_token(keys: &uni_stash_be::core::clients::JwtKeys, uid: uuid::Uuid, emai
         created_at: time::OffsetDateTime::now_utc(),
         updated_at: time::OffsetDateTime::now_utc(),
         password_hash: String::new(),
+        deleted_at: None,
+        deletion_scheduled_at: None,
+        deletion_warning_level: 0,
     };
     jwt::sign_access_token(keys, &user).unwrap()
 }

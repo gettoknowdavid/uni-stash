@@ -555,7 +555,7 @@ async fn delete_school_not_found_returns_404(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn delete_school_with_users_returns_400(pool: PgPool) {
+async fn delete_school_with_users_returns_409(pool: PgPool) {
     let admin_id = seed_admin(&pool, "admin@test.edu", "super").await;
     let token = sign_admin_token(admin_id, "super");
 
@@ -585,8 +585,16 @@ async fn delete_school_with_users_returns_400(pool: PgPool) {
     let resp = test::call_service(&app, req).await;
     assert_eq!(
         resp.status(),
-        400,
-        "deleting school with users should return 400 (FK violation)"
+        409,
+        "deleting school with users should return 409 Conflict"
+    );
+
+    // Verify the error message is clear
+    let json: serde_json::Value = test::read_body_json(resp).await;
+    let msg = json["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("user(s)"),
+        "error message should mention users: {msg}"
     );
 }
 
