@@ -36,7 +36,11 @@ async fn main() -> anyhow::Result<()> {
     // Spawn background jobs (cleanup, future email scheduling, etc.).
     // Must happen after DB pool is ready but before the server starts
     // accepting requests, so the first cleanup runs promptly.
-    jobs::spawn(state.db.clone(), state.r2_client.clone());
+    jobs::spawn(
+        state.db.clone(),
+        state.r2_client.clone(),
+        state.smtp.clone(),
+    );
 
     HttpServer::new(move || {
         App::new()
@@ -51,9 +55,6 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::categories::configure)
             .configure(features::schools::configure)
     })
-    // 0.0.0.0, not 127.0.0.1 — Render's proxy connects from outside the
-    // container's loopback interface. Port comes from Config (CM-1.2),
-    // which Render overrides via the PORT env var at runtime.
     .bind(("0.0.0.0", port))?
     .run()
     .await?;

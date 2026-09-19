@@ -176,6 +176,74 @@ impl AuthRepo {
         Ok(result.rows_affected())
     }
 
+    // ------------------------------------------------------------------
+    // Pre-deletion warning emails
+    // ------------------------------------------------------------------
+
+    /// Find soft-deleted users who need a 7-day deletion warning.
+    ///
+    /// Returns `(id, email, display_name)` for users where:
+    /// - `deletion_scheduled_at` is within the next 7 days (but not yet past)
+    /// - `deletion_warning_level < 1` (7-day warning not yet sent)
+    pub async fn find_accounts_needing_7day_warning(
+        &self,
+    ) -> Result<Vec<(uuid::Uuid, String, String)>, AppError> {
+        let rows = sqlx::query!(
+            "SELECT id, email, display_name
+             FROM users
+             WHERE deleted_at IS NOT NULL
+               AND deletion_scheduled_at > now()
+               AND deletion_scheduled_at <= now() + interval '7 days'
+               AND deletion_warning_level < 1",
+        )
+        .fetch_all(&self.db)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.id, r.email, r.display_name))
+            .collect())
+    }
+
+    /// Find soft-deleted users who need a 1-day deletion warning.
+    ///
+    /// Returns `(id, email, display_name)` for users where:
+    /// - `deletion_scheduled_at` is within the next 1 day (but not yet past)
+    /// - `deletion_warning_level < 2` (1-day warning not yet sent)
+    pub async fn find_accounts_needing_1day_warning(
+        &self,
+    ) -> Result<Vec<(uuid::Uuid, String, String)>, AppError> {
+        let rows = sqlx::query!(
+            "SELECT id, email, display_name
+             FROM users
+             WHERE deleted_at IS NOT NULL
+               AND deletion_scheduled_at > now()
+               AND deletion_scheduled_at <= now() + interval '1 day'
+               AND deletion_warning_level < 2",
+        )
+        .fetch_all(&self.db)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| (r.id, r.email, r.display_name))
+            .collect())
+    }
+
+    /// Update the deletion warning level for a user.
+    pub async fn update_deletion_warning_level(
+        &self,
+        user_id: &uuid::Uuid,
+        level: i16,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE users SET deletion_warning_level = $2 WHERE id = $1",
+            user_id,
+            level,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
     /// Issues a new refresh token for `user_id` within the given `family_id`.
     ///
     /// Returns `(plain_token, row_id)` — the plaintext value goes to the client;

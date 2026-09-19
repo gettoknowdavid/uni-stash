@@ -42,11 +42,19 @@ const STALE_RESERVATION_HOURS: i64 = 48;
 const CLEANUP_DELETED_ACCOUNTS_INTERVAL: time::Duration =
     time::Duration::from_secs(60 * 60); // every 1 hour
 
+/// Interval between pre-deletion warning email sweeps.
+const DELETION_WARNING_INTERVAL: time::Duration =
+    time::Duration::from_secs(60 * 60); // every 1 hour
+
 /// Spawns all background jobs on the current Tokio runtime.
 ///
 /// Call once at server startup (after DB pool is ready).  Each job runs
 /// independently — a panic or error in one does not affect the others.
-pub fn spawn(pool: PgPool, r2: crate::core::clients::R2Client) {
+pub fn spawn(
+    pool: PgPool,
+    r2: crate::core::clients::R2Client,
+    smtp: crate::core::clients::SmtpClient,
+) {
     tracing::info!("spawning background jobs");
 
     spawn_job(
@@ -126,6 +134,73 @@ pub fn spawn(pool: PgPool, r2: crate::core::clients::R2Client) {
                 tracing::info!(deleted, "cleanup: hard-deleted expired soft-deleted accounts");
             }
             Ok::<_, anyhow::Error>(())
+        },
+    );
+
+    // Pre-deletion warning emails: send 7-day and 1-day reminders.
+    spawn_job(
+        "deletion_warning_emails",
+        pool.clone(),
+        DELETION_WARNING_INTERVAL,
+        move |pool| {
+            let smtp = smtp.clone();
+            async move {
+                let repo = crate::features::auth::repo::AuthRepo::new(pool);
+
+                // 7-day warnings
+                let needing_7day = repo.find_accounts_needing_7day_warning().await?;
+                for (user_id, email, _display_name) in &needing_7day {
+                    match smtp.send_deletion_warning_email(email, 7).await {
+                        Ok(()) => {
+                            repo.update_deletion_warning_level(user_id, 1).await?;
+                            tracing::info!(
+                                user_id = %user_id,
+                                email = %email,
+                                "sent 7-day deletion warning"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                user_id = %user_id,
+                                email = %email,
+                                error = %e,
+                                "failed to send 7-day deletion warning"
+                            );
+                        }
+                    }
+                }
+                if !needing_7day.is_empty() {
+                    tracing::info!(count = needing_7day.len(), "sent 7-day deletion warnings");
+                }
+
+                // 1-day warnings
+                let needing_1day = repo.find_accounts_needing_1day_warning().await?;
+                for (user_id, email, _display_name) in &needing_1day {
+                    match smtp.send_deletion_warning_email(email, 1).await {
+                        Ok(()) => {
+                            repo.update_deletion_warning_level(user_id, 2).await?;
+                            tracing::info!(
+                                user_id = %user_id,
+                                email = %email,
+                                "sent 1-day deletion warning"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                user_id = %user_id,
+                                email = %email,
+                                error = %e,
+                                "failed to send 1-day deletion warning"
+                            );
+                        }
+                    }
+                }
+                if !needing_1day.is_empty() {
+                    tracing::info!(count = needing_1day.len(), "sent 1-day deletion warnings");
+                }
+
+                Ok::<_, anyhow::Error>(())
+            }
         },
     );
 }

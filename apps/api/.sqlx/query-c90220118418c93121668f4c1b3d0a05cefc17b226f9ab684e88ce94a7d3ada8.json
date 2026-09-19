@@ -139,6 +139,17 @@
             "name": "deletion_scheduled_at"
           }
         }
+      },
+      {
+        "ordinal": 12,
+        "name": "deletion_warning_level",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "deletion_warning_level"
+          }
+        }
       }
     ],
     "parameters": {
@@ -166,7 +177,8 @@
       false,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
   "hash": "c90220118418c93121668f4c1b3d0a05cefc17b226f9ab684e88ce94a7d3ada8"
