@@ -1,14 +1,144 @@
-name: Deploy to Render
+name: Deploy API to Render
 
 on:
   push:
     branches:
-      - master # Triggers when you push to master
+      - master
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/deploy.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: api-production-deployment
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    name: Deploy API
     runs-on: ubuntu-latest
+    environment:
+      name: api-production
+
     steps:
-      - name: Trigger Render Deploy Hook
+      - name: Create GitHub deployment
+        id: deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -X POST "https://api.render.com/deploy/srv-da170p8u01pc739k5t80?key=2TdlMk3G77M"
+          set -euo pipefail
+
+          payload="$(jq -n \
+            --arg ref "${GITHUB_SHA}" \
+            --arg environment "api-production" \
+            --arg description "Deploy UniStash API to Render" \
+            '{
+              ref: $ref,
+              environment: $environment,
+              description: $description,
+              auto_merge: false,
+              required_contexts: []
+            }'
+          )"
+
+          response="$(
+            curl --fail-with-body --silent --show-error \
+              --request POST \
+              --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --header "Content-Type: application/json" \
+              --data "${payload}"
+          )"
+
+          deployment_id="$(echo "${response}" | jq -r '.id')"
+
+          if [ -z "${deployment_id}" ] || [ "${deployment_id}" = "null" ]; then
+            echo "GitHub did not return a deployment ID."
+            echo "${response}"
+            exit 1
+          fi
+
+          echo "deployment_id=${deployment_id}" >> "${GITHUB_OUTPUT}"
+          echo "Created GitHub deployment ${deployment_id}"
+
+      - name: Mark deployment in progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+        run: |
+          set -euo pipefail
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "state": "in_progress",
+              "description": "Render deployment has been requested.",
+              "environment_url": "https://dashboard.render.com"
+            }'
+
+      - name: Trigger Render deployment
+        env:
+          RENDER_API_DEPLOY_HOOK: ${{ secrets.RENDER_API_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RENDER_API_DEPLOY_HOOK}" ]; then
+            echo "RENDER_API_DEPLOY_HOOK is not configured."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "${RENDER_API_DEPLOY_HOOK}"
+
+      - name: Mark deployment successful
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+        run: |
+          set -euo pipefail
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "state": "success",
+              "description": "Render accepted the deployment request.",
+              "environment_url": "https://dashboard.render.com"
+            }'
+
+      - name: Mark deployment failed
+        if: failure() && steps.deployment.outputs.deployment_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "state": "failure",
+              "description": "The Render deployment request failed.",
+              "environment_url": "https://dashboard.render.com"
+            }'
