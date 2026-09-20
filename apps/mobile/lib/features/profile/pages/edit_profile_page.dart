@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -9,7 +7,7 @@ import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart'
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends SignalStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
@@ -17,15 +15,13 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  late final ProfileViewModel _model;
   late final TextEditingController _nameController;
 
   @override
   void initState() {
     super.initState();
-    _model = di<ProfileViewModel>();
     _nameController = TextEditingController(
-      text: _model.profile.value?.displayName ?? '',
+      text: model.profile.value?.displayName ?? '',
     );
   }
 
@@ -34,6 +30,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _nameController.dispose();
     super.dispose();
   }
+
+  ProfileViewModel get model => di<ProfileViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -45,15 +43,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: _EditProfileBody(
-        model: _model,
-        nameController: _nameController,
+      body: SignalEffect(
+        effect: (context) {
+          // Navigate back on successful update
+          final success = model.updateSuccess.value;
+          if (success) {
+            ShadToaster.of(context).show(
+              const ShadToast(
+                title: Text('Profile Updated'),
+                description: Text(
+                  'Your profile has been updated successfully.',
+                ),
+              ),
+            );
+            context.pop();
+          }
+        },
+        child: _EditProfileBody(
+          model: model,
+          nameController: _nameController,
+        ),
       ),
     );
   }
 }
 
-class _EditProfileBody extends StatefulWidget {
+class _EditProfileBody extends SignalStatefulWidget {
   const _EditProfileBody({
     required this.model,
     required this.nameController,
@@ -67,29 +82,6 @@ class _EditProfileBody extends StatefulWidget {
 }
 
 class _EditProfileBodyState extends State<_EditProfileBody> {
-  @override
-  void initState() {
-    super.initState();
-    // Listen for successful updates using effect.
-    _setupSuccessListener();
-  }
-
-  void _setupSuccessListener() {
-    // Use effect to reactively listen for updateSuccess changes.
-    effect(() {
-      final success = widget.model.updateSuccess.value;
-      if (success && mounted) {
-        ShadToaster.of(context).show(
-          const ShadToast(
-            title: Text('Profile Updated'),
-            description: Text('Your profile has been updated successfully.'),
-          ),
-        );
-        context.pop();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
@@ -129,7 +121,7 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
 
           // Save button
           ShadButton(
-            onPressed: isUpdating ? null : _save,
+            onPressed: isUpdating ? null : () async => _save(),
             child: isUpdating
                 ? const ShadSpinner()
                 : const Text('SAVE CHANGES'),
@@ -141,7 +133,7 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
     );
   }
 
-  void _save() {
+  Future<void> _save() async {
     final name = widget.nameController.text.trim();
     if (name.isEmpty) {
       ShadToaster.of(context).show(
@@ -152,6 +144,6 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
       );
       return;
     }
-    unawaited(widget.model.updateProfile(displayName: name));
+    await widget.model.updateProfile(displayName: name);
   }
 }

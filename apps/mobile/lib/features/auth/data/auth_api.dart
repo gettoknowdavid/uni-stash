@@ -48,4 +48,7 @@ abstract class AuthApiClient {
 
   @PATCH('/api/v1/auth/me')
   Future<ApiResponse<User>> updateProfile(@Body() UpdateProfileRequest request);
+
+  @GET('/api/v1/auth/me/stats')
+  Future<ApiResponse<ProfileStatsResponse>> getProfileStats();
 }

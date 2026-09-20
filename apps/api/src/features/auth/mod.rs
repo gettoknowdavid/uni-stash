@@ -28,6 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 .route("/logout", web::post().to(handlers::logout))
                 .route("/me", web::get().to(handlers::me))
                 .route("/me", web::patch().to(handlers::update_profile))
+                .route("/me/stats", web::get().to(handlers::get_profile_stats))
                 .route("/delete-account", web::post().to(handlers::delete_account));
         },
     );

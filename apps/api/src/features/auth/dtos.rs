@@ -160,3 +160,16 @@ pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 80, message = "display_name must be 1-80 characters"))]
     pub display_name: Option<String>,
 }
+
+/// Profile statistics returned by GET /auth/me/stats.
+///
+/// All counts are exact (computed via COUNT(*) queries), not approximations.
+#[derive(serde::Serialize)]
+pub struct ProfileStatsResponse {
+    /// Number of active (non-sold, non-deleted) listings owned by the user.
+    pub active_listings: i64,
+    /// Number of sold listings owned by the user.
+    pub items_sold: i64,
+    /// Placeholder for saved items (not yet implemented).
+    pub saved: i64,
+}

@@ -9,9 +9,9 @@ use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
     AuthData, DeleteAccountRequest, DeleteAccountResponse, ForgotPasswordRequest, InsertUserInput,
-    LoginRequest, LoginTokens, LogoutRequest, RefreshRequest, RefreshTokens, ResetPasswordRequest,
-    SignUpRequest, SignUpTokens, UpdateProfileRequest, UserProfile, VerifyOtpRequest,
-    VerifyOtpTokens,
+    LoginRequest, LoginTokens, LogoutRequest, ProfileStatsResponse, RefreshRequest, RefreshTokens,
+    ResetPasswordRequest, SignUpRequest, SignUpTokens, UpdateProfileRequest, UserProfile,
+    VerifyOtpRequest, VerifyOtpTokens,
 };
 use crate::features::auth::repo::AuthRepo;
 
@@ -477,6 +477,31 @@ pub async fn update_profile(
         HttpResponse::Ok().json(ApiResponse::<UserProfile, ErrorBody>::success(
             profile,
             "profile updated successfully",
+        )),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/auth/me/stats — profile statistics
+// ---------------------------------------------------------------------------
+
+/// Get accurate listing counts for the authenticated user's profile.
+///
+/// Uses COUNT(*) queries — exact regardless of listing count.
+pub async fn get_profile_stats(
+    state: web::Data<AppState>,
+    auth_user: AuthUser,
+) -> Result<HttpResponse, AppError> {
+    let (active, sold) = state.auth_repo.get_user_stats(&auth_user.id).await?;
+
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ProfileStatsResponse, ErrorBody>::success(
+            ProfileStatsResponse {
+                active_listings: active,
+                items_sold: sold,
+                saved: 0, // Not yet implemented
+            },
+            "ok",
         )),
     )
 }

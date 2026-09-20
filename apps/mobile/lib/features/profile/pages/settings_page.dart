@@ -1,92 +1,139 @@
 import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/features/profile/pages/logout_dialog.dart';
+import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late final ProfileViewModel _model;
+
+  @override
+  void initState() {
+    super.initState();
+    _model = di<ProfileViewModel>();
+    // Ensure profile is loaded for real data
+    if (_model.profile.value == null) {
+      _model.fetch();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return UsPage(
       header: const UsPageHeader(title: Text('SETTINGS')),
-      body: SingleChildScrollView(
-        padding: const .symmetric(vertical: 16),
-        child: Column(
-          crossAxisAlignment: .stretch,
-          children: [
-            const _SectionCard(
-              headerLabel: 'ACCOUNT',
-              children: [
-                _SettingsRow(
-                  label: 'Email',
-                  subtitle: 'adaeze.b@uniport.edu.ng',
-                  trailing: _Chevron(),
-                ),
-                _SettingsRow(
-                  label: 'Phone',
-                  subtitle: '+234 *** *** 1234',
-                  trailing: _Chevron(),
-                ),
-                _SettingsRow(
-                  label: 'Change Password',
-                  trailing: _Chevron(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const _SectionCard(
-              headerLabel: 'NOTIFICATIONS',
-              children: [
-                _SettingsRow(
-                  label: 'Push Notifications',
-                  subtitle: 'Alerts for new messages and offers',
-                  trailing: UsSwitch(value: true),
-                ),
-                _SettingsRow(
-                  label: 'Email Notifications',
-                  subtitle: 'Weekly digests and major updates',
-                  trailing: UsSwitch(value: false),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const _SectionCard(
-              headerLabel: 'PRIVACY',
-              children: [
-                _SettingsRow(
-                  label: 'Profile Visibility',
-                  subtitle: 'Allow others to see my listings history',
-                  trailing: UsSwitch(value: true),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const _SectionCard(
-              headerLabel: 'LEGAL',
-              children: [
-                _SettingsRow(
-                  label: 'Terms of Service',
-                  trailing: _ExternalLink(),
-                ),
-                _SettingsRow(
-                  label: 'Privacy Policy',
-                  trailing: _ExternalLink(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            ShadButton.outline(
-              child: const Text('LOG OUT'),
-              onPressed: () => _showLogoutDialog(context),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
+      body: _SettingsBody(model: _model),
+    );
+  }
+}
+
+class _SettingsBody extends SignalWidget {
+  const _SettingsBody({required this.model});
+
+  final ProfileViewModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = model.profile.value;
+    final email = profile?.email ?? '—';
+    final displayName = profile?.displayName ?? '—';
+
+    return SingleChildScrollView(
+      padding: const .symmetric(vertical: 16),
+      child: Column(
+        crossAxisAlignment: .stretch,
+        children: [
+          _SectionCard(
+            headerLabel: 'ACCOUNT',
+            children: [
+              _SettingsRow(
+                label: 'Email',
+                subtitle: email,
+              ),
+              _SettingsRow(
+                label: 'Name',
+                subtitle: displayName,
+                trailing: const _Chevron(),
+                onTap: () => context.push(UsRoutes.editProfile),
+              ),
+              _SettingsRow(
+                label: 'Change Password',
+                trailing: const _Chevron(),
+                onTap: () => _showChangePasswordDialog(context, email),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const _SectionCard(
+            headerLabel: 'NOTIFICATIONS',
+            children: [
+              _SettingsRow(
+                label: 'Push Notifications',
+                subtitle: 'Alerts for new messages and offers',
+                trailing: UsSwitch(value: true),
+              ),
+              _SettingsRow(
+                label: 'Email Notifications',
+                subtitle: 'Weekly digests and major updates',
+                trailing: UsSwitch(value: false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const _SectionCard(
+            headerLabel: 'PRIVACY',
+            children: [
+              _SettingsRow(
+                label: 'Profile Visibility',
+                subtitle: 'Allow others to see my listings history',
+                trailing: UsSwitch(value: true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const _SectionCard(
+            headerLabel: 'LEGAL',
+            children: [
+              _SettingsRow(
+                label: 'Terms of Service',
+                trailing: _ExternalLink(),
+              ),
+              _SettingsRow(
+                label: 'Privacy Policy',
+                trailing: _ExternalLink(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          ShadButton.outline(
+            child: const Text('LOG OUT'),
+            onPressed: () => _showLogoutDialog(context),
+          ),
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }
+}
+
+Future<void> _showChangePasswordDialog(
+  BuildContext context,
+  String email,
+) async {
+  // Navigate to the forgot password flow — this sends a reset OTP to the user's
+  // email and guides them through the reset password page.
+  await context.push(UsRoutes.forgotPw);
 }
 
 Future<void> _showLogoutDialog(BuildContext context) {
@@ -109,11 +156,6 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     return Padding(
-      // Adding this padding to the right of the card to ensure the
-      // brutalist border shows. Should have been fixed by the setting
-      // `clipBehavior: Clip.none` in the top level `SingleChildScrollView`.
-      // but it caused unexpected overlapping for the header.
-      // Will find a better solution later
       padding: const .only(right: 2),
       child: ShadCard(
         padding: .zero,
@@ -146,52 +188,58 @@ class _SettingsRow extends StatelessWidget {
     required this.label,
     this.subtitle,
     this.trailing,
+    this.onTap,
   });
 
   final String label;
   final String? subtitle;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return Column(
-      children: [
-        Padding(
-          padding: const .symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: .start,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.p.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          Padding(
+            padding: const .symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: .start,
+                    children: [
                       Text(
-                        subtitle!,
-                        style: theme.textTheme.small.copyWith(
-                          color: theme.colorScheme.mutedForeground,
+                        label,
+                        style: theme.textTheme.p.copyWith(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: theme.textTheme.small.copyWith(
+                            color: theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              ?trailing,
-            ],
+                ?trailing,
+              ],
+            ),
           ),
-        ),
-        ShadSeparator.horizontal(
-          margin: .zero,
-          color: theme.colorScheme.border,
-        ),
-      ],
+          ShadSeparator.horizontal(
+            margin: .zero,
+            color: theme.colorScheme.border,
+          ),
+        ],
+      ),
     );
   }
 }

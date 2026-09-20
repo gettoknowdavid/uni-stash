@@ -4,7 +4,27 @@ import 'package:uni_stash_mobile/core/user/models.dart';
 part 'auth_dto.freezed.dart';
 part 'auth_dto.g.dart';
 
-/// Login response shape from the backend.
+@freezed
+abstract class ForgotPasswordRequest with _$ForgotPasswordRequest {
+  const factory ForgotPasswordRequest({
+    required String email,
+  }) = _ForgotPasswordRequest;
+
+  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ForgotPasswordRequestFromJson(json);
+}
+
+@freezed
+abstract class LoginRequest with _$LoginRequest {
+  const factory LoginRequest({
+    required String email,
+    required String password,
+  }) = _LoginRequest;
+
+  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
+      _$LoginRequestFromJson(json);
+}
+
 @freezed
 abstract class LoginResponse with _$LoginResponse {
   const factory LoginResponse({
@@ -18,21 +38,58 @@ abstract class LoginResponse with _$LoginResponse {
       _$LoginResponseFromJson(json);
 }
 
-/// Signup response shape (tokens may be null if not yet issued).
 @freezed
-abstract class SignUpResponse with _$SignUpResponse {
-  const factory SignUpResponse({
-    required User user,
-    @JsonKey(name: 'access_token') String? accessToken,
-    @JsonKey(name: 'refresh_token') String? refreshToken,
-    @JsonKey(name: 'expires_in') int? expiresIn,
-  }) = _SignUpResponse;
+abstract class LogoutRequest with _$LogoutRequest {
+  const factory LogoutRequest({
+    @JsonKey(name: 'refresh_token') required String refreshToken,
+  }) = _LogoutRequest;
 
-  factory SignUpResponse.fromJson(Map<String, dynamic> json) =>
-      _$SignUpResponseFromJson(json);
+  factory LogoutRequest.fromJson(Map<String, dynamic> json) =>
+      _$LogoutRequestFromJson(json);
 }
 
-/// Refresh response shape.
+@freezed
+abstract class LogoutResponse with _$LogoutResponse {
+  const factory LogoutResponse({
+    required String status,
+  }) = _LogoutResponse;
+
+  factory LogoutResponse.fromJson(Map<String, dynamic> json) =>
+      _$LogoutResponseFromJson(json);
+}
+
+@freezed
+abstract class MessageResponse with _$MessageResponse {
+  const factory MessageResponse({
+    required String message,
+  }) = _MessageResponse;
+
+  factory MessageResponse.fromJson(Map<String, dynamic> json) =>
+      _$MessageResponseFromJson(json);
+}
+
+@freezed
+abstract class ProfileStatsResponse with _$ProfileStatsResponse {
+  const factory ProfileStatsResponse({
+    @JsonKey(name: 'active_listings') required int activeListings,
+    @JsonKey(name: 'items_sold') required int itemsSold,
+    required int saved,
+  }) = _ProfileStatsResponse;
+
+  factory ProfileStatsResponse.fromJson(Map<String, dynamic> json) =>
+      _$ProfileStatsResponseFromJson(json);
+}
+
+@freezed
+abstract class RefreshRequest with _$RefreshRequest {
+  const factory RefreshRequest({
+    @JsonKey(name: 'refresh_token') required String refreshToken,
+  }) = _RefreshRequest;
+
+  factory RefreshRequest.fromJson(Map<String, dynamic> json) =>
+      _$RefreshRequestFromJson(json);
+}
+
 @freezed
 abstract class RefreshResponse with _$RefreshResponse {
   const factory RefreshResponse({
@@ -46,19 +103,25 @@ abstract class RefreshResponse with _$RefreshResponse {
       _$RefreshResponseFromJson(json);
 }
 
-/// Verify OTP response shape (for email_verify flow).
 @freezed
-abstract class VerifyOtpResponse with _$VerifyOtpResponse {
-  const factory VerifyOtpResponse({
-    required bool verified,
-    @JsonKey(name: 'access_token') String? accessToken,
-    @JsonKey(name: 'refresh_token') String? refreshToken,
-    @JsonKey(name: 'expires_in') int? expiresIn,
-    User? user,
-  }) = _VerifyOtpResponse;
+abstract class ResendVerificationRequest with _$ResendVerificationRequest {
+  const factory ResendVerificationRequest({
+    required String email,
+  }) = _ResendVerificationRequest;
 
-  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) =>
-      _$VerifyOtpResponseFromJson(json);
+  factory ResendVerificationRequest.fromJson(Map<String, dynamic> json) =>
+      _$ResendVerificationRequestFromJson(json);
+}
+
+@freezed
+abstract class ResetPasswordRequest with _$ResetPasswordRequest {
+  const factory ResetPasswordRequest({
+    required String code,
+    @JsonKey(name: 'new_password') required String newPassword,
+  }) = _ResetPasswordRequest;
+
+  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ResetPasswordRequestFromJson(json);
 }
 
 @freezed
@@ -74,14 +137,26 @@ abstract class SignUpRequest with _$SignUpRequest {
 }
 
 @freezed
-abstract class LoginRequest with _$LoginRequest {
-  const factory LoginRequest({
-    required String email,
-    required String password,
-  }) = _LoginRequest;
+abstract class SignUpResponse with _$SignUpResponse {
+  const factory SignUpResponse({
+    required User user,
+    @JsonKey(name: 'access_token') String? accessToken,
+    @JsonKey(name: 'refresh_token') String? refreshToken,
+    @JsonKey(name: 'expires_in') int? expiresIn,
+  }) = _SignUpResponse;
 
-  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
-      _$LoginRequestFromJson(json);
+  factory SignUpResponse.fromJson(Map<String, dynamic> json) =>
+      _$SignUpResponseFromJson(json);
+}
+
+@freezed
+abstract class UpdateProfileRequest with _$UpdateProfileRequest {
+  const factory UpdateProfileRequest({
+    @JsonKey(name: 'display_name') String? displayName,
+  }) = _UpdateProfileRequest;
+
+  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateProfileRequestFromJson(json);
 }
 
 @freezed
@@ -96,84 +171,17 @@ abstract class VerifyOtpRequest with _$VerifyOtpRequest {
 }
 
 @freezed
-abstract class ResendVerificationRequest with _$ResendVerificationRequest {
-  const factory ResendVerificationRequest({
-    required String email,
-  }) = _ResendVerificationRequest;
+abstract class VerifyOtpResponse with _$VerifyOtpResponse {
+  const factory VerifyOtpResponse({
+    required bool verified,
+    @JsonKey(name: 'access_token') String? accessToken,
+    @JsonKey(name: 'refresh_token') String? refreshToken,
+    @JsonKey(name: 'expires_in') int? expiresIn,
+    User? user,
+  }) = _VerifyOtpResponse;
 
-  factory ResendVerificationRequest.fromJson(Map<String, dynamic> json) =>
-      _$ResendVerificationRequestFromJson(json);
-}
-
-@freezed
-abstract class ForgotPasswordRequest with _$ForgotPasswordRequest {
-  const factory ForgotPasswordRequest({
-    required String email,
-  }) = _ForgotPasswordRequest;
-
-  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
-      _$ForgotPasswordRequestFromJson(json);
-}
-
-@freezed
-abstract class ResetPasswordRequest with _$ResetPasswordRequest {
-  const factory ResetPasswordRequest({
-    required String code,
-    @JsonKey(name: 'new_password') required String newPassword,
-  }) = _ResetPasswordRequest;
-
-  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) =>
-      _$ResetPasswordRequestFromJson(json);
-}
-
-@freezed
-abstract class RefreshRequest with _$RefreshRequest {
-  const factory RefreshRequest({
-    @JsonKey(name: 'refresh_token') required String refreshToken,
-  }) = _RefreshRequest;
-
-  factory RefreshRequest.fromJson(Map<String, dynamic> json) =>
-      _$RefreshRequestFromJson(json);
-}
-
-@freezed
-abstract class LogoutRequest with _$LogoutRequest {
-  const factory LogoutRequest({
-    @JsonKey(name: 'refresh_token') required String refreshToken,
-  }) = _LogoutRequest;
-
-  factory LogoutRequest.fromJson(Map<String, dynamic> json) =>
-      _$LogoutRequestFromJson(json);
-}
-
-@freezed
-abstract class UpdateProfileRequest with _$UpdateProfileRequest {
-  const factory UpdateProfileRequest({
-    @JsonKey(name: 'display_name') String? displayName,
-  }) = _UpdateProfileRequest;
-
-  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
-      _$UpdateProfileRequestFromJson(json);
-}
-
-@freezed
-abstract class MessageResponse with _$MessageResponse {
-  const factory MessageResponse({
-    required String message,
-  }) = _MessageResponse;
-
-  factory MessageResponse.fromJson(Map<String, dynamic> json) =>
-      _$MessageResponseFromJson(json);
-}
-
-@freezed
-abstract class LogoutResponse with _$LogoutResponse {
-  const factory LogoutResponse({
-    required String status,
-  }) = _LogoutResponse;
-
-  factory LogoutResponse.fromJson(Map<String, dynamic> json) =>
-      _$LogoutResponseFromJson(json);
+  factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) =>
+      _$VerifyOtpResponseFromJson(json);
 }
 
 enum UserRole { admin, student }
