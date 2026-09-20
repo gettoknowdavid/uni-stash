@@ -26,8 +26,8 @@ class ListingEditorViewModel implements Disposable {
     this._logger, {
     ImagesRepository? imagesRepository,
     ListingDraftRepository? draftRepository,
-  })  : _imagesRepository = imagesRepository ?? di<ImagesRepository>(),
-        _draftRepository = draftRepository ?? di<ListingDraftRepository>() {
+  }) : _imagesRepository = imagesRepository ?? di<ImagesRepository>(),
+       _draftRepository = draftRepository ?? di<ListingDraftRepository>() {
     unawaited(loadCategories());
   }
 
@@ -163,13 +163,22 @@ class ListingEditorViewModel implements Disposable {
   /// 3. Upload each picked photo presign → PUT → confirm.
   /// 4. Clear the draft on full success.
   Future<void> submit(Map<String, dynamic> values) async {
+    // Re-entrancy guard. `isSubmitting` must be set synchronously, before
+    // the first `await`: a double-tap on PUBLISH delivers the second tap's
+    // event after this method's sync section has run (Dart processes events
+    // sequentially), so the guard below sees `true` and bails out. Setting
+    // it after the draft save (the first await) left a window where two
+    // submissions both passed this check and created the listing twice.
     if (isSubmitting.value) return;
+    isSubmitting.value = true;
+    error.value = null;
 
     final title = (values['title'] as String?)?.trim() ?? '';
     final description = (values['description'] as String?)?.trim() ?? '';
     final category = values['category'] as Category?;
     if (category == null) {
       error.value = 'Please select a category.';
+      isSubmitting.value = false;
       return;
     }
     final condition = values['condition'] as Condition?;
@@ -182,8 +191,9 @@ class ListingEditorViewModel implements Disposable {
         ?.whereType<LocalImage>()
         .map((img) => img.localPath)
         .toList();
-    final parsedPrice =
-        barterOnly ? null : NairaCurrencyInputFormatter.parse(priceText ?? '');
+    final parsedPrice = barterOnly
+        ? null
+        : NairaCurrencyInputFormatter.parse(priceText ?? '');
 
     // 1. Persist draft before touching the network.
     await _saveDraft(
@@ -196,9 +206,6 @@ class ListingEditorViewModel implements Disposable {
       barterOnly: barterOnly,
       imagePaths: imagePaths ?? const [],
     );
-
-    isSubmitting.value = true;
-    error.value = null;
 
     final listingId = _createdListingId;
 
@@ -354,8 +361,9 @@ class ListingEditorViewModel implements Disposable {
     final barterOnly = this.barterOnly.value;
     final priceText = values['price'] as String?;
     final barterRequest = (values['barter_request'] as String?)?.trim();
-    final parsedPrice =
-        barterOnly ? null : NairaCurrencyInputFormatter.parse(priceText ?? '');
+    final parsedPrice = barterOnly
+        ? null
+        : NairaCurrencyInputFormatter.parse(priceText ?? '');
 
     isSubmitting.value = true;
     error.value = null;

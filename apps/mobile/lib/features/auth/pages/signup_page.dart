@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
@@ -21,11 +24,17 @@ class _SignUpPageState extends State<SignUpPage> {
 
   late final SignUpViewModel _model;
 
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   @override
   void initState() {
     super.initState();
-    di.pushNewScope(
-      scopeName: 'signupPage',
+    // Unique name per visit + popped on dispose — a hard-coded name that
+    // is never popped crashes on the second visit ("You already have used
+    // the scope name …").
+    _scopeName = pushPageScope(
+      baseName: 'signupPage',
       init: (getIt) {
         getIt.registerLazySingleton<SignUpViewModel>(
           () => SignUpViewModel(di<IAuthRepository>()),
@@ -33,6 +42,16 @@ class _SignUpPageState extends State<SignUpPage> {
       },
     );
     _model = di<SignUpViewModel>();
+  }
+
+  @override
+  void dispose() {
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope].
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
+    super.dispose();
   }
 
   @override

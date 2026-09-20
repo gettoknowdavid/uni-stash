@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
@@ -20,13 +23,18 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late final ProfileViewModel _model;
 
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   @override
   void initState() {
     super.initState();
     // Page-scoped ViewModel (same pattern as the auth pages): a fresh
-    // instance per visit, disposed by GetIt when the scope pops.
-    di.pushNewScope(
-      scopeName: 'profilePage',
+    // instance per visit, disposed by GetIt when the scope pops. Unique
+    // name per visit + popped on dispose, so revisits don't crash on a
+    // duplicated scope name.
+    _scopeName = pushPageScope(
+      baseName: 'profilePage',
       init: (getIt) {
         getIt.registerLazySingleton<ProfileViewModel>(
           () => ProfileViewModel(di<ProfileRepository>()),
@@ -39,11 +47,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    // popScope() is async but dispose() is sync — calling it here would
-    // discard the Future and never actually pop the scope.  Page-scoped
-    // GetIt scopes are cleaned up in bulk by the logout flow via
-    // popScopesTill(root).  For normal back-navigation the orphaned scope
-    // is harmless (the next page pushes its own scope on top).
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope].
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
     super.dispose();
   }
 

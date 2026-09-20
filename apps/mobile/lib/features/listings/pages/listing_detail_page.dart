@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:signals_hooks/signals_hooks.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -27,11 +31,17 @@ class ListingDetailPage extends StatefulWidget {
 }
 
 class _ListingDetailPageState extends State<ListingDetailPage> {
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   @override
   void initState() {
     super.initState();
-    di.pushNewScope(
-      scopeName: 'listing-${widget.id}',
+    // Unique name per visit + popped on dispose — a hard-coded name that
+    // is never popped crashes on revisiting the same listing
+    // ("You already have used the scope name …").
+    _scopeName = pushPageScope(
+      baseName: 'listingDetail-${widget.id}',
       init: (getIt) {
         getIt.registerLazySingletonAsync<ListingDetailViewModel>(
           () async => ListingDetailViewModel(di<ListingsRepository>()),
@@ -44,11 +54,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
   @override
   void dispose() {
-    // popScope() is async but dispose() is sync — calling it here would
-    // discard the Future and never actually pop the scope.  Page-scoped
-    // GetIt scopes are cleaned up in bulk by the logout flow via
-    // popScopesTill(root).  For normal back-navigation the orphaned scope
-    // is harmless (the next page pushes its own scope on top).
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope].
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
     super.dispose();
   }
 
@@ -88,209 +98,239 @@ class _ListingDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return SignalBuilder(
-      builder: (context) {
-        final listingModel = di<ListingDetailViewModel>();
-        final detail = listingModel.detail.value;
-        final isLoading = listingModel.isLoading.value;
-        final error = listingModel.error.value;
+    return SignalEffect(
+      effect: (context) {
+        final model = di<ListingDetailViewModel>();
 
-        if (detail == null && isLoading && error == null) {
-          return const UsPage(
-            body: Center(child: ShadSpinner()),
-          );
+        // Deletion succeeded: pop back to the previous screen, signalling
+        // the change so lists can refresh.
+        if (model.deletedId.value != null) {
+          model.consumeDeleteResult();
+          context.pop(true);
+          return;
         }
 
-        if (detail == null && error != null) {
-          return UsPage(
-            body: Center(
-              child: _ErrorView(
-                message: error,
-                onRetry: () => listingModel.fetch(id),
-              ),
+        final deleteError = model.deleteError.value;
+        if (deleteError != null) {
+          model.consumeDeleteResult();
+          ShadToaster.of(context).show(
+            ShadToast.destructive(
+              title: const Text('Delete Failed'),
+              description: Text(deleteError),
             ),
           );
         }
+      },
+      child: SignalBuilder(
+        builder: (context) {
+          final listingModel = di<ListingDetailViewModel>();
+          final detail = listingModel.detail.value;
+          final isLoading = listingModel.isLoading.value;
+          final error = listingModel.error.value;
 
-        if (detail == null) {
-          return const UsPage(
-            body: Center(child: Text('Listing not found')),
-          );
-        }
+          if (detail == null && isLoading && error == null) {
+            return const UsPage(
+              body: Center(child: ShadSpinner()),
+            );
+          }
 
-        final currentUserId = di<UserViewModel>().currentUser.value?.id;
-        final isMe = currentUserId == detail.seller.id;
+          if (detail == null && error != null) {
+            return UsPage(
+              body: Center(
+                child: _ErrorView(
+                  message: error,
+                  onRetry: () => listingModel.fetch(id),
+                ),
+              ),
+            );
+          }
 
-        final date = timeago.format(detail.createdAt);
+          if (detail == null) {
+            return const UsPage(
+              body: Center(child: Text('Listing not found')),
+            );
+          }
 
-        return UsPage(
-          gutters: .zero,
-          body: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const .only(bottom: 48),
-                child: Column(
-                  crossAxisAlignment: .stretch,
-                  children: [
-                    _ImageCarousel(images: detail.images),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const .symmetric(horizontal: 16),
-                      child: Row(
-                        crossAxisAlignment: .start,
+          final currentUserId = di<UserViewModel>().currentUser.value?.id;
+          final isMe = currentUserId == detail.seller.id;
+
+          final date = timeago.format(detail.createdAt);
+
+          return UsPage(
+            gutters: .zero,
+            body: Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: const .only(bottom: 48),
+                  child: Column(
+                    crossAxisAlignment: .stretch,
+                    children: [
+                      _ImageCarousel(images: detail.images),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Row(
+                          crossAxisAlignment: .start,
+                          mainAxisAlignment: .spaceBetween,
+                          children: [
+                            // StatusBadge(status: detail.status),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: .stretch,
+                                children: [
+                                  Text(
+                                    detail.title,
+                                    style: theme.textTheme.h1,
+                                    overflow: .ellipsis,
+                                    maxLines: 2,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: theme.textTheme.small,
+                                      children: [
+                                        TextSpan(text: 'Listed $date'),
+                                        const TextSpan(text: ' • '),
+                                        TextSpan(text: detail.category.label),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              detail.price?.display ?? '—',
+                              style: theme.textTheme.labelLg.copyWith(
+                                fontSize: 18,
+                                fontWeight: .w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          'DESCRIPTION',
+                          style: theme.textTheme.labelSm,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          detail.description,
+                          style: theme.textTheme.p,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
                         mainAxisAlignment: .spaceBetween,
                         children: [
-                          // StatusBadge(status: detail.status),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: .stretch,
-                              children: [
-                                Text(
-                                  detail.title,
-                                  style: theme.textTheme.h1,
-                                  overflow: .ellipsis,
-                                  maxLines: 2,
-                                ),
-                                const SizedBox(height: 4),
-                                RichText(
-                                  text: TextSpan(
-                                    style: theme.textTheme.small,
-                                    children: [
-                                      TextSpan(text: 'Listed $date'),
-                                      const TextSpan(text: ' • '),
-                                      TextSpan(text: detail.category.label),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              'CATEGORY',
+                              style: theme.textTheme.labelSm,
                             ),
                           ),
-                          Text(
-                            detail.price?.display ?? '—',
-                            style: theme.textTheme.labelLg.copyWith(
-                              fontSize: 18,
-                              fontWeight: .w700,
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              detail.category.label,
+                              style: theme.textTheme.p,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const .symmetric(horizontal: 16),
-                      child: Text(
-                        'DESCRIPTION',
-                        style: theme.textTheme.labelSm,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const .symmetric(horizontal: 16),
-                      child: Text(
-                        detail.description,
-                        style: theme.textTheme.p,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: .spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            'CATEGORY',
-                            style: theme.textTheme.labelSm,
-                          ),
-                        ),
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            detail.category.label,
-                            style: theme.textTheme.p,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ShadSeparator.horizontal(
-                      margin: const .symmetric(horizontal: 16),
-                      color: theme.colorScheme.borderStrong,
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: .spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            'CONDITION',
-                            style: theme.textTheme.labelSm,
-                          ),
-                        ),
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            detail.condition.name,
-                            style: theme.textTheme.p,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ShadSeparator.horizontal(
-                      margin: const .symmetric(horizontal: 16),
-                      color: theme.colorScheme.borderStrong,
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: .spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            'STATUS',
-                            style: theme.textTheme.labelSm,
-                          ),
-                        ),
-                        Padding(
-                          padding: const .symmetric(horizontal: 16),
-                          child: Text(
-                            detail.status.name,
-                            style: theme.textTheme.p,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (!isMe) ...[
+                      const SizedBox(height: 8),
                       ShadSeparator.horizontal(
                         margin: const .symmetric(horizontal: 16),
                         color: theme.colorScheme.borderStrong,
                       ),
                       const SizedBox(height: 24),
-                      _SellerDetails(detail: detail),
+                      Row(
+                        mainAxisAlignment: .spaceBetween,
+                        children: [
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              'CONDITION',
+                              style: theme.textTheme.labelSm,
+                            ),
+                          ),
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              detail.condition.name,
+                              style: theme.textTheme.p,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ShadSeparator.horizontal(
+                        margin: const .symmetric(horizontal: 16),
+                        color: theme.colorScheme.borderStrong,
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: .spaceBetween,
+                        children: [
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              'STATUS',
+                              style: theme.textTheme.labelSm,
+                            ),
+                          ),
+                          Padding(
+                            padding: const .symmetric(horizontal: 16),
+                            child: Text(
+                              detail.status.name,
+                              style: theme.textTheme.p,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (!isMe) ...[
+                        ShadSeparator.horizontal(
+                          margin: const .symmetric(horizontal: 16),
+                          color: theme.colorScheme.borderStrong,
+                        ),
+                        const SizedBox(height: 24),
+                        _SellerDetails(detail: detail),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Positioned(
-                right: 16,
-                top: 16,
-                child: Column(
-                  spacing: 16,
-                  children: [
-                    if (!isMe)
-                      _BookmarkButton(sellerId: detail.seller.id, size: 30),
-                    if (isMe)
-                      _EditButton(id: id, sellerId: detail.seller.id, size: 30),
-                  ],
+                Positioned(
+                  right: 16,
+                  top: 16,
+                  child: Column(
+                    spacing: 16,
+                    children: [
+                      if (!isMe)
+                        _BookmarkButton(sellerId: detail.seller.id, size: 30),
+                      if (isMe) ...[
+                        _EditButton(
+                          id: id,
+                          sellerId: detail.seller.id,
+                          size: 30,
+                        ),
+                        _DeleteButton(id: id, size: 30),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          footer: isMe ? null : const _MessageSellerButton(),
-        );
-      },
+              ],
+            ),
+            footer: isMe ? null : const _MessageSellerButton(),
+          );
+        },
+      ),
     );
   }
 }
@@ -395,8 +435,85 @@ class _EditButton extends StatelessWidget {
         ),
         onPressed: () async {
           await context.push<void>(UsRoutes.listingEditRoute(id));
+          // The editor may have changed the listing — re-fetch so the
+          // detail view doesn't show stale data after returning.
+          di<ListingDetailViewModel>().fetch(id);
         },
         icon: Icon(LucideIcons.pencil, size: size * 0.6),
+      ),
+    );
+  }
+}
+
+class _DeleteButton extends StatelessWidget {
+  const _DeleteButton({required this.id, this.size = 40});
+  final String id;
+  final double size;
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final theme = ShadTheme.of(context);
+    final model = di<ListingDetailViewModel>();
+
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Padding(
+        padding: const .all(16),
+        child: ShadDialog.alert(
+          padding: const .fromLTRB(24, 0, 24, 24),
+          title: const Text('DELETE LISTING?'),
+          titleStyle: theme.textTheme.h1,
+          description: const Padding(
+            padding: .only(bottom: 24),
+            child: Text(
+              'This will permanently remove your listing '
+              'from UniStash. This action cannot be undone.',
+            ),
+          ),
+          actionsAxis: .horizontal,
+          descriptionTextAlign: .left,
+          expandActionsWhenTiny: false,
+          actions: [
+            ShadButton.outline(
+              height: 30,
+              padding: const .symmetric(horizontal: 12),
+              onPressed: () => dialogContext.pop(false),
+              child: const Text('CANCEL'),
+            ),
+            ShadButton.destructive(
+              height: 30,
+              padding: const .symmetric(horizontal: 12),
+              onPressed: () => dialogContext.pop(true),
+              child: const Text('DELETE'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    model.delete(id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return SizedBox.square(
+      dimension: size,
+      child: ShadIconButton(
+        backgroundColor: theme.colorScheme.accent,
+        foregroundColor: theme.colorScheme.destructive,
+        hoverBackgroundColor: theme.colorScheme.muted,
+        pressedBackgroundColor: theme.colorScheme.destructive,
+        pressedForegroundColor: theme.colorScheme.accent,
+        decoration: ShadDecoration(
+          border: ShadBorder.all(
+            color: theme.colorScheme.destructive,
+            width: 2,
+            radius: .zero,
+          ),
+        ),
+        onPressed: () => _confirmAndDelete(context),
+        icon: Icon(LucideIcons.trash2, size: size * 0.6),
       ),
     );
   }

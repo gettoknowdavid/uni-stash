@@ -19,11 +19,22 @@ class ListingDetailViewModel implements Disposable {
   final Signal<ListingDetailResponse?> detail = signal(null);
   final Signal<bool> isLoading = signal(false);
   final Signal<String?> error = signal(null);
+  final Signal<bool> isDeleting = signal(false);
+
+  /// Set to the deleted listing's id after a successful delete. The page
+  /// reacts by navigating back; the view model cannot pop routes itself.
+  final Signal<String?> deletedId = signal(null);
+
+  /// Set when a delete fails. Separate from [error] so the page can toast
+  /// deletion failures without also toasting fetch/reserve errors, which
+  /// the page already surfaces inline.
+  final Signal<String?> deleteError = signal(null);
 
   late final void Function(String id) fetch;
   late final void Function(String id) reserve;
   late final void Function(String id) unreserve;
   late final void Function(String id) markAsSold;
+  late final void Function(String id) delete;
 
   /// Core fetch logic, awaited by [reserve]/[unreserve]/[markAsSold].
   Future<void> _fetch(String id) async {
@@ -81,18 +92,51 @@ class ListingDetailViewModel implements Disposable {
           error.value = message;
       }
     });
+
+    delete = action1<String, void>((id) async {
+      // Re-entrancy guard, set before the first await so a double-tap
+      // cannot fire two DELETE requests.
+      if (isDeleting.value) return;
+      isDeleting.value = true;
+      deleteError.value = null;
+
+      final result = await _repository.delete(id);
+      switch (result) {
+        case Success():
+          // `detail` is intentionally left as-is: the page pops straight
+          // back on `deletedId`, so clearing it here would only flash the
+          // "Listing not found" state for a frame.
+          deletedId.value = id;
+        case Failure(:final message):
+          deleteError.value = message;
+      }
+
+      isDeleting.value = false;
+    });
   }
 
   void reset() {
     detail.value = null;
     isLoading.value = false;
     error.value = null;
+    isDeleting.value = false;
+    deletedId.value = null;
+    deleteError.value = null;
+  }
+
+  /// Clears one-shot delete state after the UI has reacted to it.
+  void consumeDeleteResult() {
+    deletedId.value = null;
+    deleteError.value = null;
   }
 
   void dispose() {
     detail.dispose();
     isLoading.dispose();
     error.dispose();
+    isDeleting.dispose();
+    deletedId.dispose();
+    deleteError.dispose();
   }
 
   @override

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:get_it/get_it.dart';
 import 'package:logger/web.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
@@ -28,6 +31,9 @@ class VerifyPage extends SignalStatefulWidget {
 class _VerifyPageState extends State<VerifyPage> {
   late final VerifyOtpViewModel _model;
 
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   /// Which email the code was sent to: the signed-in user's address wins,
   /// falling back to the one carried on the route (login-rejection path).
   late final String _email;
@@ -43,8 +49,8 @@ class _VerifyPageState extends State<VerifyPage> {
     _email = signedInEmail.isNotEmpty ? signedInEmail : (widget.email ?? '');
     _code = widget.code;
 
-    di.pushNewScope(
-      scopeName: 'verifyPage',
+    _scopeName = pushPageScope(
+      baseName: 'verifyPage',
       init: (getIt) {
         getIt.registerLazySingleton<VerifyOtpViewModel>(
           () => VerifyOtpViewModel(
@@ -61,6 +67,16 @@ class _VerifyPageState extends State<VerifyPage> {
     if (_code != null) {
       _model.setCode(_code);
     }
+  }
+
+  @override
+  void dispose() {
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope].
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
+    super.dispose();
   }
 
   @override

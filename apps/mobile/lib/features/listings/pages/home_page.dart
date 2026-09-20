@@ -278,10 +278,18 @@ class _ListingsGrid extends SignalWidget {
           (context, index) {
             final listing = listings[index];
             return GestureDetector(
-              onTap: () => context.push(
-                UsRoutes.listingDetailsRoute(listing.id),
-                extra: listing,
-              ),
+              onTap: () async {
+                // A `true` result means the listing was deleted (or the
+                // edit flow signalled a change) — refresh so the grid
+                // doesn't keep showing stale data.
+                final result = await context.push<bool>(
+                  UsRoutes.listingDetailsRoute(listing.id),
+                  extra: listing,
+                );
+                if (result == true && context.mounted) {
+                  di<ListingsViewModel>().refresh();
+                }
+              },
               child: ListingCard(listing: listing),
             );
           },

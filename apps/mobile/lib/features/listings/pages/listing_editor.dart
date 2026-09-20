@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_draft.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -31,6 +32,9 @@ class _ListingEditorState extends State<ListingEditor> {
 
   late final ListingEditorViewModel _model;
 
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   bool get _isEditMode => widget.listingId != null;
 
   @override
@@ -38,8 +42,12 @@ class _ListingEditorState extends State<ListingEditor> {
     super.initState();
     // Page-scoped ViewModel (same pattern as the auth pages): a fresh
     // instance per visit, disposed by GetIt when the scope pops.
-    di.pushNewScope(
-      scopeName: 'listingEditorPage',
+    //
+    // The scope name is unique per visit and the scope is popped on
+    // dispose — a hard-coded name that is never popped crashes on the
+    // second visit ("You already have used the scope name …").
+    _scopeName = pushPageScope(
+      baseName: 'listingEditorPage',
       init: (getIt) {
         getIt.registerLazySingleton<ListingEditorViewModel>(
           () => ListingEditorViewModel(
@@ -118,9 +126,9 @@ class _ListingEditorState extends State<ListingEditor> {
         content: Text(
           draft.hasListingId
               ? 'You have an unfinished listing. '
-                  'Would you like to resume where you left off?'
+                    'Would you like to resume where you left off?'
               : 'You have an unfinished listing draft. '
-                  'Would you like to resume or start fresh?',
+                    'Would you like to resume or start fresh?',
         ),
         actions: [
           ShadButton.ghost(
@@ -189,11 +197,13 @@ class _ListingEditorState extends State<ListingEditor> {
 
   @override
   void dispose() {
-    // popScope() is async but dispose() is sync — calling it here would
-    // discard the Future and never actually pop the scope.  Page-scoped
-    // GetIt scopes are cleaned up in bulk by the logout flow via
-    // popScopesTill(root).  For normal back-navigation the orphaned scope
-    // is harmless (the next page pushes its own scope on top).
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope]. Widgets are unmounted before
+    // dispose runs, so their signal subscriptions are already down when
+    // the ViewModels here get disposed.
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
     super.dispose();
   }
 

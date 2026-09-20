@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/auth/widgets/us_otp_input.dart';
@@ -25,13 +28,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   late final ResetPasswordViewModel _model;
 
+  /// Unique per-visit GetIt scope name; popped in [dispose].
+  String? _scopeName;
+
   String? _codeError;
 
   @override
   void initState() {
     super.initState();
-    di.pushNewScope(
-      scopeName: 'resetPasswordPage',
+    _scopeName = pushPageScope(
+      baseName: 'resetPasswordPage',
       init: (getIt) {
         getIt.registerLazySingleton<ResetPasswordViewModel>(
           () => ResetPasswordViewModel(
@@ -42,6 +48,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       },
     );
     _model = di<ResetPasswordViewModel>();
+  }
+
+  @override
+  void dispose() {
+    // popScope() is async but dispose() is sync, so the pop is fired,
+    // not awaited — see [popPageScope].
+    final scopeName = _scopeName;
+    _scopeName = null;
+    if (scopeName != null) unawaited(popPageScope(scopeName));
+    super.dispose();
   }
 
   @override
