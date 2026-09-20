@@ -3,6 +3,7 @@ import 'package:retrofit/retrofit.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
+export 'package:uni_stash_mobile/features/auth/models/auth_dto.dart' show UpdateProfileRequest;
 
 part 'auth_api.g.dart';
 
@@ -44,4 +45,7 @@ abstract class AuthApiClient {
 
   @GET('/api/v1/auth/me')
   Future<ApiResponse<User>> me();
+
+  @PATCH('/api/v1/auth/me')
+  Future<ApiResponse<User>> updateProfile(@Body() UpdateProfileRequest request);
 }

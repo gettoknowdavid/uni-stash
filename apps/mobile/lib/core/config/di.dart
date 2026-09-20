@@ -152,8 +152,12 @@ void _registerSchools() {
 /// AuthApiClient's GET /auth/me, so it depends on the auth API client.
 void _registerProfile() {
   di.registerSingletonWithDependencies<ProfileRepository>(
-    () => ProfileRepositoryImpl(di<AuthApiClient>(), di<Logger>()),
-    dependsOn: [AuthApiClient],
+    () => ProfileRepositoryImpl(
+      di<AuthApiClient>(),
+      di<ListingsApiClient>(),
+      di<Logger>(),
+    ),
+    dependsOn: [AuthApiClient, ListingsApiClient],
   );
 }
 

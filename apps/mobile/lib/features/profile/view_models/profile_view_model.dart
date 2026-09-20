@@ -5,23 +5,8 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
-
-/// Stats displayed in the profile screen's three-cell strip.
-///
-/// No backend endpoints expose these yet (my-listings / saved items are
-/// still unbuilt features), so the view model seeds them with placeholders
-/// until dedicated profile endpoints land in [ProfileRepository].
-class ProfileStats {
-  const ProfileStats({
-    this.activeListings = 0,
-    this.itemsSold = 0,
-    this.saved = 0,
-  });
-
-  final int activeListings;
-  final int itemsSold;
-  final int saved;
-}
+export 'package:uni_stash_mobile/features/profile/data/profile_repository.dart'
+    show ProfileStats;
 
 /// Page-scoped ViewModel that drives the profile screen.
 ///
@@ -40,11 +25,13 @@ class ProfileViewModel implements Disposable {
   final Signal<User?> profile = signal(null);
   final Signal<bool> isLoading = signal(false);
   final Signal<String?> error = signal(null);
+  final Signal<bool> isUpdating = signal(false);
+  final Signal<String?> updateError = signal(null);
+  final Signal<bool> updateSuccess = signal(false);
 
-  /// Placeholder counts for the stats strip; wired to real endpoints when
-  /// my-listings / saved-items APIs land.
+  /// Real counts fetched from the listings API.
   final Signal<ProfileStats> stats = signal(
-    const ProfileStats(activeListings: 12, itemsSold: 45, saved: 8),
+    const ProfileStats(activeListings: 0, itemsSold: 0),
   );
 
   late final void Function() fetch;
@@ -57,11 +44,41 @@ class ProfileViewModel implements Disposable {
     switch (result) {
       case Success(:final value):
         profile.value = value;
+        // Fetch stats in parallel after profile loads.
+        unawaited(_fetchStats(value.id));
       case Failure(:final message):
         error.value = message;
     }
 
     isLoading.value = false;
+  }
+
+  Future<void> _fetchStats(String userId) async {
+    final result = await _repository.getStats(userId);
+    switch (result) {
+      case Success(:final value):
+        stats.value = value;
+      case Failure(message: final _):
+        // Stats failure is non-fatal — show zeros.
+        stats.value = const ProfileStats(activeListings: 0, itemsSold: 0);
+    }
+  }
+
+  Future<void> updateProfile({String? displayName}) async {
+    isUpdating.value = true;
+    updateError.value = null;
+    updateSuccess.value = false;
+
+    final result = await _repository.updateProfile(displayName: displayName);
+    switch (result) {
+      case Success(:final value):
+        profile.value = value;
+        updateSuccess.value = true;
+      case Failure(:final message):
+        updateError.value = message;
+    }
+
+    isUpdating.value = false;
   }
 
   void _init() {
@@ -74,13 +91,16 @@ class ProfileViewModel implements Disposable {
     profile.value = null;
     isLoading.value = false;
     error.value = null;
-    stats.value = const ProfileStats();
+    stats.value = const ProfileStats(activeListings: 0, itemsSold: 0);
   }
 
   void dispose() {
     profile.dispose();
     isLoading.dispose();
     error.dispose();
+    isUpdating.dispose();
+    updateError.dispose();
+    updateSuccess.dispose();
     stats.dispose();
   }
 

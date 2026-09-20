@@ -4,10 +4,6 @@ import 'package:uni_stash_mobile/core/user/models.dart';
 part 'auth_dto.freezed.dart';
 part 'auth_dto.g.dart';
 
-// ---------------------------------------------------------------------------
-// Auth response: tokens + user (backend flattens them at the same level)
-// ---------------------------------------------------------------------------
-
 /// Login response shape from the backend.
 @freezed
 abstract class LoginResponse with _$LoginResponse {
@@ -64,10 +60,6 @@ abstract class VerifyOtpResponse with _$VerifyOtpResponse {
   factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) =>
       _$VerifyOtpResponseFromJson(json);
 }
-
-// ---------------------------------------------------------------------------
-// Request types
-// ---------------------------------------------------------------------------
 
 @freezed
 abstract class SignUpRequest with _$SignUpRequest {
@@ -152,6 +144,16 @@ abstract class LogoutRequest with _$LogoutRequest {
 
   factory LogoutRequest.fromJson(Map<String, dynamic> json) =>
       _$LogoutRequestFromJson(json);
+}
+
+@freezed
+abstract class UpdateProfileRequest with _$UpdateProfileRequest {
+  const factory UpdateProfileRequest({
+    @JsonKey(name: 'display_name') String? displayName,
+  }) = _UpdateProfileRequest;
+
+  factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateProfileRequestFromJson(json);
 }
 
 @freezed

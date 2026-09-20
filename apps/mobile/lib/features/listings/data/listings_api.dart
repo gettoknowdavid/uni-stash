@@ -32,6 +32,7 @@ abstract class ListingsApiClient {
     @Query('min_price') int? minPrice,
     @Query('max_price') int? maxPrice,
     @Query('status') ListingStatus? status,
+    @Query('seller') String? sellerId,
     @Query('cursor') String? cursor,
     @Query('limit') int? limit,
   });

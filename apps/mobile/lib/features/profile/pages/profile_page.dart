@@ -152,7 +152,7 @@ class _ProfileContent extends SignalHookWidget {
           ],
           const SizedBox(height: 24),
           ShadButton(
-            onPressed: () => _showComingSoon(context, 'Edit profile'),
+            onPressed: () => context.push(UsRoutes.editProfile),
             child: const Text('EDIT PROFILE'),
           ),
           const SizedBox(height: 64),
