@@ -8,10 +8,6 @@ use uni_stash_be::features::auth::handlers::{delete_account, login};
 const TEST_PRIVATE_PEM: &str = include_str!("fixtures/test_rsa_private.pem");
 const TEST_PUBLIC_PEM: &str = include_str!("fixtures/test_rsa_public.pem");
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 fn test_config() -> Config {
     Config {
         database_url: "postgres://localhost:5432/uni_stash".into(),
@@ -40,24 +36,22 @@ fn test_state(pool: PgPool) -> web::Data<AppState> {
 
 /// Seed a school and return its ID.
 async fn seed_school(pool: &PgPool, domain: &str) -> i16 {
-    let result = sqlx::query("INSERT INTO schools (name, domain) VALUES ('Test School', $1) RETURNING id")
-        .bind(domain)
-        .fetch_one(pool)
-        .await
-        .expect("seed school");
+    let result =
+        sqlx::query("INSERT INTO schools (name, domain) VALUES ('Test School', $1) RETURNING id")
+            .bind(domain)
+            .fetch_one(pool)
+            .await
+            .expect("seed school");
     result.get("id")
 }
-
-// ===========================================================================
-// POST /api/v1/auth/delete-account
-// ===========================================================================
 
 #[sqlx::test]
 async fn user_can_soft_delete_account(pool: PgPool) {
     let school_id = seed_school(&pool, "delete.edu").await;
 
     // Manually insert a verified user (signup sends OTP, so we seed directly)
-    let password_hash = uni_stash_be::core::auth::password::hash_password("testpassword123").unwrap();
+    let password_hash =
+        uni_stash_be::core::auth::password::hash_password("testpassword123").unwrap();
     let result = sqlx::query(
         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified)
          VALUES ($1, 'delete@test.edu', $2, 'Delete Me', true)
@@ -71,16 +65,21 @@ async fn user_can_soft_delete_account(pool: PgPool) {
     let user_id: uuid::Uuid = result.get("id");
 
     let state = test_state(pool.clone());
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route("/api/v1/auth/delete-account", web::post().to(delete_account)),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/delete-account",
+        web::post().to(delete_account),
+    ))
     .await;
 
     // Issue a JWT for the user
-    let keys = uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
-    let user = state.auth_repo.find_user_by_id(&user_id).await.unwrap().unwrap();
+    let keys =
+        uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
+    let user = state
+        .auth_repo
+        .find_user_by_id(&user_id)
+        .await
+        .unwrap()
+        .unwrap();
     let access_token = uni_stash_be::core::auth::jwt::sign_access_token(&keys, &user).unwrap();
 
     let body = serde_json::json!({
@@ -99,7 +98,10 @@ async fn user_can_soft_delete_account(pool: PgPool) {
     assert_eq!(json["status"], true);
     assert!(json["data"]["deletion_scheduled_at"].is_string());
     let msg = json["data"]["message"].as_str().unwrap();
-    assert!(msg.contains("30 days"), "message should mention 30 days: {msg}");
+    assert!(
+        msg.contains("30 days"),
+        "message should mention 30 days: {msg}"
+    );
 
     // Verify the user is soft-deleted in the DB
     let row = sqlx::query("SELECT deleted_at, deletion_scheduled_at FROM users WHERE id = $1")
@@ -112,14 +114,18 @@ async fn user_can_soft_delete_account(pool: PgPool) {
     let deleted_at: Option<time::OffsetDateTime> = row.get("deleted_at");
     assert!(deleted_at.is_some(), "deleted_at should be set");
     let scheduled_at: Option<time::OffsetDateTime> = row.get("deletion_scheduled_at");
-    assert!(scheduled_at.is_some(), "deletion_scheduled_at should be set");
+    assert!(
+        scheduled_at.is_some(),
+        "deletion_scheduled_at should be set"
+    );
 }
 
 #[sqlx::test]
 async fn delete_account_wrong_password_returns_401(pool: PgPool) {
     let school_id = seed_school(&pool, "wrongpw.edu").await;
 
-    let password_hash = uni_stash_be::core::auth::password::hash_password("correctpassword").unwrap();
+    let password_hash =
+        uni_stash_be::core::auth::password::hash_password("correctpassword").unwrap();
     let result = sqlx::query(
         "INSERT INTO users (school_id, email, password_hash, display_name, email_verified)
          VALUES ($1, 'wrongpw@test.edu', $2, 'User', true)
@@ -133,15 +139,20 @@ async fn delete_account_wrong_password_returns_401(pool: PgPool) {
     let user_id: uuid::Uuid = result.get("id");
 
     let state = test_state(pool);
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route("/api/v1/auth/delete-account", web::post().to(delete_account)),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/delete-account",
+        web::post().to(delete_account),
+    ))
     .await;
 
-    let keys = uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
-    let user = state.auth_repo.find_user_by_id(&user_id).await.unwrap().unwrap();
+    let keys =
+        uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
+    let user = state
+        .auth_repo
+        .find_user_by_id(&user_id)
+        .await
+        .unwrap()
+        .unwrap();
     let access_token = uni_stash_be::core::auth::jwt::sign_access_token(&keys, &user).unwrap();
 
     let body = serde_json::json!({
@@ -160,11 +171,10 @@ async fn delete_account_wrong_password_returns_401(pool: PgPool) {
 #[sqlx::test]
 async fn delete_account_unauthenticated_returns_401(pool: PgPool) {
     let state = test_state(pool);
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route("/api/v1/auth/delete-account", web::post().to(delete_account)),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/delete-account",
+        web::post().to(delete_account),
+    ))
     .await;
 
     let body = serde_json::json!({
@@ -212,7 +222,11 @@ async fn soft_deleted_user_cannot_login(pool: PgPool) {
         .set_json(&body)
         .to_request();
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 401, "soft-deleted user should not be able to login");
+    assert_eq!(
+        resp.status(),
+        401,
+        "soft-deleted user should not be able to login"
+    );
 }
 
 #[sqlx::test]
@@ -233,18 +247,18 @@ async fn delete_account_already_soft_deleted_returns_400(pool: PgPool) {
     let user_id: uuid::Uuid = result.get("id");
 
     let state = test_state(pool);
-    let app = test::init_service(
-        App::new()
-            .app_data(state.clone())
-            .route("/api/v1/auth/delete-account", web::post().to(delete_account)),
-    )
+    let app = test::init_service(App::new().app_data(state.clone()).route(
+        "/api/v1/auth/delete-account",
+        web::post().to(delete_account),
+    ))
     .await;
 
     // Issue JWT for the already-soft-deleted user using the private helper.
     // We fetch the user with deleted_at included, then sign with the standard
     // function — the JWT itself is valid; the handler should detect the
     // soft-delete state via find_user_by_id_including_deleted.
-    let keys = uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
+    let keys =
+        uni_stash_be::core::clients::JwtKeys::from_pem(TEST_PRIVATE_PEM, TEST_PUBLIC_PEM).unwrap();
     let user = state
         .auth_repo
         .find_user_by_id_including_deleted(&user_id)

@@ -39,12 +39,10 @@ const STALE_RESERVATION_INTERVAL: time::Duration = time::Duration::from_secs(5 *
 const STALE_RESERVATION_HOURS: i64 = 48;
 
 /// Interval between hard-delete sweeps for expired soft-deleted accounts.
-const CLEANUP_DELETED_ACCOUNTS_INTERVAL: time::Duration =
-    time::Duration::from_secs(60 * 60); // every 1 hour
+const CLEANUP_DELETED_ACCOUNTS_INTERVAL: time::Duration = time::Duration::from_secs(60 * 60); // every 1 hour
 
 /// Interval between pre-deletion warning email sweeps.
-const DELETION_WARNING_INTERVAL: time::Duration =
-    time::Duration::from_secs(60 * 60); // every 1 hour
+const DELETION_WARNING_INTERVAL: time::Duration = time::Duration::from_secs(60 * 60); // every 1 hour
 
 /// Spawns all background jobs on the current Tokio runtime.
 ///
@@ -131,7 +129,10 @@ pub fn spawn(
             let repo = crate::features::auth::repo::AuthRepo::new(pool);
             let deleted = repo.hard_delete_expired_accounts().await?;
             if deleted > 0 {
-                tracing::info!(deleted, "cleanup: hard-deleted expired soft-deleted accounts");
+                tracing::info!(
+                    deleted,
+                    "cleanup: hard-deleted expired soft-deleted accounts"
+                );
             }
             Ok::<_, anyhow::Error>(())
         },

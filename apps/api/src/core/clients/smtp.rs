@@ -132,10 +132,16 @@ impl SmtpClient {
 
         self.0.transport.send(email).await.map_err(|e| {
             tracing::error!(error = %e, to = to_email, "SMTP send failed for deletion warning");
-            AppError::Internal(anyhow::anyhow!("failed to send deletion warning email: {e}"))
+            AppError::Internal(anyhow::anyhow!(
+                "failed to send deletion warning email: {e}"
+            ))
         })?;
 
-        tracing::info!(to = to_email, days_remaining = days_remaining, "deletion warning email sent");
+        tracing::info!(
+            to = to_email,
+            days_remaining = days_remaining,
+            "deletion warning email sent"
+        );
         Ok(())
     }
 }
