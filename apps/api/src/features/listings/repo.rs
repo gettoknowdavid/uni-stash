@@ -50,10 +50,6 @@ impl ListingsRepo {
         Ok(listing)
     }
 
-    // ----------------------------------------------------------------
-    // CM-4.2 — Browse / filter with cursor pagination
-    // ----------------------------------------------------------------
-
     /// Uses QueryBuilder for dynamic filters — compile-time .sqlx offline
     /// verification does not apply to this query (deliberate, scoped exception).
     /// Every value is still parameterised via push_bind, so no SQL injection.
@@ -66,8 +62,6 @@ impl ListingsRepo {
         let is_search = filters.search_query.is_some();
 
         let mut query: QueryBuilder<sqlx::Postgres> = if is_search {
-            // CM-5.1 — Full-text search: select with rank for display,
-            // but only return the same columns as the non-search path.
             QueryBuilder::new(
                 "SELECT l.id, l.title, l.price, l.currency::TEXT AS currency, l.barter_request, l.condition, l.status, l.created_at
                  FROM listings l
@@ -83,7 +77,7 @@ impl ListingsRepo {
 
         query.push_bind(filters.status.to_string());
 
-        // CM-5.1 — When a search query is present, filter by tsvector match
+        // When a search query is present, filter by tsvector match
         // and order by relevance rank. plainto_tsquery handles stemming and
         // stop-word removal for the 'english' dictionary.
         if let Some(ref q) = filters.search_query {
@@ -116,6 +110,14 @@ impl ListingsRepo {
             }
             query.push_bind(max_price);
         }
+        if let Some(seller) = filters.seller {
+            if is_search {
+                query.push(" AND l.seller_id = ");
+            } else {
+                query.push(" AND seller_id = ");
+            }
+            query.push_bind(seller);
+        }
 
         // Cursor pagination: only for non-search browse.
         // Search results are rank-ordered, so a (created_at, id) cursor
@@ -131,7 +133,7 @@ impl ListingsRepo {
         }
 
         if is_search {
-            // CM-5.1 AC 2 — Order by ts_rank DESC for relevance.
+            // Order by ts_rank DESC for relevance.
             // ts_rank normalizes by document length, so shorter documents
             // don't unfairly rank higher.
             query.push(" ORDER BY ts_rank(l.search_vector, plainto_tsquery('english', ");
@@ -181,10 +183,6 @@ impl ListingsRepo {
         Ok((listings, next_cursor))
     }
 
-    // ----------------------------------------------------------------
-    // CM-4.2 — Browse: batched images fetch
-    // ----------------------------------------------------------------
-
     /// Attach each summary's images (up to 3, position-ordered) using one
     /// batched query — the browse endpoint's `images` field. No-op for an
     /// empty page.
@@ -220,10 +218,6 @@ impl ListingsRepo {
 
         Ok(())
     }
-
-    // ----------------------------------------------------------------
-    // CM-4.3 — Detail view
-    // ----------------------------------------------------------------
 
     /// Fetch a listing with seller, category, and images. Returns None
     /// if the listing doesn't exist.
@@ -292,10 +286,6 @@ impl ListingsRepo {
             images,
         }))
     }
-
-    // ----------------------------------------------------------------
-    // CM-4.4 — Partial update
-    // ----------------------------------------------------------------
 
     /// Apply a partial patch to a listing. Uses SELECT ... FOR UPDATE
     /// to prevent TOCTOU races against concurrent state transitions.
@@ -419,10 +409,6 @@ impl ListingsRepo {
         Ok(listing)
     }
 
-    // ----------------------------------------------------------------
-    // CM-4.5 — Soft delete
-    // ----------------------------------------------------------------
-
     /// Soft-delete a listing by setting status = 'deleted'.
     /// Returns Ok(()) on success, or appropriate error if not found/forbidden.
     pub async fn soft_delete(&self, listing_id: Uuid, seller_id: Uuid) -> Result<(), AppError> {
@@ -458,10 +444,6 @@ impl ListingsRepo {
         tx.commit().await?;
         Ok(())
     }
-
-    // ----------------------------------------------------------------
-    // CM-4.8 — Stale reservation cleanup
-    // ----------------------------------------------------------------
 
     /// Find listing IDs with reservations older than `older_than_hours`.
     pub async fn find_stale_reservation_ids(

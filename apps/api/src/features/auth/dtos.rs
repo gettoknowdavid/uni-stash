@@ -16,10 +16,6 @@ pub struct AuthData<T: serde::Serialize> {
     pub user: UserProfile,
 }
 
-// ---------------------------------------------------------------------------
-// Token-only response types (flattened inside AuthData)
-// ---------------------------------------------------------------------------
-
 #[derive(serde::Serialize)]
 pub struct SignUpTokens {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,10 +51,6 @@ pub struct VerifyOtpTokens {
     pub expires_in: Option<i64>,
 }
 
-// ---------------------------------------------------------------------------
-// User profile (embedded in auth responses)
-// ---------------------------------------------------------------------------
-
 /// Slim user profile returned inside auth responses and GET /auth/me.
 #[derive(serde::Serialize, sqlx::FromRow, Clone)]
 pub struct UserProfile {
@@ -68,10 +60,6 @@ pub struct UserProfile {
     pub email_verified: bool,
     pub role: String,
 }
-
-// ---------------------------------------------------------------------------
-// Request types
-// ---------------------------------------------------------------------------
 
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct SignUpRequest {
@@ -91,10 +79,6 @@ pub struct InsertUserInput<'a> {
     pub password: &'a str,
     pub display_name: &'a str,
 }
-
-// -------------------------------------------------------------------
-// OTP verification (replaces VerifyEmailRequest)
-// -------------------------------------------------------------------
 
 #[derive(Debug, serde::Deserialize, validator::Validate)]
 pub struct VerifyOtpRequest {
@@ -125,29 +109,17 @@ pub struct LogoutRequest {
     pub refresh_token: String,
 }
 
-// -------------------------------------------------------------------
-// Resend verification
-// -------------------------------------------------------------------
-
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ResendVerificationRequest {
     #[validate(email)]
     pub email: String,
 }
 
-// -------------------------------------------------------------------
-// Forgot password
-// -------------------------------------------------------------------
-
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ForgotPasswordRequest {
     #[validate(email)]
     pub email: String,
 }
-
-// -------------------------------------------------------------------
-// Reset password
-// -------------------------------------------------------------------
 
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct ResetPasswordRequest {
@@ -159,10 +131,6 @@ pub struct ResetPasswordRequest {
     #[validate(length(min = 10, message = "password must be at least 10 characters"))]
     pub new_password: String,
 }
-
-// -------------------------------------------------------------------
-// Delete account
-// -------------------------------------------------------------------
 
 /// Request body for soft-deleting the authenticated user's account.
 ///
@@ -177,12 +145,18 @@ pub struct DeleteAccountRequest {
     pub password: String,
 }
 
-// -------------------------------------------------------------------
-// Response types for delete account
-// -------------------------------------------------------------------
-
 #[derive(serde::Serialize)]
 pub struct DeleteAccountResponse {
     pub message: String,
     pub deletion_scheduled_at: String,
+}
+
+/// Request body for updating the authenticated user's profile.
+///
+/// All fields are optional — only provided fields are updated.
+#[derive(serde::Deserialize, validator::Validate)]
+pub struct UpdateProfileRequest {
+    /// New display name (if changing).
+    #[validate(length(min = 1, max = 80, message = "display_name must be 1-80 characters"))]
+    pub display_name: Option<String>,
 }

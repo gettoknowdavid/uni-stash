@@ -89,6 +89,27 @@ impl AuthRepo {
         Ok(())
     }
 
+    /// Update the user's profile fields (display_name).
+    ///
+    /// Only non-None fields are updated.
+    pub async fn update_user_profile(
+        &self,
+        user_id: &uuid::Uuid,
+        display_name: Option<&str>,
+    ) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE users
+             SET display_name = COALESCE($2, display_name),
+                 updated_at = now()
+             WHERE id = $1 AND deleted_at IS NULL",
+            user_id,
+            display_name,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_user_by_id(&self, user_id: &uuid::Uuid) -> Result<Option<User>, AppError> {
         let user = sqlx::query_as!(
             User,
@@ -175,10 +196,6 @@ impl AuthRepo {
         .await?;
         Ok(result.rows_affected())
     }
-
-    // ------------------------------------------------------------------
-    // Pre-deletion warning emails
-    // ------------------------------------------------------------------
 
     /// Find soft-deleted users who need a 7-day deletion warning.
     ///
@@ -440,10 +457,6 @@ impl AuthRepo {
         Ok(result.rows_affected())
     }
 
-    // ------------------------------------------------------------------
-    // OTP management
-    // ------------------------------------------------------------------
-
     /// Generate a new OTP for the given user and type.
     ///
     /// Invalidates any existing active OTP of the same type for this user
@@ -561,10 +574,6 @@ impl AuthRepo {
         .await?;
         Ok(result.rows_affected())
     }
-
-    // ------------------------------------------------------------------
-    // CM-3.7 / CM-3.8 orchestration helpers
-    // ------------------------------------------------------------------
 
     /// Core rotation logic: revoke the presented row, issue a new token in
     /// the same family, link superseded_by, fetch the user, sign a fresh

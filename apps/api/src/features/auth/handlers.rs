@@ -8,15 +8,12 @@ use crate::core::json::ValidatedJson;
 use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    AuthData, DeleteAccountRequest, DeleteAccountResponse, ForgotPasswordRequest,
-    InsertUserInput, LoginRequest, LoginTokens, LogoutRequest, RefreshRequest, RefreshTokens,
-    ResetPasswordRequest, SignUpRequest, SignUpTokens, VerifyOtpRequest, VerifyOtpTokens,
+    AuthData, DeleteAccountRequest, DeleteAccountResponse, ForgotPasswordRequest, InsertUserInput,
+    LoginRequest, LoginTokens, LogoutRequest, RefreshRequest, RefreshTokens, ResetPasswordRequest,
+    SignUpRequest, SignUpTokens, UpdateProfileRequest, UserProfile, VerifyOtpRequest,
+    VerifyOtpTokens,
 };
 use crate::features::auth::repo::AuthRepo;
-
-// ---------------------------------------------------------------------------
-// Signup (CM-3.4) — now sends OTP instead of JWT token
-// ---------------------------------------------------------------------------
 
 pub async fn signup(
     state: web::Data<AppState>,
@@ -80,10 +77,6 @@ pub async fn signup(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// Verify OTP (replaces verify_email) — CM-3.5
-// ---------------------------------------------------------------------------
 
 /// Verify an OTP code. Works for both email verification and password reset.
 ///
@@ -152,10 +145,6 @@ pub async fn verify_otp(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Resend verification — new endpoint
-// ---------------------------------------------------------------------------
-
 /// Resend an OTP for email verification.
 ///
 /// Generates a fresh OTP and sends it. The previous OTP is automatically
@@ -198,10 +187,6 @@ pub async fn resend_verification(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Forgot password — new endpoint
-// ---------------------------------------------------------------------------
-
 /// Request a password reset OTP.
 ///
 /// Always returns 200 regardless of whether the email exists — prevents
@@ -239,10 +224,6 @@ pub async fn forgot_password(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Reset password — new endpoint
-// ---------------------------------------------------------------------------
-
 /// Reset password using a valid OTP code.
 ///
 /// Verifies the OTP (must be type `password_reset`), then updates the
@@ -272,10 +253,6 @@ pub async fn reset_password(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// Login (CM-3.6) — returns tokens + user
-// ---------------------------------------------------------------------------
 
 pub async fn login(
     state: web::Data<AppState>,
@@ -319,10 +296,6 @@ pub async fn login(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// Refresh (CM-3.7 / CM-3.8) — returns tokens + user
-// ---------------------------------------------------------------------------
 
 pub async fn refresh(
     state: web::Data<AppState>,
@@ -381,10 +354,6 @@ pub async fn refresh(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Logout (CM-3.9) — unchanged
-// ---------------------------------------------------------------------------
-
 pub async fn logout(
     state: web::Data<AppState>,
     body: ValidatedJson<LogoutRequest>,
@@ -401,10 +370,6 @@ pub async fn logout(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Me (CM-3.9) — unchanged
-// ---------------------------------------------------------------------------
-
 pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpResponse, AppError> {
     let profile = state
         .auth_repo
@@ -413,10 +378,6 @@ pub async fn me(state: web::Data<AppState>, user: AuthUser) -> Result<HttpRespon
         .ok_or_else(|| AppError::NotFound("user not found".into()))?;
     Ok(HttpResponse::Ok().json(ApiResponse::success(profile, "ok")))
 }
-
-// ---------------------------------------------------------------------------
-// DELETE /api/v1/auth/delete-account — soft-delete the user's account
-// ---------------------------------------------------------------------------
 
 /// Soft-delete the authenticated user's account.
 ///
@@ -454,19 +415,16 @@ pub async fn delete_account(
     state.auth_repo.soft_delete_user(&user.id).await?;
 
     // Revoke all refresh tokens (invalidate all sessions)
-    state
-        .auth_repo
-        .revoke_all_user_tokens(&user.id)
-        .await?;
+    state.auth_repo.revoke_all_user_tokens(&user.id).await?;
 
     // Fetch updated user to get the scheduled deletion timestamp
     let updated_user = state
         .auth_repo
         .find_user_by_id_including_deleted(&user.id)
         .await?
-        .ok_or_else(|| AppError::Internal(anyhow::anyhow!(
-            "user disappeared after soft-delete",
-        )))?;
+        .ok_or_else(|| {
+            AppError::Internal(anyhow::anyhow!("user disappeared after soft-delete",))
+        })?;
 
     let scheduled_at = updated_user
         .deletion_scheduled_at
@@ -476,10 +434,49 @@ pub async fn delete_account(
     Ok(
         HttpResponse::Ok().json(ApiResponse::<DeleteAccountResponse, ErrorBody>::success(
             DeleteAccountResponse {
-                message: "account scheduled for deletion. It will be permanently deleted after 30 days.".to_string(),
+                message:
+                    "account scheduled for deletion. It will be permanently deleted after 30 days."
+                        .to_string(),
                 deletion_scheduled_at: scheduled_at,
             },
             "account soft-deleted successfully",
+        )),
+    )
+}
+
+/// Update the authenticated user's profile.
+///
+/// Only `display_name` is updatable for now.  Future extensions: avatar,
+/// bio, etc.
+pub async fn update_profile(
+    state: web::Data<AppState>,
+    auth_user: AuthUser,
+    body: ValidatedJson<UpdateProfileRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+
+    if body.display_name.is_none() {
+        return Err(AppError::BadRequest(
+            "at least one field must be provided".to_string(),
+        ));
+    }
+
+    state
+        .auth_repo
+        .update_user_profile(&auth_user.id, body.display_name.as_deref())
+        .await?;
+
+    // Re-read the profile to return the fresh state.
+    let profile = state
+        .auth_repo
+        .find_user_profile_by_id(&auth_user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<UserProfile, ErrorBody>::success(
+            profile,
+            "profile updated successfully",
         )),
     )
 }

@@ -20,10 +20,6 @@ use crate::{
     },
 };
 
-// ---------------------------------------------------------------------------
-// CM-4.1 — Create listing
-// ---------------------------------------------------------------------------
-
 pub async fn create_listing(
     state: web::Data<AppState>,
     body: json::ValidatedJson<CreateListingRequest>,
@@ -68,10 +64,6 @@ pub async fn create_listing(
     )
 }
 
-// ---------------------------------------------------------------------------
-// CM-4.2 — Browse / list
-// ---------------------------------------------------------------------------
-
 pub async fn list_listings(
     state: web::Data<AppState>,
     query: web::Query<ListListingsQuery>,
@@ -109,6 +101,7 @@ pub async fn list_listings(
         min_price: query.min_price,
         max_price: query.max_price,
         status,
+        seller: query.seller,
         cursor,
         limit,
     };
@@ -125,10 +118,6 @@ pub async fn list_listings(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// CM-4.3 — Detail view
-// ---------------------------------------------------------------------------
 
 pub async fn get_listing_detail(
     state: web::Data<AppState>,
@@ -151,10 +140,6 @@ pub async fn get_listing_detail(
 
     Ok(HttpResponse::Ok().json(ApiResponse::success(detail, "ok")))
 }
-
-// ---------------------------------------------------------------------------
-// CM-4.4 — Edit (owner + active-only)
-// ---------------------------------------------------------------------------
 
 pub async fn update_listing(
     state: web::Data<AppState>,
@@ -186,10 +171,6 @@ pub async fn update_listing(
     )
 }
 
-// ---------------------------------------------------------------------------
-// CM-4.5 — Soft delete
-// ---------------------------------------------------------------------------
-
 pub async fn delete_listing(
     state: web::Data<AppState>,
     path: web::Path<uuid::Uuid>,
@@ -202,10 +183,6 @@ pub async fn delete_listing(
 
     Ok(HttpResponse::NoContent().finish())
 }
-
-// ---------------------------------------------------------------------------
-// CM-4.6 — Reserve
-// ---------------------------------------------------------------------------
 
 pub async fn reserve_listing(
     state: web::Data<AppState>,
@@ -228,10 +205,6 @@ pub async fn reserve_listing(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// CM-4.7 — Mark sold / Unreserve
-// ---------------------------------------------------------------------------
 
 pub async fn mark_sold(
     state: web::Data<AppState>,

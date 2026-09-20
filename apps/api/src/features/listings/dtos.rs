@@ -10,10 +10,6 @@ use crate::{
 /// column defaults to NGN as well.
 pub const DEFAULT_CURRENCY: Currency = Currency::NGN;
 
-// ---------------------------------------------------------------------------
-// Create (CM-4.1)
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Deserialize, serde::Serialize, Validate)]
 pub struct CreateListingRequest {
     #[validate(length(min = 1, max = 200))]
@@ -53,10 +49,6 @@ pub struct InsertListingInput<'a> {
     pub condition: models::Condition,
 }
 
-// ---------------------------------------------------------------------------
-// Listing response (CM-4.1)
-// ---------------------------------------------------------------------------
-
 #[derive(serde::Serialize)]
 pub struct ListingResponse {
     pub id: uuid::Uuid,
@@ -64,7 +56,6 @@ pub struct ListingResponse {
     pub category_id: i16,
     pub title: String,
     pub description: String,
-    /// Minor units (kobo) + currency — see `core::money`.
     pub price: Option<Money>,
     pub barter_request: Option<String>,
     pub condition: models::Condition,
@@ -99,10 +90,6 @@ impl From<models::Listing> for ListingResponse {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Browse (CM-4.2)
-// ---------------------------------------------------------------------------
-
 #[derive(Deserialize)]
 pub struct ListListingsQuery {
     /// Full-text search query. When present, results are ranked by relevance
@@ -113,6 +100,7 @@ pub struct ListListingsQuery {
     pub min_price: Option<i64>,
     pub max_price: Option<i64>,
     pub status: Option<String>,
+    pub seller: Option<uuid::Uuid>,
     pub cursor: Option<String>,
     pub limit: Option<i64>,
 }
@@ -167,27 +155,21 @@ impl From<ListingSummaryRow> for ListingSummary {
             condition: row.condition,
             status: row.status,
             created_at: row.created_at,
-            // The repo attaches images in a batch after the summary fetch.
             images: Vec::new(),
         }
     }
 }
 
 pub struct ListingFilters {
-    /// When Some, performs a full-text search ordered by relevance.
     pub search_query: Option<String>,
     pub category: Option<i16>,
-    /// Minor units (kobo).
     pub min_price: Option<i64>,
     pub max_price: Option<i64>,
     pub status: models::ListingStatus,
+    pub seller: Option<uuid::Uuid>,
     pub cursor: Option<cursor::ListingCursor>,
     pub limit: i64,
 }
-
-// ---------------------------------------------------------------------------
-// Detail (CM-4.3)
-// ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize)]
 pub struct ListingDetailResponse {
@@ -255,10 +237,6 @@ impl ImageRow {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Edit (CM-4.4)
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateListingRequest {
     #[validate(length(min = 1, max = 200))]
@@ -312,14 +290,6 @@ pub struct ListingPatch {
     pub barter_request: Option<Option<String>>,
     pub condition: Option<models::Condition>,
 }
-
-// ---------------------------------------------------------------------------
-// Soft delete (CM-4.5) — no DTO needed, just path param
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Reserve / mark-sold / unreserve (CM-4.6 / CM-4.7) — no body needed
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
