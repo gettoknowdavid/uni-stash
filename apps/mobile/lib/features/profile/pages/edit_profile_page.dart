@@ -36,16 +36,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return UsPage(
-      header: UsPageHeader(
-        title: const Text('EDIT PROFILE'),
-        leading: ShadIconButton.ghost(
-          icon: const Icon(LucideIcons.arrowLeft),
-          onPressed: () => context.pop(),
-        ),
-      ),
+      gutters: .zero,
+      header: const UsPageHeader(title: Text('EDIT PROFILE')),
       body: SignalEffect(
         effect: (context) {
-          // Navigate back on successful update
           final success = model.updateSuccess.value;
           if (success) {
             ShadToaster.of(context).show(
@@ -89,13 +83,10 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
     final updateError = widget.model.updateError.value;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const .all(UsSpacing.lg),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: .stretch,
         children: [
-          const SizedBox(height: 24),
-
-          // Display Name field
           Text(
             'DISPLAY NAME',
             style: theme.textTheme.labelSm.copyWith(
@@ -103,31 +94,23 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: UsSpacing.sm),
           ShadInput(
             controller: widget.nameController,
             placeholder: const Text('Enter your display name'),
           ),
-
-          const SizedBox(height: 32),
-
-          // Error message
+          const SizedBox(height: UsSpacing.xxl),
           if (updateError != null) ...[
-            ShadAlert.destructive(
-              description: Text(updateError),
-            ),
-            const SizedBox(height: 16),
+            ShadAlert.destructive(description: Text(updateError)),
+            const SizedBox(height: UsSpacing.lg),
           ],
-
-          // Save button
           ShadButton(
             onPressed: isUpdating ? null : () async => _save(),
             child: isUpdating
                 ? const ShadSpinner()
                 : const Text('SAVE CHANGES'),
           ),
-
-          const SizedBox(height: 16),
+          const SizedBox(height: UsSpacing.lg),
         ],
       ),
     );

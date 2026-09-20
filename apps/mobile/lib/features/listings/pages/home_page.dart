@@ -65,12 +65,10 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          _SearchBar(
-            controller: _searchController,
-            onSubmitted: _handleSearch,
-            onFilterTap: _showFilterSheet,
-          ),
+          _SearchBar(controller: _searchController, onSubmitted: _handleSearch),
+          const SizedBox(height: UsSpacing.lg),
           const _CategoryChips(),
+          const SizedBox(height: UsSpacing.lg),
           Expanded(
             child: CustomMaterialIndicator(
               onRefresh: () async => di<ListingsViewModel>().refresh(),
@@ -93,25 +91,13 @@ class _HomePageState extends State<HomePage> {
     model.query.value = value;
     model.fetch();
   }
-
-  Future<void> _showFilterSheet() {
-    return showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => const _FilterBottomSheet(),
-    );
-  }
 }
 
 class _SearchBar extends StatelessWidget {
-  const _SearchBar({
-    required this.controller,
-    required this.onSubmitted,
-    required this.onFilterTap,
-  });
+  const _SearchBar({required this.controller, required this.onSubmitted});
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
-  final VoidCallback onFilterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -123,37 +109,15 @@ class _SearchBar extends StatelessWidget {
         UsSpacing.lg,
         0,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: ShadInput(
-              controller: controller,
-              placeholder: const Text('Search textbooks, mini fridge...'),
-              onSubmitted: onSubmitted,
-              trailing: Icon(
-                LucideIcons.search,
-                size: 18,
-                color: theme.colorScheme.mutedForeground,
-              ),
-            ),
-          ),
-          const SizedBox(width: UsSpacing.sm),
-          GestureDetector(
-            onTap: onFilterTap,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                border: .all(color: theme.colorScheme.borderStrong),
-              ),
-              child: Icon(
-                LucideIcons.listFilter,
-                size: 20,
-                color: theme.colorScheme.foreground,
-              ),
-            ),
-          ),
-        ],
+      child: ShadInput(
+        controller: controller,
+        placeholder: const Text('Search textbooks, mini fridge...'),
+        onSubmitted: onSubmitted,
+        trailing: Icon(
+          LucideIcons.search,
+          size: 18,
+          color: theme.colorScheme.mutedForeground,
+        ),
       ),
     );
   }
@@ -212,13 +176,10 @@ class _CategoryChipsState extends State<_CategoryChips> {
     ];
 
     return SizedBox(
-      height: 52,
+      height: 24,
       child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-          horizontal: UsSpacing.lg,
-          vertical: UsSpacing.sm,
-        ),
+        scrollDirection: .horizontal,
+        padding: const .symmetric(horizontal: UsSpacing.lg),
         itemCount: chips.length,
         separatorBuilder: (_, _) => const SizedBox(width: UsSpacing.sm),
         itemBuilder: (_, i) => chips[i],
@@ -243,211 +204,24 @@ class _CategoryChip extends StatelessWidget {
     final theme = ShadTheme.of(context);
     return GestureDetector(
       onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: selected ? theme.colorScheme.primary : theme.colorScheme.card,
-          border: .all(color: theme.colorScheme.borderStrong),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: UsSpacing.md,
-            vertical: UsSpacing.xs,
+      child: ShadCard(
+        backgroundColor: selected
+            ? theme.colorScheme.primary
+            : theme.colorScheme.card,
+        border: selected
+            ? .none
+            : .all(color: theme.colorScheme.border, width: 1),
+        padding: const .symmetric(horizontal: UsSpacing.lg),
+        rowCrossAxisAlignment: .center,
+        child: Text(
+          label,
+          style: theme.textTheme.labelSm.copyWith(
+            color: selected
+                ? theme.colorScheme.primaryForeground
+                : theme.colorScheme.foreground,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
           ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelSm.copyWith(
-              color: selected
-                  ? theme.colorScheme.primaryForeground
-                  : theme.colorScheme.foreground,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterBottomSheet extends StatefulWidget {
-  const _FilterBottomSheet();
-
-  @override
-  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
-}
-
-class _FilterBottomSheetState extends State<_FilterBottomSheet> {
-  int? _selectedCategoryId;
-  List<Category>? _categories;
-
-  @override
-  void initState() {
-    super.initState();
-    final model = di<ListingsViewModel>();
-    _selectedCategoryId = model.categoryId.value;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadCategories();
-    });
-  }
-
-  Future<void> _loadCategories() async {
-    final repo = di<CategoriesRepository>();
-    final result = await repo.list();
-    if (result case Success(value: final response) when mounted) {
-      setState(() => _categories = response.categories);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.7,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.background,
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.borderStrong, width: 2),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              UsSpacing.lg,
-              UsSpacing.lg,
-              UsSpacing.lg,
-              UsSpacing.sm,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'SELECT CATEGORY',
-                  style: theme.textTheme.h3.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Icon(
-                    LucideIcons.x,
-                    size: 24,
-                    color: theme.colorScheme.foreground,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Category list
-          if (_categories == null)
-            const Padding(
-              padding: EdgeInsets.all(UsSpacing.lg),
-              child: Center(child: ShadSpinner()),
-            )
-          else
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  // ALL CATEGORIES option
-                  _FilterOption(
-                    label: 'ALL CATEGORIES',
-                    selected: _selectedCategoryId == null,
-                    onTap: () => setState(() => _selectedCategoryId = null),
-                  ),
-                  for (final cat in _categories!)
-                    _FilterOption(
-                      label: cat.label.toUpperCase(),
-                      selected: _selectedCategoryId == cat.id,
-                      onTap: () => setState(() => _selectedCategoryId = cat.id),
-                    ),
-                ],
-              ),
-            ),
-
-          // Apply button
-          Padding(
-            padding: const EdgeInsets.all(UsSpacing.lg),
-            child: ShadButton(
-              onPressed: _applyFilter,
-              child: const Text('APPLY FILTERS'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _applyFilter() {
-    final model = di<ListingsViewModel>();
-    model.categoryId.value = _selectedCategoryId;
-    model.fetch();
-    Navigator.pop(context);
-  }
-}
-
-class _FilterOption extends StatelessWidget {
-  const _FilterOption({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: UsSpacing.lg,
-          vertical: UsSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: theme.colorScheme.border, width: 0.5),
-          ),
-        ),
-        child: Row(
-          children: [
-            // Checkbox
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: selected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.card,
-                border: .all(color: theme.colorScheme.borderStrong),
-              ),
-              child: selected
-                  ? Icon(
-                      LucideIcons.check,
-                      size: 16,
-                      color: theme.colorScheme.primaryForeground,
-                    )
-                  : null,
-            ),
-            const SizedBox(width: UsSpacing.md),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.p.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
         ),
       ),
     );
