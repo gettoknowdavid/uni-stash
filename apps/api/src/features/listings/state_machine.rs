@@ -72,7 +72,13 @@ pub async fn reserve_listing(
     Ok(listing)
 }
 
-/// Mark a reserved listing as sold. Only the seller can do this.
+/// Mark a listing as sold. Only the seller can do this.
+///
+/// Accepts both `reserved` (buyer reserved it, meetup happened) and `active`
+/// (walk-up sale with no reservation). Inside the same transaction, a
+/// `sale_history` row captures the buyer (`reserved_by`, or NULL for a
+/// walk-up) and the listing's price/barter at sale time — `reserved_by` is
+/// cleared by the UPDATE, so this snapshot is the only record of who bought.
 pub async fn mark_sold(
     pool: &sqlx::PgPool,
     listing_id: Uuid,
@@ -88,10 +94,10 @@ pub async fn mark_sold(
         }
     };
 
-    if row.status != "reserved" {
+    if row.status != "reserved" && row.status != "active" {
         let _ = tx.rollback().await;
         return Err(AppError::Conflict(
-            "listing must be reserved to mark as sold".into(),
+            "listing must be active or reserved to mark as sold".into(),
         ));
     }
     if row.seller_id != seller_id {
@@ -99,10 +105,19 @@ pub async fn mark_sold(
         return Err(AppError::Forbidden);
     }
 
+    // Capture buyer + terms in sale_history BEFORE the UPDATE clears
+    // reserved_by. Same transaction: either both happen or neither.
+    sqlx::query!(
+        "INSERT INTO sale_history (listing_id, buyer_id, seller_id, price, currency, barter_request)
+         SELECT l.id, l.reserved_by, l.seller_id, l.price, l.currency::TEXT, l.barter_request
+         FROM listings l WHERE l.id = $1",
+        listing_id,
+    )
+    .execute(&mut *tx)
+    .await?;
+
     // The CHECK constraint `reserved_fields_consistent` requires reserved_by/
-    // reserved_at to be NULL when status != 'reserved'. We clear them here
-    // to satisfy the constraint. If "who bought it" history is desired,
-    // add a separate `sale_history` table rather than fighting the schema.
+    // reserved_at to be NULL when status != 'reserved', so they are cleared here.
     let listing = sqlx::query_as!(
         crate::features::listings::models::Listing,
         "UPDATE listings

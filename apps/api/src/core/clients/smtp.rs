@@ -168,6 +168,11 @@ mod tests {
             r2_secret_access_key: "".into(),
             r2_endpoint: "".into(),
             r2_public_url_base: "".into(),
+            realtime_provider: "none".into(),
+            pusher_app_id: "".into(),
+            pusher_key: "".into(),
+            pusher_secret: "".into(),
+            pusher_cluster: "".into(),
         }
     }
 

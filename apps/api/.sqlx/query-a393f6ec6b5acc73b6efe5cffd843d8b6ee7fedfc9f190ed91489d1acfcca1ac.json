@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sale_history (listing_id, buyer_id, seller_id, price, currency, barter_request)\n         SELECT l.id, l.reserved_by, l.seller_id, l.price, l.currency::TEXT, l.barter_request\n         FROM listings l WHERE l.id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a393f6ec6b5acc73b6efe5cffd843d8b6ee7fedfc9f190ed91489d1acfcca1ac"
+}

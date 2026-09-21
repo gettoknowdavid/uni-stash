@@ -71,6 +71,29 @@ async fn seller_can_mark_reserved_listing_sold(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn seller_can_mark_active_listing_sold_walk_up(pool: PgPool) {
+    // MVP behavior change: mark-sold accepts `active` listings (walk-up
+    // sale, no reservation). The sale records a NULL buyer.
+    let school = seed_school(&pool).await;
+    let seller = seed_user(&pool, school, "s@test.edu").await;
+    let cat = seed_category(&pool).await;
+    let id = seed_listing(&pool, seller, cat, "active").await;
+
+    let result = state_machine::mark_sold(&pool, id, seller).await;
+    assert!(result.is_ok());
+    let s = get_state(&pool, id).await;
+    assert_eq!(s.status, "sold");
+
+    let buyer: Option<uuid::Uuid> =
+        sqlx::query_scalar("SELECT buyer_id FROM sale_history WHERE listing_id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(buyer.is_none(), "walk-up sale has no buyer");
+}
+
+#[sqlx::test]
 async fn buyer_cannot_mark_sold(pool: PgPool) {
     let school = seed_school(&pool).await;
     let seller = seed_user(&pool, school, "s@test.edu").await;
@@ -83,14 +106,16 @@ async fn buyer_cannot_mark_sold(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn marking_active_listing_sold_returns_conflict(pool: PgPool) {
+async fn marking_active_listing_sold_succeeds_with_null_buyer(pool: PgPool) {
+    // Renamed from `marking_active_listing_sold_returns_conflict`:
+    // mark-sold now accepts active listings for walk-up sales.
     let school = seed_school(&pool).await;
     let seller = seed_user(&pool, school, "s@test.edu").await;
     let cat = seed_category(&pool).await;
     let id = seed_listing(&pool, seller, cat, "active").await;
 
     let result = state_machine::mark_sold(&pool, id, seller).await;
-    assert!(matches!(result, Err(AppError::Conflict(_))));
+    assert!(result.is_ok(), "active listings can be marked sold");
 }
 
 #[sqlx::test]

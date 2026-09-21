@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::{
     core::{
@@ -7,16 +7,30 @@ use crate::{
         db::Db,
         error::AppError,
         rate_limit::PerEmailLimiter,
+        realtime::RealtimePublisher,
     },
     features::{
         admin_auth::AdminAuthRepo, admin_management::AdminManagementRepo, auth::repo::AuthRepo,
-        categories::repo::CategoriesRepo, images::repo::ImagesRepo, listings::repo::ListingsRepo,
-        schools::repo::SchoolsRepo,
+        categories::repo::CategoriesRepo, chats::repo::ChatsRepo, images::repo::ImagesRepo,
+        listings::repo::ListingsRepo, sales::repo::SalesRepo, schools::repo::SchoolsRepo,
     },
 };
 
-/// PLACEHOLDER for the chat session registry.
-pub type WsRegistry = Arc<Mutex<()>>;
+/// Optional downcast handle to the Pusher publisher, for the
+/// `/realtime/auth` channel-signing endpoint. `None` when a non-Pusher
+/// provider (or none at all) is configured.
+pub type PusherHandle = Option<std::sync::Arc<crate::core::realtime::pusher::PusherPublisher>>;
+
+/// `Arc<dyn RealtimePublisher>` with a manual Debug impl (prints the
+/// provider name) so `AppState` can keep `#[derive(Debug)]`.
+#[derive(Clone)]
+pub struct RealtimePublisherHandle(pub Arc<dyn RealtimePublisher>);
+
+impl std::fmt::Debug for RealtimePublisherHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RealtimePublisherHandle({})", self.0.name())
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -24,7 +38,6 @@ pub struct AppState {
     pub jwt_keys: JwtKeys,
     pub r2_client: R2Client,
     pub smtp: SmtpClient,
-    pub ws_registry: WsRegistry,
     pub auth_repo: AuthRepo,
     pub admin_auth_repo: AdminAuthRepo,
     pub admin_management_repo: AdminManagementRepo,
@@ -32,17 +45,45 @@ pub struct AppState {
     pub images_repo: ImagesRepo,
     pub schools_repo: SchoolsRepo,
     pub categories_repo: CategoriesRepo,
+    pub chats_repo: ChatsRepo,
+    pub sales_repo: SalesRepo,
+    /// Realtime event publisher (Pusher Channels for MVP). Provider is
+    /// selected at boot from `REALTIME_PROVIDER`; see `core::realtime`.
+    /// Manual Debug impl: `Arc<dyn Trait>` can't derive it.
+    pub realtime: RealtimePublisherHandle,
+    /// Downcast handle to the Pusher publisher for channel auth signing.
+    /// `None` unless `REALTIME_PROVIDER=pusher`.
+    pub realtime_pusher: PusherHandle,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
 impl AppState {
     pub fn new(config: &Config, db: Db) -> anyhow::Result<Self, AppError> {
+        config
+            .validate()
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("config validation failed: {e:#}")))?;
+
         let pool = db.pool.clone();
         let r2_client = R2Client::from_config(config);
+
+        // Realtime publisher is built once at boot; provider-agnostic.
+        let realtime = crate::core::realtime::from_config(config);
+        let realtime_pusher: PusherHandle = if config.realtime_provider == "pusher" {
+            Some(Arc::new(
+                crate::core::realtime::pusher::PusherPublisher::new(
+                    config.pusher_app_id.clone(),
+                    config.pusher_key.clone(),
+                    config.pusher_secret.clone(),
+                    config.pusher_cluster.clone(),
+                ),
+            ))
+        } else {
+            None
+        };
+
         Ok(Self {
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
             smtp: SmtpClient::new(config)?,
-            ws_registry: Arc::new(Mutex::new(())),
             auth_repo: AuthRepo::new(pool.clone()),
             admin_auth_repo: AdminAuthRepo::new(pool.clone()),
             admin_management_repo: AdminManagementRepo::new(pool.clone()),
@@ -50,6 +91,10 @@ impl AppState {
             images_repo: ImagesRepo::new(pool.clone()),
             schools_repo: SchoolsRepo::new(pool.clone()),
             categories_repo: CategoriesRepo::new(pool.clone()),
+            chats_repo: ChatsRepo::new(pool.clone()),
+            sales_repo: SalesRepo::new(pool.clone()),
+            realtime: RealtimePublisherHandle(realtime),
+            realtime_pusher,
             email_limiter: PerEmailLimiter::new(),
             r2_client,
             db: db.pool,
@@ -86,6 +131,11 @@ mod tests {
             r2_endpoint: "".into(),
             r2_public_url_base: "".into(),
             frontend_base_url: "https://uni-stash.com".into(),
+            realtime_provider: "none".into(),
+            pusher_app_id: "".into(),
+            pusher_key: "".into(),
+            pusher_secret: "".into(),
+            pusher_cluster: "".into(),
         }
     }
 
@@ -118,7 +168,6 @@ mod tests {
         ));
         assert!(Arc::ptr_eq(&state.r2_client.inner, &copy.r2_client.inner));
         // SmtpClient clone is tested in clients::smtp::tests.
-        assert!(Arc::ptr_eq(&state.ws_registry, &copy.ws_registry));
         // db is PgPool — Arc-backed by sqlx, cheap by construction.
     }
 
@@ -128,13 +177,5 @@ mod tests {
         config.jwt_private_key = "not-a-pem".into();
         let err = AppState::new(&config, test_db()).unwrap_err();
         assert!(matches!(err, AppError::Internal(_)));
-    }
-
-    #[actix_rt::test]
-    async fn ws_registry_placeholder_is_lockable() {
-        // Trivially true now; this test's real job is to break loudly the day
-        // CM-7.1 changes the alias type and the lock semantics change.
-        let state = AppState::new(&test_config(), test_db()).unwrap();
-        let _guard = state.ws_registry.lock().unwrap();
     }
 }

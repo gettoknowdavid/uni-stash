@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id,\n                      c.listing_id,\n                      l.title AS listing_title,\n                      u.id AS counterpart_id,\n                      u.display_name AS counterpart_name,\n                      u.photo_url AS counterpart_photo_url,\n                      (SELECT m.body FROM messages m WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_preview,\n                      c.last_message_at,\n                      (SELECT COUNT(*)::BIGINT FROM messages m WHERE m.chat_id = c.id AND m.sender_id <> $1 AND m.read_at IS NULL) AS \"unread_count!\",\n                      c.created_at\n               FROM chats c\n               JOIN listings l ON l.id = c.listing_id\n               JOIN users u ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END\n               WHERE c.buyer_id = $1 OR c.seller_id = $1\n               ORDER BY COALESCE(c.last_message_at, c.created_at) DESC\n               LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "chats",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "listing_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "chats",
+            "name": "listing_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "listing_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "counterpart_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "counterpart_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "counterpart_photo_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "photo_url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "last_message_preview",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_message_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "chats",
+            "name": "last_message_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "unread_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "chats",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "6e48b01521286d83c9bf165cd0cc327448f6c2845fd92a177e7222d2c4424852"
+}

@@ -2,6 +2,8 @@ pub mod admin_auth;
 pub mod admin_management;
 pub mod auth;
 pub mod categories;
+pub mod chats;
 pub mod images;
 pub mod listings;
+pub mod sales;
 pub mod schools;

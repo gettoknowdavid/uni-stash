@@ -203,7 +203,10 @@ async fn auto_unreserve_does_not_race_concurrent_mark_sold(pool: PgPool) {
     );
 
     let successes = [r1.is_ok(), r2.is_ok()].iter().filter(|&&x| x).count();
-    assert_eq!(successes, 1);
+    // mark_sold now accepts `active` listings (walk-up sale), so if
+    // unreserve wins the lock first, mark_sold may legitimately succeed
+    // after it (reserved -> active -> sold). At least one must succeed.
+    assert!(successes >= 1, "at least one operation must succeed");
 
     let s = get_state(&pool, id).await;
     assert!(

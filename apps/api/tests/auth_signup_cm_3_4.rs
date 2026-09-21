@@ -45,6 +45,11 @@ fn test_config() -> Config {
         r2_endpoint: "".into(),
         r2_public_url_base: "".into(),
         frontend_base_url: "https://uni-stash.com".into(),
+        realtime_provider: "none".into(),
+        pusher_app_id: "".into(),
+        pusher_key: "".into(),
+        pusher_secret: "".into(),
+        pusher_cluster: "".into(),
     }
 }
 

@@ -21,6 +21,11 @@ pub struct Config {
     pub r2_secret_access_key: String,
     pub r2_endpoint: String,
     pub r2_public_url_base: String,
+    pub realtime_provider: String,
+    pub pusher_app_id: String,
+    pub pusher_key: String,
+    pub pusher_secret: String,
+    pub pusher_cluster: String,
 }
 
 impl Config {
@@ -104,7 +109,44 @@ impl Config {
             r2_secret_access_key: required(&get, "R2_SECRET_ACCESS_KEY")?,
             r2_endpoint: required(&get, "R2_ENDPOINT")?,
             r2_public_url_base: required(&get, "R2_PUBLIC_URL_BASE")?,
+
+            // Realtime is OPTIONAL: unset REALTIME_PROVIDER means "no
+            // realtime" — the server runs with the NullPublisher and chat
+            // works over REST polling only. When "pusher" is selected, its
+            // four vars are required and fail fast if missing.
+            realtime_provider: match get("REALTIME_PROVIDER") {
+                Ok(v) if !v.trim().is_empty() => v.trim().to_string(),
+                _ => "none".to_string(),
+            },
+            pusher_app_id: optional(&get, "PUSHER_APP_ID")?,
+            pusher_key: optional(&get, "PUSHER_KEY")?,
+            pusher_secret: optional(&get, "PUSHER_SECRET")?,
+            pusher_cluster: optional(&get, "PUSHER_CLUSTER")?,
         })
+    }
+
+    /// Cross-field validation that can't be expressed in `from_getter`:
+    /// selecting the Pusher realtime provider requires all four Pusher vars.
+    pub fn validate(&self) -> anyhow::Result<()> {
+        if self.realtime_provider == "pusher" {
+            let missing = [
+                ("PUSHER_APP_ID", &self.pusher_app_id),
+                ("PUSHER_KEY", &self.pusher_key),
+                ("PUSHER_SECRET", &self.pusher_secret),
+                ("PUSHER_CLUSTER", &self.pusher_cluster),
+            ]
+            .iter()
+            .filter(|(_, v)| v.trim().is_empty())
+            .map(|(name, _)| *name)
+            .collect::<Vec<_>>();
+            if !missing.is_empty() {
+                anyhow::bail!(
+                    "REALTIME_PROVIDER=pusher requires these vars to be set: {}",
+                    missing.join(", ")
+                );
+            }
+        }
+        Ok(())
     }
 }
 
@@ -119,6 +161,16 @@ where
         anyhow::bail!("{name} must not be empty");
     }
     Ok(value)
+}
+
+/// Reads an optional var: empty/missing resolves to an empty String, but a
+/// var is validated for blankness only when its feature requires it
+/// (see `Config::validate`).
+fn optional<F>(get: &F, name: &str) -> anyhow::Result<String>
+where
+    F: for<'a> Fn(&'a str) -> Result<String, VarError>,
+{
+    Ok(get(name).unwrap_or_default())
 }
 
 /// Loads a JWT key (private or public) with support for both file-based and

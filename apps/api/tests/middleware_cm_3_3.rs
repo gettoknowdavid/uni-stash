@@ -49,6 +49,11 @@ fn test_state() -> web::Data<AppState> {
         r2_endpoint: "https://test.r2.cloudflarestorage.com".into(),
         r2_public_url_base: "https://test.r2.cloudflarestorage.com".into(),
         frontend_base_url: "https://uni-stash.com".into(),
+        realtime_provider: "none".into(),
+        pusher_app_id: "".into(),
+        pusher_key: "".into(),
+        pusher_secret: "".into(),
+        pusher_cluster: "".into(),
     };
     let db = Db {
         pool: sqlx::postgres::PgPoolOptions::new()
