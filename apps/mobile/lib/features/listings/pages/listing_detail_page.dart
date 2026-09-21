@@ -327,7 +327,7 @@ class _ListingDetailView extends StatelessWidget {
                 ),
               ],
             ),
-            footer: isMe ? null : const _MessageSellerButton(),
+            footer: isMe ? null : const _ReserveButton(),
           );
         },
       ),
@@ -384,7 +384,7 @@ class _SellerDetails extends StatelessWidget {
   }
 }
 
-class _MessageSellerButton extends StatelessWidget {
+class _ReserveButton extends StatelessWidget {
   const new();
 
   @override
@@ -402,7 +402,7 @@ class _MessageSellerButton extends StatelessWidget {
         padding: .all(16),
         child: ShadButton(
           width: double.infinity,
-          child: Text('MESSAGE SELLER'),
+          child: Text('RESERVE'),
         ),
       ),
     );
