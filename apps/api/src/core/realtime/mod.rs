@@ -17,10 +17,12 @@
 
 use async_trait::async_trait;
 
-/// Channel naming convention shared by backend publishers and mobile
-/// subscribers. `chat_channel(id)` → `private-chat-{id}`.
-pub fn chat_channel(chat_id: uuid::Uuid) -> String {
-    format!("private-chat-{chat_id}")
+/// Build a private Pusher channel name from an arbitrary suffix.
+/// `private_channel("chat-abc")` → `"private-chat-abc"`.
+///
+/// Used by both chat (suffix = chat UUID) and notification features.
+pub fn private_channel(suffix: &str) -> String {
+    format!("private-{suffix}")
 }
 
 /// What the backend publishes over the realtime transport.
@@ -47,6 +49,15 @@ pub trait RealtimePublisher: Send + Sync {
     /// Publish `event` to `channel`. Returns Err only for logging purposes
     /// upstream — callers must degrade gracefully.
     async fn publish(&self, channel: &str, event: &RealtimeEvent) -> Result<(), anyhow::Error>;
+
+    /// Sign a private-channel subscription auth response for a client.
+    ///
+    /// Returns the provider-specific auth string (e.g. Pusher's
+    /// `{"auth":"{key}:{signature}"}` JSON). Returns `None` if the
+    /// provider doesn't support channel auth (e.g. null publisher).
+    fn authenticate_channel(&self, _socket_id: &str, _channel_name: &str) -> Option<String> {
+        None
+    }
 }
 
 /// No-op publisher for tests and for deployments without realtime
@@ -61,6 +72,10 @@ impl RealtimePublisher for NullPublisher {
 
     async fn publish(&self, _channel: &str, _event: &RealtimeEvent) -> Result<(), anyhow::Error> {
         Ok(())
+    }
+
+    fn authenticate_channel(&self, _socket_id: &str, _channel_name: &str) -> Option<String> {
+        None
     }
 }
 

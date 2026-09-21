@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod clients;
 pub mod config;
+pub mod cursor;
 pub mod db;
 pub mod error;
 pub mod governor;
@@ -8,6 +9,7 @@ pub mod jobs;
 pub mod json;
 pub mod logging;
 pub mod money;
+pub mod notifications;
 pub mod rate_limit;
 pub mod realtime;
 pub mod response;

@@ -35,6 +35,8 @@ use uni_stash_be::features::images::repo::ImagesRepo;
 //         pusher_key: "".into(),
 //         pusher_secret: "".into(),
 //         pusher_cluster: "".into(),
+//         pusher_instance_id: "".into(),
+//         pusher_secret_key: "".into(),
 //     }
 // }
 

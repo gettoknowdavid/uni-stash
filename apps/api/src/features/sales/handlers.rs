@@ -1,58 +1,19 @@
 use actix_web::{HttpResponse, web};
-use base64::Engine;
 use serde::Deserialize;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::core::{
     auth::middleware::AuthUser,
+    cursor::{Cursor, decode_cursor, encode_cursor},
     error::AppError,
     response::{ApiResponse, ErrorBody},
     state::AppState,
 };
 use crate::features::sales::repo::SaleResponse;
 
-/// Opaque cursor: `created_at_unix_nanos:sale_id` (mirrors the listings
-/// cursor format so mobile can treat them identically).
 #[derive(Deserialize)]
 pub struct SalesQuery {
     pub cursor: Option<String>,
     pub limit: Option<i64>,
-}
-
-struct Cursor {
-    created_at: OffsetDateTime,
-    id: Uuid,
-}
-
-fn decode_cursor(raw: &str) -> Result<Cursor, AppError> {
-    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(raw)
-        .map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
-    let s =
-        String::from_utf8(decoded).map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
-    let mut parts = s.split(':');
-    let nanos = parts
-        .next()
-        .and_then(|p| p.parse::<i128>().ok())
-        .ok_or_else(|| AppError::BadRequest("invalid cursor".into()))?;
-    let id = parts
-        .next()
-        .and_then(|p| Uuid::parse_str(p).ok())
-        .ok_or_else(|| AppError::BadRequest("invalid cursor".into()))?;
-    Ok(Cursor {
-        created_at: OffsetDateTime::from_unix_timestamp_nanos(nanos)
-            .map_err(|_| AppError::BadRequest("invalid cursor".into()))?,
-        id,
-    })
-}
-
-fn encode_cursor(created_at: OffsetDateTime, id: Uuid) -> String {
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(format!(
-        "{}:{}",
-        created_at.unix_timestamp_nanos(),
-        id
-    ))
 }
 
 fn paginate(rows: Vec<SaleResponse>, limit: i64) -> (Vec<SaleResponse>, Option<String>) {
@@ -63,7 +24,10 @@ fn paginate(rows: Vec<SaleResponse>, limit: i64) -> (Vec<SaleResponse>, Option<S
     }
     let next_cursor = has_more.then(|| {
         let last = rows.last().expect("has_more implies non-empty");
-        encode_cursor(last.created_at, last.id)
+        encode_cursor(&Cursor {
+            created_at: last.created_at,
+            id: last.id,
+        })
     });
     (rows, next_cursor)
 }

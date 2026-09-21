@@ -26,6 +26,9 @@ pub struct Config {
     pub pusher_key: String,
     pub pusher_secret: String,
     pub pusher_cluster: String,
+    // Pusher Beams (push notifications) — separate product from Channels.
+    pub pusher_instance_id: String,
+    pub pusher_secret_key: String,
 }
 
 impl Config {
@@ -122,6 +125,8 @@ impl Config {
             pusher_key: optional(&get, "PUSHER_KEY")?,
             pusher_secret: optional(&get, "PUSHER_SECRET")?,
             pusher_cluster: optional(&get, "PUSHER_CLUSTER")?,
+            pusher_instance_id: optional(&get, "PUSHER_INSTANCE_ID")?,
+            pusher_secret_key: optional(&get, "PUSHER_SECRET_KEY")?,
         })
     }
 

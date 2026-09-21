@@ -5,5 +5,6 @@ pub mod categories;
 pub mod chats;
 pub mod images;
 pub mod listings;
+pub mod notifications;
 pub mod sales;
 pub mod schools;

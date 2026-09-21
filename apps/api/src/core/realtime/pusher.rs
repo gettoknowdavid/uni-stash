@@ -40,16 +40,6 @@ impl PusherPublisher {
         }
     }
 
-    /// Sign a private-channel subscription auth response for a client.
-    ///
-    /// Returns the JSON string `{ "auth": "{key}:{signature}" }` that the
-    /// client SDK expects from the auth endpoint.
-    pub fn authenticate_channel(&self, socket_id: &str, channel_name: &str) -> String {
-        let payload = format!("{socket_id}:{channel_name}");
-        let signature = self.sign(&payload);
-        serde_json::json!({ "auth": format!("{}:{}", self.key, signature) }).to_string()
-    }
-
     fn sign(&self, payload: &str) -> String {
         let mut mac = HmacSha256::new_from_slice(self.secret.as_bytes())
             .expect("HMAC accepts any key length");
@@ -114,6 +104,12 @@ impl RealtimePublisher for PusherPublisher {
         }
         Ok(())
     }
+
+    fn authenticate_channel(&self, socket_id: &str, channel_name: &str) -> Option<String> {
+        let payload = format!("{socket_id}:{channel_name}");
+        let signature = self.sign(&payload);
+        Some(serde_json::json!({ "auth": format!("{}:{}", self.key, signature) }).to_string())
+    }
 }
 
 #[cfg(test)]
@@ -128,8 +124,13 @@ mod tests {
             "test-secret".into(),
             "eu".into(),
         );
-        let a = publisher.authenticate_channel("100.1", "private-chat-abc");
-        let b = publisher.authenticate_channel("100.1", "private-chat-abc");
+        use RealtimePublisher as _;
+        let a = publisher
+            .authenticate_channel("100.1", "private-chat-abc")
+            .unwrap();
+        let b = publisher
+            .authenticate_channel("100.1", "private-chat-abc")
+            .unwrap();
         assert_eq!(a, b, "same inputs must give same signature");
         assert!(a.contains("test-key:"), "auth must be prefixed with key");
         assert!(a.starts_with('{') && a.ends_with('}'));
@@ -143,8 +144,13 @@ mod tests {
             "test-secret".into(),
             "eu".into(),
         );
-        let a = publisher.authenticate_channel("100.1", "private-chat-abc");
-        let b = publisher.authenticate_channel("200.2", "private-chat-abc");
+        use RealtimePublisher as _;
+        let a = publisher
+            .authenticate_channel("100.1", "private-chat-abc")
+            .unwrap();
+        let b = publisher
+            .authenticate_channel("200.2", "private-chat-abc")
+            .unwrap();
         assert_ne!(a, b);
     }
 }

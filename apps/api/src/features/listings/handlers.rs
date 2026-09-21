@@ -1,16 +1,17 @@
 use actix_web::{HttpResponse, web};
+use sqlx::Row;
 use validator::Validate;
 
 use crate::{
     core::{
         auth::middleware::AuthUser,
+        cursor::decode_cursor,
         error::AppError,
         json,
         response::{ApiResponse, ErrorBody},
         state::AppState,
     },
     features::listings::{
-        cursor::decode_cursor,
         dtos::{
             CreateListingRequest, InsertListingInput, ListListingsQuery, ListListingsResponse,
             ListingFilters, ListingPatch, ListingResponse, UpdateListingRequest,
@@ -198,6 +199,21 @@ pub async fn reserve_listing(
     // identity" pattern used in CM-4.1.
     let listing = state_machine::reserve_listing(&state.db, path.into_inner(), user.id).await?;
 
+    // Best-effort push notification to the seller.
+    if let Err(err) = state
+        .push_sender
+        .0
+        .send_to_user(
+            listing.seller_id,
+            "Item Reserved",
+            &format!("{} reserved your listing", user.display_name),
+            Some(&[("listing_id", &listing.id.to_string())]),
+        )
+        .await
+    {
+        tracing::warn!(listing_id = %listing.id, error = %err, "push notification failed");
+    }
+
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(
             ListingResponse::from(listing),
@@ -211,7 +227,31 @@ pub async fn mark_sold(
     path: web::Path<uuid::Uuid>,
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
-    let listing = state_machine::mark_sold(&state.db, path.into_inner(), user.id).await?;
+    let listing_id = path.into_inner();
+    let listing = state_machine::mark_sold(&state.db, listing_id, user.id).await?;
+
+    // Best-effort push notification to the buyer (if any).
+    // Query the sale_history for the buyer_id (set during mark_sold transaction).
+    if let Ok(Some(r)) = sqlx::query(
+        "SELECT buyer_id FROM sale_history WHERE listing_id = $1 ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(listing_id)
+    .fetch_optional(&state.db)
+    .await
+        && let Ok(buyer_id) = r.try_get::<uuid::Uuid, _>("buyer_id")
+        && let Err(err) = state
+            .push_sender
+            .0
+            .send_to_user(
+                buyer_id,
+                "Item Sold",
+                &format!("{} marked '{}' as sold", user.display_name, listing.title),
+                Some(&[("listing_id", &listing.id.to_string())]),
+            )
+            .await
+    {
+        tracing::warn!(listing_id = %listing.id, error = %err, "push notification failed");
+    }
 
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(

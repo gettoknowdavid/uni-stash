@@ -4,9 +4,8 @@ use sqlx::QueryBuilder;
 use uuid::Uuid;
 
 use crate::{
-    core::{clients::R2Client, error::AppError, money::Currency},
+    core::{clients::R2Client, cursor::encode_cursor, error::AppError, money::Currency},
     features::listings::{
-        cursor::encode_cursor,
         dtos::{
             CategorySummary, DEFAULT_CURRENCY, ImageRow, ImageSummary, InsertListingInput,
             ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary, ListingSummaryRow,
@@ -170,12 +169,10 @@ impl ListingsRepo {
             None
         } else if has_more {
             let last = listings.last().expect("has_more implies non-empty");
-            Some(encode_cursor(
-                &crate::features::listings::cursor::ListingCursor {
-                    created_at: last.created_at,
-                    id: last.id,
-                },
-            ))
+            Some(encode_cursor(&crate::core::cursor::Cursor {
+                created_at: last.created_at,
+                id: last.id,
+            }))
         } else {
             None
         };

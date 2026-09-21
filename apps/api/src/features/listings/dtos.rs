@@ -2,8 +2,11 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::{
-    core::money::{Currency, Money},
-    features::listings::{cursor, models},
+    core::{
+        cursor,
+        money::{Currency, Money},
+    },
+    features::listings::models,
 };
 
 /// Default settlement currency. Clients may override per-request; the DB
@@ -167,7 +170,7 @@ pub struct ListingFilters {
     pub max_price: Option<i64>,
     pub status: models::ListingStatus,
     pub seller: Option<uuid::Uuid>,
-    pub cursor: Option<cursor::ListingCursor>,
+    pub cursor: Option<cursor::Cursor>,
     pub limit: i64,
 }
 

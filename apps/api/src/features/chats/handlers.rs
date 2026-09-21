@@ -1,21 +1,19 @@
 use actix_web::{HttpResponse, web};
-use base64::Engine;
 use serde::Deserialize;
-use time::OffsetDateTime;
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::core::{
     auth::middleware::AuthUser,
+    cursor::{Cursor, decode_cursor, encode_cursor},
     error::AppError,
     json::ValidatedJson,
-    realtime::{RealtimeEvent, chat_channel},
+    realtime::{RealtimeEvent, private_channel},
     response::{ApiResponse, ErrorBody},
     state::AppState,
 };
-use crate::features::chats::models::{
-    ChatThreadResponse, CreateChatRequest, MessageResponse, SendMessageRequest,
-};
+use crate::features::chats::dtos::{CreateChatRequest, SendMessageRequest};
+use crate::features::chats::models::{ChatThreadResponse, MessageResponse};
 
 #[derive(serde::Serialize)]
 struct ChatCreatedResponse {
@@ -37,41 +35,6 @@ struct MessageListResponse {
 pub struct MessagesQuery {
     pub cursor: Option<String>,
     pub limit: Option<i64>,
-}
-
-struct Cursor {
-    created_at: OffsetDateTime,
-    id: Uuid,
-}
-
-fn decode_cursor(raw: &str) -> Result<Cursor, AppError> {
-    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(raw)
-        .map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
-    let s =
-        String::from_utf8(decoded).map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
-    let mut parts = s.split(':');
-    let nanos = parts
-        .next()
-        .and_then(|p| p.parse::<i128>().ok())
-        .ok_or_else(|| AppError::BadRequest("invalid cursor".into()))?;
-    let id = parts
-        .next()
-        .and_then(|p| Uuid::parse_str(p).ok())
-        .ok_or_else(|| AppError::BadRequest("invalid cursor".into()))?;
-    Ok(Cursor {
-        created_at: OffsetDateTime::from_unix_timestamp_nanos(nanos)
-            .map_err(|_| AppError::BadRequest("invalid cursor".into()))?,
-        id,
-    })
-}
-
-fn encode_cursor(created_at: OffsetDateTime, id: Uuid) -> String {
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(format!(
-        "{}:{}",
-        created_at.unix_timestamp_nanos(),
-        id
-    ))
 }
 
 /// Verify the requester is a participant of the chat; 404 if the chat
@@ -174,7 +137,7 @@ pub async fn list_messages(
         None => None,
     };
 
-    let rows = state
+    let mut rows = state
         .chats_repo
         .messages(
             chat_id,
@@ -185,13 +148,15 @@ pub async fn list_messages(
         .await?;
 
     let has_more = rows.len() as i64 > limit;
-    let mut rows = rows;
     if has_more {
         rows.truncate(limit as usize);
     }
     let next_cursor = has_more.then(|| {
         let last = rows.last().expect("has_more implies non-empty");
-        encode_cursor(last.created_at, last.id)
+        encode_cursor(&Cursor {
+            created_at: last.created_at,
+            id: last.id,
+        })
     });
 
     Ok(
@@ -230,7 +195,7 @@ pub async fn send_message(
         .realtime
         .0
         .publish(
-            &chat_channel(chat_id),
+            &private_channel(&chat_id.to_string()),
             &RealtimeEvent::MessageNew { chat_id },
         )
         .await
@@ -240,6 +205,34 @@ pub async fn send_message(
             error = %err,
             "realtime publish failed (message still persisted)"
         );
+    }
+
+    // Best-effort push notification to the other participant.
+    if let Ok(Some((buyer_id, seller_id))) = state.chats_repo.participants(chat_id).await {
+        let recipient = if user.id == buyer_id {
+            seller_id
+        } else {
+            buyer_id
+        };
+        let sender_name = &user.display_name;
+        let preview = if body.body.len() > 80 {
+            &body.body[..80]
+        } else {
+            &body.body
+        };
+        if let Err(err) = state
+            .push_sender
+            .0
+            .send_to_user(
+                recipient,
+                sender_name,
+                preview,
+                Some(&[("chat_id", &chat_id.to_string())]),
+            )
+            .await
+        {
+            tracing::warn!(chat_id = %chat_id, error = %err, "push notification failed");
+        }
     }
 
     Ok(
@@ -267,7 +260,7 @@ pub async fn mark_read(
             .realtime
             .0
             .publish(
-                &chat_channel(chat_id),
+                &private_channel(&chat_id.to_string()),
                 &RealtimeEvent::MessageRead {
                     chat_id,
                     last_read_message_id: last_read_id,
@@ -310,11 +303,11 @@ pub async fn realtime_auth(
         return Err(AppError::BadRequest("invalid socket_id".into()));
     }
 
-    let publisher = state
-        .realtime_pusher
-        .as_ref()
+    let auth = state
+        .realtime
+        .0
+        .authenticate_channel(socket_id, &body.channel_name)
         .ok_or_else(|| AppError::BadRequest("realtime channel auth is not configured".into()))?;
-    let auth = publisher.authenticate_channel(socket_id, &body.channel_name);
 
     Ok(HttpResponse::Ok().body(auth))
 }

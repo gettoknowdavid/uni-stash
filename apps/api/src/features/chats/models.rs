@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 /// Wire shape for a chat thread in the "my chats" list.
@@ -30,15 +30,4 @@ pub struct MessageResponse {
     pub read_at: Option<time::OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
-}
-
-#[derive(Debug, Deserialize, validator::Validate)]
-pub struct CreateChatRequest {
-    pub listing_id: Uuid,
-}
-
-#[derive(Debug, Deserialize, validator::Validate)]
-pub struct SendMessageRequest {
-    #[validate(length(min = 1, max = 5000))]
-    pub body: String,
 }

@@ -12,14 +12,21 @@ use crate::{
     features::{
         admin_auth::AdminAuthRepo, admin_management::AdminManagementRepo, auth::repo::AuthRepo,
         categories::repo::CategoriesRepo, chats::repo::ChatsRepo, images::repo::ImagesRepo,
-        listings::repo::ListingsRepo, sales::repo::SalesRepo, schools::repo::SchoolsRepo,
+        listings::repo::ListingsRepo, notifications::repo::NotificationsRepo,
+        sales::repo::SalesRepo, schools::repo::SchoolsRepo,
     },
 };
 
-/// Optional downcast handle to the Pusher publisher, for the
-/// `/realtime/auth` channel-signing endpoint. `None` when a non-Pusher
-/// provider (or none at all) is configured.
-pub type PusherHandle = Option<std::sync::Arc<crate::core::realtime::pusher::PusherPublisher>>;
+/// `Arc<dyn PushSender>` with a manual Debug impl (prints the
+/// provider name) so `AppState` can keep `#[derive(Debug)]`.
+#[derive(Clone)]
+pub struct PushSenderHandle(pub std::sync::Arc<dyn crate::core::notifications::PushSender>);
+
+impl std::fmt::Debug for PushSenderHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "PushSenderHandle({})", self.0.name())
+    }
+}
 
 /// `Arc<dyn RealtimePublisher>` with a manual Debug impl (prints the
 /// provider name) so `AppState` can keep `#[derive(Debug)]`.
@@ -46,14 +53,15 @@ pub struct AppState {
     pub schools_repo: SchoolsRepo,
     pub categories_repo: CategoriesRepo,
     pub chats_repo: ChatsRepo,
+    pub notifications_repo: NotificationsRepo,
     pub sales_repo: SalesRepo,
     /// Realtime event publisher (Pusher Channels for MVP). Provider is
     /// selected at boot from `REALTIME_PROVIDER`; see `core::realtime`.
     /// Manual Debug impl: `Arc<dyn Trait>` can't derive it.
     pub realtime: RealtimePublisherHandle,
-    /// Downcast handle to the Pusher publisher for channel auth signing.
-    /// `None` unless `REALTIME_PROVIDER=pusher`.
-    pub realtime_pusher: PusherHandle,
+    /// Push notification sender (Pusher Beams for MVP). Provider is
+    /// selected at boot; see `core::notifications`.
+    pub push_sender: PushSenderHandle,
     /// Per-email sliding-window rate limiter (in-memory, 30 req / 60 s).
     pub email_limiter: PerEmailLimiter,
 }
@@ -68,18 +76,7 @@ impl AppState {
 
         // Realtime publisher is built once at boot; provider-agnostic.
         let realtime = crate::core::realtime::from_config(config);
-        let realtime_pusher: PusherHandle = if config.realtime_provider == "pusher" {
-            Some(Arc::new(
-                crate::core::realtime::pusher::PusherPublisher::new(
-                    config.pusher_app_id.clone(),
-                    config.pusher_key.clone(),
-                    config.pusher_secret.clone(),
-                    config.pusher_cluster.clone(),
-                ),
-            ))
-        } else {
-            None
-        };
+        // Push sender is built once at boot; provider-agnostic.
 
         Ok(Self {
             jwt_keys: JwtKeys::from_pem(&config.jwt_private_key, &config.jwt_public_key)?,
@@ -92,9 +89,10 @@ impl AppState {
             schools_repo: SchoolsRepo::new(pool.clone()),
             categories_repo: CategoriesRepo::new(pool.clone()),
             chats_repo: ChatsRepo::new(pool.clone()),
+            notifications_repo: NotificationsRepo::new(pool.clone()),
             sales_repo: SalesRepo::new(pool.clone()),
             realtime: RealtimePublisherHandle(realtime),
-            realtime_pusher,
+            push_sender: PushSenderHandle(crate::core::notifications::from_config(config)),
             email_limiter: PerEmailLimiter::new(),
             r2_client,
             db: db.pool,
@@ -136,6 +134,8 @@ mod tests {
             pusher_key: "".into(),
             pusher_secret: "".into(),
             pusher_cluster: "".into(),
+            pusher_instance_id: "".into(),
+            pusher_secret_key: "".into(),
         }
     }
 
