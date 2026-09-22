@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
@@ -163,9 +163,11 @@ class _ProfileContent extends SignalHookWidget {
             onPressed: () => context.push(UsRoutes.editProfile),
             child: const Text('EDIT PROFILE'),
           ),
-          const SizedBox(height: 64),
+          const SizedBox(height: 48),
           _StatsStrip(stats: stats),
-          const SizedBox(height: 64),
+          const SizedBox(height: 48),
+          const _SalesHistorySection(),
+          const SizedBox(height: 48),
           const _ProfileMenu(),
           const SizedBox(height: 32),
         ],
@@ -191,7 +193,6 @@ String _emailTag(String email) {
   final domain = email.split('@').last;
   return '@${domain.toUpperCase()}';
 }
-
 
 class _VerifiedStatusRow extends StatelessWidget {
   const _VerifiedStatusRow();
@@ -302,6 +303,50 @@ class _StatsDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(width: 2, color: UsPrimitives.neutral900);
+  }
+}
+
+/// Entry points to the sale-history screens (guide 6.11).
+class _SalesHistorySection extends StatelessWidget {
+  const _SalesHistorySection();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('SALES HISTORY', style: theme.textTheme.labelSm),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: Icon(
+              LucideIcons.shoppingBag,
+              color: theme.colorScheme.primary,
+            ),
+            title: const Text('My Purchases'),
+            trailing: Icon(
+              LucideIcons.chevronRight,
+              color: theme.colorScheme.mutedForeground,
+            ),
+            onTap: () => context.push(UsRoutes.myPurchases),
+          ),
+          ListTile(
+            leading: Icon(
+              LucideIcons.store,
+              color: theme.colorScheme.primary,
+            ),
+            title: const Text('My Sales'),
+            trailing: Icon(
+              LucideIcons.chevronRight,
+              color: theme.colorScheme.mutedForeground,
+            ),
+            onTap: () => context.push(UsRoutes.mySales),
+          ),
+        ],
+      ),
+    );
   }
 }
 

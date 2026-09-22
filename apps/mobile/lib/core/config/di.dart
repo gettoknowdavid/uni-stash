@@ -111,8 +111,14 @@ void _registerListings() {
     () => ListingDraftRepository(di<FlutterSecureStorage>()),
   );
   di.registerLazySingleton<ListingsViewModel>(
-    () => ListingsViewModel(di<ListingsRepository>()),
-    onCreated: (instance) => instance.fetch(),
+    () => ListingsViewModel(
+      di<ListingsRepository>(),
+      di<CategoriesRepository>(),
+    ),
+    onCreated: (instance) {
+      instance.fetch();
+      instance.loadCategories();
+    },
   );
 }
 

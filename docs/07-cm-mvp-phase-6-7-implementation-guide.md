@@ -2281,16 +2281,16 @@ apps/mobile/lib/
 
 ### Phase 6
 
-- [ ] **6.6** ReserveButton calls `POST /listings/{id}/reserve`
-- [ ] **6.6** 409 Conflict triggers refresh + toast "no longer available"
-- [ ] **6.6** Email not verified → shows verification prompt dialog
-- [ ] **6.7** Seller footer shows "Mark as Sold" + "Unreserve" when reserved
-- [ ] **6.7** Buyer footer shows "Awaiting meetup" + "Unreserve" when reserved by them
-- [ ] **6.8** "Chat with seller" button creates/fetches chat → navigates to chat page
-- [ ] **6.9** My Purchases page shows bought items with cursor pagination
-- [ ] **6.10** My Sales page shows sold items with cursor pagination
-- [ ] **6.11** Profile page has entry points to Purchases and Sales
-- [ ] **6.12** Report entry point visible to non-owners
+- [x] **6.6** ReserveButton calls `POST /listings/{id}/reserve`
+- [x] **6.6** 409 Conflict triggers refresh + toast "no longer available"
+- [x] **6.6** Email not verified → shows verification prompt dialog
+- [x] **6.7** Seller footer shows "Mark as Sold" + "Unreserve" when reserved
+- [x] **6.7** Buyer footer shows "Awaiting meetup" + "Unreserve" when reserved by them
+- [x] **6.8** "Chat with seller" button creates/fetches chat → navigates to chat page
+- [x] **6.9** My Purchases page shows bought items with cursor pagination
+- [x] **6.10** My Sales page shows sold items with cursor pagination
+- [x] **6.11** Profile page has entry points to Purchases and Sales
+- [x] **6.12** Report entry point visible to non-owners
 
 ### Phase 7
 

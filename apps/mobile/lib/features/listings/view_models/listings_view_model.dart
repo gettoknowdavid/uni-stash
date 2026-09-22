@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
+import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -12,7 +13,18 @@ import 'package:uni_stash_mobile/features/listings/models/models.dart';
 /// A new instance is created per page visit via a GetIt scope; calling
 /// [dispose] tears down every signal owned by this ViewModel.
 class ListingsViewModel implements Disposable {
-  ListingsViewModel(this._repository) {
+  ListingsViewModel(this._repository, this._categoriesRepository) {
+    loadCategories = action0(() async {
+      if (_disposed) return;
+
+      final result = await _categoriesRepository.list();
+      if (_disposed) return;
+
+      if (result case Success(value: final response)) {
+        categories.value = response.categories;
+      }
+    });
+
     fetch = action0(() async {
       isLoading.value = true;
       error.value = null;
@@ -93,8 +105,13 @@ class ListingsViewModel implements Disposable {
   }
 
   final ListingsRepository _repository;
+  final CategoriesRepository _categoriesRepository;
 
   final Signal<List<ListingSummary>> listings = signal([]);
+
+  /// Category filter chips. Loaded once via [loadCategories] so widgets
+  /// never talk to the repository directly.
+  final Signal<List<Category>> categories = signal([]);
   final Signal<bool> isLoading = signal(false);
   final Signal<bool> isLoadingMore = signal(false);
   final Signal<String?> error = signal(null);
@@ -109,6 +126,9 @@ class ListingsViewModel implements Disposable {
 
   /// Fetches the first page of listings, replacing any existing data.
   late final void Function() fetch;
+
+  /// Loads the category filter chips (cached for the view model's life).
+  late final void Function() loadCategories;
 
   /// Appends the next page to the existing list.
   late final void Function() loadMore;
@@ -130,6 +150,7 @@ class ListingsViewModel implements Disposable {
   void dispose() {
     _disposed = true;
     listings.dispose();
+    categories.dispose();
     isLoading.dispose();
     isLoadingMore.dispose();
     error.dispose();

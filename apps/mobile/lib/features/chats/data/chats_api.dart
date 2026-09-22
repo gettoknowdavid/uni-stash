@@ -11,7 +11,8 @@ abstract class ChatsApiClient {
   factory ChatsApiClient(Dio dio, {String? baseUrl}) = _ChatsApiClient;
 
   // Create or fetch existing chat thread for a listing.
-  // Idempotent: calling twice for the same listing+buyer returns the same chat_id.
+  // Idempotent: calling twice for the same listing+buyer returns the
+  // same chat_id.
   @POST('/api/v1/chats')
   Future<ApiResponse<ChatCreatedResponse>> createChat(
     @Body() CreateChatRequest request,

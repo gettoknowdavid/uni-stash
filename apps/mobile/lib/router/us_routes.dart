@@ -38,6 +38,10 @@ final class UsRoutes {
   static const String listingEditor = '/listings/editor';
   static const String listingEdit = '/listings/:id/edit';
 
+  /// Sale-history screens (guide 6.9/6.10).
+  static const String myPurchases = '/sales/purchases';
+  static const String mySales = '/sales/mine';
+
   static String listingDetailsRoute(String id) => '/listings/$id';
   static String listingEditRoute(String id) => '/listings/$id/edit';
 }

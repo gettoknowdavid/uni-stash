@@ -4,9 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
-import 'package:uni_stash_mobile/core/result/result.dart';
-import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
-import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/router/_router.dart';
@@ -131,28 +128,11 @@ class _CategoryChips extends SignalStatefulWidget {
 }
 
 class _CategoryChipsState extends State<_CategoryChips> {
-  List<Category>? _categories;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadCategories();
-    });
-  }
-
-  Future<void> _loadCategories() async {
-    final repo = di<CategoriesRepository>();
-    final result = await repo.list();
-    if (result case Success(value: final response) when mounted) {
-      setState(() => _categories = response.categories);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final model = di<ListingsViewModel>();
     final selectedCategoryId = model.categoryId.value;
+    final categories = model.categories.value;
 
     final chips = <Widget>[
       _CategoryChip(
@@ -163,16 +143,15 @@ class _CategoryChipsState extends State<_CategoryChips> {
           model.fetch();
         },
       ),
-      if (_categories != null)
-        for (final cat in _categories!)
-          _CategoryChip(
-            label: cat.label.toUpperCase(),
-            selected: selectedCategoryId == cat.id,
-            onTap: () {
-              model.categoryId.value = cat.id;
-              model.fetch();
-            },
-          ),
+      for (final cat in categories)
+        _CategoryChip(
+          label: cat.label.toUpperCase(),
+          selected: selectedCategoryId == cat.id,
+          onTap: () {
+            model.categoryId.value = cat.id;
+            model.fetch();
+          },
+        ),
     ];
 
     return SizedBox(

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -10,6 +10,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
+import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -21,7 +22,7 @@ import 'package:uni_stash_mobile/theme/_theme.dart';
 /// Placeholder detail page for a single listing.
 ///
 /// The [ListingSummary] is passed via `extra` from the home grid.
-class ListingDetailPage extends StatefulWidget {
+class ListingDetailPage extends SignalStatefulWidget {
   const ListingDetailPage({required this.id, super.key});
 
   final String id;
@@ -44,7 +45,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       baseName: 'listingDetail-${widget.id}',
       init: (getIt) {
         getIt.registerLazySingletonAsync<ListingDetailViewModel>(
-          () async => ListingDetailViewModel(di<ListingsRepository>()),
+          () async => ListingDetailViewModel(
+            di<ListingsRepository>(),
+            di<ChatsRepository>(),
+          ),
           onCreated: (model) async => model.fetch(widget.id),
           dispose: (vm) => vm.dispose(),
         );
@@ -72,7 +76,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
             future: di.isReady<ListingDetailViewModel>(),
             builder: (context, snapshot) {
               if (snapshot.connectionState != .done) {
-                return const UsPage(body: Center(child: ShadSpinner()));
+                return const UsPage(body: Center(child: Spinner()));
               }
 
               if (snapshot.hasError) {
@@ -91,245 +95,390 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 }
 
-class _ListingDetailView extends StatelessWidget {
+class _ListingDetailView extends SignalWidget {
   const _ListingDetailView({required this.id});
   final String id;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+
+    final listingModel = di<ListingDetailViewModel>();
+    final detail = listingModel.detail.value;
+    final isLoading = listingModel.isLoading.value;
+    final error = listingModel.error.value;
+    final isCreatingChat = listingModel.isCreatingChat.value;
+
+    if (detail == null && isLoading && error == null) {
+      return const UsPage(
+        body: Center(child: Spinner()),
+      );
+    }
+
+    if (detail == null && error != null) {
+      return UsPage(
+        body: Center(
+          child: _ErrorView(
+            message: error,
+            onRetry: () => listingModel.fetch(id),
+          ),
+        ),
+      );
+    }
+
+    if (detail == null) {
+      return const UsPage(body: Center(child: Text('Listing not found')));
+    }
+
+    final currentUserId = di<UserViewModel>().currentUser.value?.id;
+    final isMe = currentUserId == detail.seller.id;
+
+    final date = timeago.format(detail.createdAt);
     return SignalEffect(
-      effect: (context) {
-        final model = di<ListingDetailViewModel>();
-
-        // Deletion succeeded: pop back to the previous screen, signalling
-        // the change so lists can refresh.
-        if (model.deletedId.value != null) {
-          model.consumeDeleteResult();
-          context.pop(true);
-          return;
-        }
-
-        final deleteError = model.deleteError.value;
-        if (deleteError != null) {
-          model.consumeDeleteResult();
-          ShadToaster.of(context).show(
-            ShadToast.destructive(
-              title: const Text('Delete Failed'),
-              description: Text(deleteError),
-            ),
-          );
-        }
-      },
-      child: SignalBuilder(
-        builder: (context) {
-          final listingModel = di<ListingDetailViewModel>();
-          final detail = listingModel.detail.value;
-          final isLoading = listingModel.isLoading.value;
-          final error = listingModel.error.value;
-
-          if (detail == null && isLoading && error == null) {
-            return const UsPage(
-              body: Center(child: ShadSpinner()),
-            );
-          }
-
-          if (detail == null && error != null) {
-            return UsPage(
-              body: Center(
-                child: _ErrorView(
-                  message: error,
-                  onRetry: () => listingModel.fetch(id),
-                ),
-              ),
-            );
-          }
-
-          if (detail == null) {
-            return const UsPage(
-              body: Center(child: Text('Listing not found')),
-            );
-          }
-
-          final currentUserId = di<UserViewModel>().currentUser.value?.id;
-          final isMe = currentUserId == detail.seller.id;
-
-          final date = timeago.format(detail.createdAt);
-
-          return UsPage(
-            gutters: .zero,
-            body: Stack(
-              children: [
-                SingleChildScrollView(
-                  padding: const .only(bottom: 48),
-                  child: Column(
-                    crossAxisAlignment: .stretch,
-                    children: [
-                      _ImageCarousel(images: detail.images),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const .symmetric(horizontal: 16),
-                        child: Row(
-                          crossAxisAlignment: .start,
-                          mainAxisAlignment: .spaceBetween,
-                          children: [
-                            // StatusBadge(status: detail.status),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: .stretch,
-                                children: [
-                                  Text(
-                                    detail.title,
-                                    style: theme.textTheme.h1,
-                                    overflow: .ellipsis,
-                                    maxLines: 2,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  RichText(
-                                    text: TextSpan(
-                                      style: theme.textTheme.small,
-                                      children: [
-                                        TextSpan(text: 'Listed $date'),
-                                        const TextSpan(text: ' • '),
-                                        TextSpan(text: detail.category.label),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+      effect: _handleModelEvents,
+      child: UsPage(
+        gutters: .zero,
+        body: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const .only(bottom: 48),
+              child: Column(
+                crossAxisAlignment: .stretch,
+                children: [
+                  _ImageCarousel(images: detail.images),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const .symmetric(horizontal: 16),
+                    child: Row(
+                      crossAxisAlignment: .start,
+                      mainAxisAlignment: .spaceBetween,
+                      children: [
+                        // StatusBadge(status: detail.status),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: .stretch,
+                            children: [
+                              Text(
+                                detail.title,
+                                style: theme.textTheme.h1,
+                                overflow: .ellipsis,
+                                maxLines: 2,
                               ),
-                            ),
-                            Text(
-                              detail.price?.display ?? '—',
-                              style: theme.textTheme.labelLg.copyWith(
-                                fontSize: 18,
-                                fontWeight: .w700,
+                              const SizedBox(height: 4),
+                              RichText(
+                                text: TextSpan(
+                                  style: theme.textTheme.small,
+                                  children: [
+                                    TextSpan(text: 'Listed $date'),
+                                    const TextSpan(text: ' • '),
+                                    TextSpan(text: detail.category.label),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        Text(
+                          detail.price?.display ?? '—',
+                          style: theme.textTheme.labelLg.copyWith(
+                            fontSize: 18,
+                            fontWeight: .w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const .symmetric(horizontal: 16),
+                    child: Text(
+                      'DESCRIPTION',
+                      style: theme.textTheme.labelSm,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const .symmetric(horizontal: 16),
+                    child: Text(
+                      detail.description,
+                      style: theme.textTheme.p,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: .spaceBetween,
+                    children: [
                       Padding(
                         padding: const .symmetric(horizontal: 16),
                         child: Text(
-                          'DESCRIPTION',
+                          'CATEGORY',
                           style: theme.textTheme.labelSm,
                         ),
                       ),
-                      const SizedBox(height: 10),
                       Padding(
                         padding: const .symmetric(horizontal: 16),
                         child: Text(
-                          detail.description,
+                          detail.category.label,
                           style: theme.textTheme.p,
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: .spaceBetween,
-                        children: [
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              'CATEGORY',
-                              style: theme.textTheme.labelSm,
-                            ),
-                          ),
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              detail.category.label,
-                              style: theme.textTheme.p,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ShadSeparator.horizontal(
-                        margin: const .symmetric(horizontal: 16),
-                        color: theme.colorScheme.borderStrong,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: .spaceBetween,
-                        children: [
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              'CONDITION',
-                              style: theme.textTheme.labelSm,
-                            ),
-                          ),
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              detail.condition.name,
-                              style: theme.textTheme.p,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ShadSeparator.horizontal(
-                        margin: const .symmetric(horizontal: 16),
-                        color: theme.colorScheme.borderStrong,
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: .spaceBetween,
-                        children: [
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              'STATUS',
-                              style: theme.textTheme.labelSm,
-                            ),
-                          ),
-                          Padding(
-                            padding: const .symmetric(horizontal: 16),
-                            child: Text(
-                              detail.status.name,
-                              style: theme.textTheme.p,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      if (!isMe) ...[
-                        ShadSeparator.horizontal(
-                          margin: const .symmetric(horizontal: 16),
-                          color: theme.colorScheme.borderStrong,
-                        ),
-                        const SizedBox(height: 24),
-                        _SellerDetails(detail: detail),
-                      ],
                     ],
                   ),
-                ),
-                Positioned(
-                  right: 16,
-                  top: 16,
-                  child: Column(
-                    spacing: 16,
+                  const SizedBox(height: 8),
+                  ShadSeparator.horizontal(
+                    margin: const .symmetric(horizontal: 16),
+                    color: theme.colorScheme.borderStrong,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: .spaceBetween,
                     children: [
-                      if (!isMe)
-                        _BookmarkButton(sellerId: detail.seller.id, size: 30),
-                      if (isMe) ...[
-                        _EditButton(
-                          id: id,
-                          sellerId: detail.seller.id,
-                          size: 30,
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          'CONDITION',
+                          style: theme.textTheme.labelSm,
                         ),
-                        _DeleteButton(id: id, size: 30),
-                      ],
+                      ),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          detail.condition.name,
+                          style: theme.textTheme.p,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  ShadSeparator.horizontal(
+                    margin: const .symmetric(horizontal: 16),
+                    color: theme.colorScheme.borderStrong,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: .spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          'STATUS',
+                          style: theme.textTheme.labelSm,
+                        ),
+                      ),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: Text(
+                          detail.status.name,
+                          style: theme.textTheme.p,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (!isMe) ...[
+                    ShadSeparator.horizontal(
+                      margin: const .symmetric(horizontal: 16),
+                      color: theme.colorScheme.borderStrong,
+                    ),
+                    const SizedBox(height: 24),
+                    _SellerDetails(detail: detail),
+                    if (detail.status == .active ||
+                        detail.status == .reserved) ...[
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const .symmetric(horizontal: 16),
+                        child: ShadButton.outline(
+                          width: double.infinity,
+                          enabled: !isCreatingChat,
+                          onPressed: listingModel.createChat,
+                          child: isCreatingChat
+                              ? const Spinner()
+                              : const Text('CHAT WITH SELLER'),
+                        ),
+                      ),
+                    ],
+                    // Report/flag entry point (guide 6.12) —
+                    // non-owners only; Phase 8 builds the full flow.
+                    if (detail.status != .deleted) ...[
+                      const SizedBox(height: 16),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => unawaited(
+                            _showReportSheet(context, detail),
+                          ),
+                          child: Text(
+                            'Report this listing',
+                            style: theme.textTheme.muted.copyWith(
+                              color: theme.colorScheme.destructive,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
             ),
-            footer: isMe ? null : const _ReserveButton(),
-          );
-        },
+            Positioned(
+              right: 16,
+              top: 16,
+              child: Column(
+                spacing: 16,
+                children: [
+                  if (!isMe)
+                    _BookmarkButton(sellerId: detail.seller.id, size: 30),
+                  if (isMe) ...[
+                    _EditButton(
+                      id: id,
+                      sellerId: detail.seller.id,
+                      size: 30,
+                    ),
+                    _DeleteButton(id: id, size: 30),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        footer: isMe ? const _SellerFooter() : const _ReserveButton(),
+      ),
+    );
+  }
+
+  /// One-shot reactions to view model signals: deletion, chat creation,
+  /// toasts and the email-verification prompt.
+  ///
+  /// Every signal read here is consumed before acting, so re-running the
+  /// effect (on mount or widget update) is always a no-op.
+  void _handleModelEvents(BuildContext context) {
+    final model = di<ListingDetailViewModel>();
+
+    // Deletion succeeded: pop back to the previous screen, signalling
+    // the change so lists can refresh.
+    if (model.deletedId.value != null) {
+      model.consumeDeleteResult();
+      context.pop(true);
+      return;
+    }
+
+    final deleteError = model.deleteError.value;
+    if (deleteError != null) {
+      model.consumeDeleteResult();
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          title: const Text('Delete Failed'),
+          description: Text(deleteError),
+        ),
+      );
+    }
+
+    final createdChatId = model.createdChatId.value;
+    if (createdChatId != null) {
+      model.consumeChatResult();
+      // The chat thread list lives in the Chats tab. Phase 7 adds the
+      // /chat/:id detail route and will deep-link straight into it.
+      context.go(UsRoutes.chat);
+    }
+
+    final feedback = model.feedback.value;
+    if (feedback == null) return;
+    model.consumeFeedback();
+
+    switch (feedback.kind) {
+      case .reserved:
+        ShadToaster.of(context).show(
+          const ShadToast(
+            title: Text('Reserved'),
+            description: Text(
+              'You reserved this item. '
+              'Chat with the seller to arrange a meetup.',
+            ),
+          ),
+        );
+      case .unreserved:
+        ShadToaster.of(context).show(
+          const ShadToast(
+            title: Text('Unreserved'),
+            description: Text('This item is available again.'),
+          ),
+        );
+      case .sold:
+        ShadToaster.of(context).show(
+          const ShadToast(
+            title: Text('Sold'),
+            description: Text('Listing marked as sold.'),
+          ),
+        );
+      case .unavailable:
+        ShadToaster.of(context).show(
+          const ShadToast.destructive(
+            title: Text('Unavailable'),
+            description: Text('This item is no longer available.'),
+          ),
+        );
+      case .verifyEmail:
+        unawaited(_showEmailVerificationPrompt(context));
+      case .failure:
+        ShadToaster.of(context).show(
+          ShadToast.destructive(
+            title: Text(feedback.title ?? 'Failed'),
+            description: Text(feedback.message ?? 'An error occurred.'),
+          ),
+        );
+    }
+  }
+
+  /// Reserve rejected with `email_not_verified`: send the user to the
+  /// verification flow (guide 6.6).
+  Future<void> _showEmailVerificationPrompt(BuildContext context) async {
+    await showShadDialog<void>(
+      context: context,
+      builder: (ctx) => ShadDialog.alert(
+        title: const Text('VERIFY YOUR EMAIL'),
+        description: const Text(
+          'You need to verify your email before you can reserve items.',
+        ),
+        actions: [
+          ShadButton(
+            onPressed: () async {
+              ctx.pop();
+              await context.push(UsRoutes.verify);
+            },
+            child: const Text('VERIFY'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Report/flag entry point (guide 6.12). Phase 8 will replace the
+  /// placeholder submit with `POST /api/v1/reports`.
+  Future<void> _showReportSheet(
+    BuildContext context,
+    ListingDetailResponse detail,
+  ) async {
+    await showShadDialog<void>(
+      context: context,
+      builder: (ctx) => ShadDialog(
+        title: const Text('REPORT LISTING'),
+        description: const Text('Why are you reporting this listing?'),
+        actions: [
+          ShadButton(
+            onPressed: () {
+              ctx.pop();
+              ShadToaster.of(context).show(
+                const ShadToast(
+                  title: Text('Reported'),
+                  description: Text(
+                    'Thank you. We will review this listing.',
+                  ),
+                ),
+              );
+            },
+            child: const Text('SUBMIT'),
+          ),
+        ],
       ),
     );
   }
@@ -384,12 +533,25 @@ class _SellerDetails extends StatelessWidget {
   }
 }
 
-class _ReserveButton extends StatelessWidget {
+class _ReserveButton extends SignalWidget {
   const new();
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+
+    final model = di<ListingDetailViewModel>();
+    final detail = model.detail.value;
+
+    final currentUserId = di<UserViewModel>().currentUser.value?.id;
+    final isMe = currentUserId == detail?.seller.id;
+
+    if (isMe || detail == null) return const SizedBox.shrink();
+
+    // `detail` carries the authoritative status; `pendingAction` only
+    // says which mutation (if any) is in flight for the spinners.
+    final pending = model.pendingAction.value;
+
     return ShadDecorator(
       decoration: ShadDecoration(
         border: ShadBorder(
@@ -398,14 +560,127 @@ class _ReserveButton extends StatelessWidget {
           ),
         ),
       ),
-      child: const Padding(
-        padding: .all(16),
-        child: ShadButton(
-          width: double.infinity,
-          child: Text('RESERVE'),
-        ),
+      child: Padding(
+        padding: const .all(16),
+        child: switch (detail.status) {
+          .active => ShadButton(
+            onPressed: () => model.reserve(detail.id),
+            width: double.infinity,
+            enabled: pending == null,
+            child: pending == .reserve
+                ? const Spinner()
+                : const Text('RESERVE'),
+          ),
+          .reserved when detail.reservedBy == currentUserId => Column(
+            mainAxisSize: .min,
+            children: [
+              Text('Awaiting Meetup', style: theme.textTheme.muted),
+              const SizedBox(height: UsSpacing.sm),
+              ShadButton.outline(
+                width: double.infinity,
+                onPressed: () => model.unreserve(detail.id),
+                enabled: pending == null,
+                child: pending == .unreserve
+                    ? const Spinner()
+                    : const Text('UNRESERVE'),
+              ),
+            ],
+          ),
+          .reserved => const ShadButton(
+            width: double.infinity,
+            enabled: false,
+            child: Text('RESERVED'),
+          ),
+          .sold => const ShadButton(
+            width: double.infinity,
+            enabled: false,
+            child: Text('SOLD'),
+          ),
+          _ => const SizedBox.shrink(),
+        },
       ),
     );
+  }
+}
+
+class _SellerFooter extends SignalWidget {
+  const _SellerFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+
+    final model = di<ListingDetailViewModel>();
+    final detail = model.detail.value;
+    if (detail == null) return const SizedBox.shrink();
+
+    final pending = model.pendingAction.value;
+
+    return ShadDecorator(
+      decoration: ShadDecoration(
+        border: ShadBorder(
+          top: ShadBorderSide(color: theme.colorScheme.border),
+        ),
+      ),
+      child: Padding(
+        padding: const .all(16),
+        child: switch (detail.status) {
+          // ACTIVE/SOLD/DELETED: the seller has nothing to do here.
+          .reserved => Row(
+            children: [
+              Expanded(
+                child: ShadButton.outline(
+                  onPressed: () => model.unreserve(detail.id),
+                  enabled: pending == null,
+                  child: pending == .unreserve
+                      ? const Spinner()
+                      : const Text('UNRESERVE'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ShadButton(
+                  onPressed: () => _confirmAndMarkSold(context, detail.id),
+                  enabled: pending == null,
+                  child: pending == .markAsSold
+                      ? const Spinner()
+                      : const Text('MARK AS SOLD'),
+                ),
+              ),
+            ],
+          ),
+          _ => const SizedBox.shrink(),
+        },
+      ),
+    );
+  }
+
+  /// Marking as sold records the sale irreversibly, so confirm first
+  /// (guide 6.7) before handing off to the view model.
+  Future<void> _confirmAndMarkSold(BuildContext context, String id) async {
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ShadDialog.alert(
+        title: const Text('MARK AS SOLD?'),
+        description: const Text(
+          'This will mark the listing as sold and record the sale. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => dialogContext.pop(false),
+            child: const Text('CANCEL'),
+          ),
+          ShadButton(
+            onPressed: () => dialogContext.pop(true),
+            child: const Text('CONFIRM'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+    di<ListingDetailViewModel>().markAsSold(id);
   }
 }
 
@@ -638,7 +913,7 @@ class _ImageCarouselState extends State<_ImageCarousel> {
                   imageUrl: url,
                   fit: BoxFit.contain,
                   placeholder: (_, _) => const Center(
-                    child: ShadSpinner(),
+                    child: Spinner(),
                   ),
                   errorWidget: (_, _, _) => Center(
                     child: Icon(

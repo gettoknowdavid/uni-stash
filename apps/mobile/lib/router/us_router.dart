@@ -7,6 +7,7 @@ import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart'
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
+import 'package:uni_stash_mobile/features/sales/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/schools/pages/_pages.dart';
 import 'package:uni_stash_mobile/router/_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
@@ -63,6 +64,14 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       path: UsRoutes.editProfile,
       builder: (context, state) => const EditProfilePage(),
+    ),
+    GoRoute(
+      path: UsRoutes.myPurchases,
+      builder: (context, state) => const MyPurchasesPage(),
+    ),
+    GoRoute(
+      path: UsRoutes.mySales,
+      builder: (context, state) => const MySalesPage(),
     ),
     GoRoute(
       path: UsRoutes.listingEditor,
