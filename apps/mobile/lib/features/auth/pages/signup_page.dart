@@ -252,7 +252,7 @@ class _SignUpButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : () => _handleSignUp(context),
-        child: isBusy ? const ShadSpinner() : const Text('SIGN UP'),
+        child: isBusy ? const Spinner() : const Text('SIGN UP'),
       ),
     );
   }

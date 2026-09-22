@@ -107,7 +107,7 @@ class _EditProfileBodyState extends State<_EditProfileBody> {
           ShadButton(
             onPressed: isUpdating ? null : () async => _save(),
             child: isUpdating
-                ? const ShadSpinner()
+                ? const Spinner()
                 : const Text('SAVE CHANGES'),
           ),
           const SizedBox(height: UsSpacing.lg),

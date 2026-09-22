@@ -148,7 +148,7 @@ class _SubmitButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : () => _handleSignUp(context),
-        child: isBusy ? const ShadSpinner() : const Text('SUBMIT'),
+        child: isBusy ? const Spinner() : const Text('SUBMIT'),
       ),
     );
   }

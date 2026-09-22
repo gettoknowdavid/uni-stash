@@ -51,7 +51,7 @@ class LogoutDialog extends SignalHookWidget {
 
             if (context.mounted) context.go(UsRoutes.login);
           },
-          child: isLoading.value ? const ShadSpinner() : const Text('LOG OUT'),
+          child: isLoading.value ? const Spinner() : const Text('LOG OUT'),
         ),
       ],
     );

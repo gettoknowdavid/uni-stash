@@ -250,7 +250,7 @@ class _VerifyButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : () => onVerify(context),
-        child: isBusy ? const ShadSpinner() : const Text('VERIFY'),
+        child: isBusy ? const Spinner() : const Text('VERIFY'),
       ),
     );
   }
@@ -269,7 +269,7 @@ class _ResendButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton.ghost(
         onPressed: isBusy ? null : model.resend,
-        child: isBusy ? const ShadSpinner() : const Text('Resend Code'),
+        child: isBusy ? const Spinner() : const Text('Resend Code'),
       ),
     );
   }

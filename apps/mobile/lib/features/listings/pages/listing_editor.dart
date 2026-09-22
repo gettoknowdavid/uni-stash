@@ -394,7 +394,7 @@ class _CategoryField extends SignalHookWidget {
             trailing: GestureDetector(
               onTap: model.loadCategories,
               child: isLoading
-                  ? const ShadSpinner(iconSize: 16, height: 16, width: 16)
+                  ? const Spinner(iconSize: 16, height: 16, width: 16)
                   : const Icon(LucideIcons.refreshCcw, size: 16),
             ),
             enabled: !isLoading,
@@ -577,7 +577,7 @@ class _SubmitButton extends SignalHookWidget {
                 mainAxisAlignment: .center,
                 mainAxisSize: .min,
                 children: [
-                  const ShadSpinner(iconSize: 16),
+                  const Spinner(iconSize: 16),
                   if (uploadProgress != null) ...[
                     const SizedBox(width: 8),
                     Text(uploadProgress),

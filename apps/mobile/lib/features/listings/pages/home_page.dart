@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: CustomMaterialIndicator(
               onRefresh: () async => di<ListingsViewModel>().refresh(),
-              indicatorBuilder: (context, refreshing) => const ShadSpinner(),
+              indicatorBuilder: (context, refreshing) => const Spinner(),
               child: const CustomScrollView(
                 slivers: [
                   _ListingsGrid(),
@@ -242,7 +242,7 @@ class _ListingsGrid extends SignalWidget {
     // Initial loading skeleton
     if (listings.isEmpty && isLoading) {
       return const SliverFillRemaining(
-        child: Center(child: ShadSpinner()),
+        child: Center(child: Spinner()),
       );
     }
 
@@ -319,7 +319,7 @@ class _LoadMoreIndicator extends SignalWidget {
     return const SliverToBoxAdapter(
       child: Padding(
         padding: EdgeInsets.all(UsSpacing.lg),
-        child: Center(child: ShadSpinner()),
+        child: Center(child: Spinner()),
       ),
     );
   }

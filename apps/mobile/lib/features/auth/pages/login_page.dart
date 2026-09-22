@@ -240,7 +240,7 @@ class _LoginButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : () => _handleLogin(context),
-        child: isBusy ? const ShadSpinner() : const Text('LOG IN'),
+        child: isBusy ? const Spinner() : const Text('LOG IN'),
       ),
     );
   }

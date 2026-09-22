@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class ShadSpinner extends StatelessWidget {
-  const ShadSpinner({
+class Spinner extends StatelessWidget {
+  const Spinner({
     this.height = 20,
     this.width = 20,
     this.iconSize = 24,

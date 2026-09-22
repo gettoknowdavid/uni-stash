@@ -80,7 +80,7 @@ class _ProfileBody extends SignalHookWidget {
     final model = di<ProfileViewModel>();
 
     if (model.isLoading.value) {
-      return const Center(child: ShadSpinner());
+      return const Center(child: Spinner());
     }
 
     final error = model.error.value;
@@ -90,7 +90,7 @@ class _ProfileBody extends SignalHookWidget {
     }
 
     if (profile == null) {
-      return const Center(child: ShadSpinner());
+      return const Center(child: Spinner());
     }
 
     return _ProfileContent(profile: profile);

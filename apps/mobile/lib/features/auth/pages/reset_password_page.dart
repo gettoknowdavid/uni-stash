@@ -251,7 +251,7 @@ class _SubmitButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton(
         onPressed: isBusy ? null : onSubmit,
-        child: isBusy ? const ShadSpinner() : const Text('SET NEW PASSWORD'),
+        child: isBusy ? const Spinner() : const Text('SET NEW PASSWORD'),
       ),
     );
   }
@@ -269,7 +269,7 @@ class _ResendButton extends SignalWidget {
       width: double.infinity,
       child: ShadButton.ghost(
         onPressed: isBusy ? null : model.resend,
-        child: isBusy ? const ShadSpinner() : const Text('Resend Code'),
+        child: isBusy ? const Spinner() : const Text('Resend Code'),
       ),
     );
   }
