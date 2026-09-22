@@ -9,6 +9,7 @@ import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/images/data/images_api.dart';
 import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
@@ -18,6 +19,7 @@ import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
+import 'package:uni_stash_mobile/features/sales/data/_data.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
 
@@ -161,9 +163,35 @@ void _registerProfile() {
   );
 }
 
-// Scopes
-//
+/// Chats feature registrations.
+void _registerChats() {
+  di.registerSingletonWithDependencies<ChatsApiClient>(
+    () => ChatsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
 
+  di.registerSingletonWithDependencies<ChatsRepository>(
+    () => ChatsRepositoryImpl(di<ChatsApiClient>(), di<Logger>()),
+    dependsOn: [ChatsApiClient],
+  );
+}
+
+/// Sales feature registrations.
+void _registerSales() {
+  di.registerSingletonWithDependencies<SalesApiClient>(
+    () => SalesApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<SalesRepository>(
+    () => SalesRepositoryImpl(di<SalesApiClient>(), di<Logger>()),
+    dependsOn: [SalesApiClient],
+  );
+}
+
+/// Configures the authenticated scope.
+///
+/// Registers all the authenticated scope dependencies.
 void configureAuthenticatedScope() {
   if (di.hasScope(Scope.authenticated)) return;
   di.pushNewScope(scopeName: Scope.authenticated);
@@ -171,6 +199,8 @@ void configureAuthenticatedScope() {
   _registerImages();
   _registerSchools();
   _registerProfile();
+  _registerChats();
+  _registerSales();
 }
 
 Future<void> tearDownAuthenticatedScope() async {
