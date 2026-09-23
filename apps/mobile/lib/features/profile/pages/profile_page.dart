@@ -79,9 +79,7 @@ class _ProfileBody extends SignalHookWidget {
   Widget build(BuildContext context) {
     final model = di<ProfileViewModel>();
 
-    if (model.isLoading.value) {
-      return const Center(child: Spinner());
-    }
+    if (model.isLoading.value) return const Center(child: Spinner());
 
     final error = model.error.value;
     final profile = model.profile.value;
@@ -89,9 +87,7 @@ class _ProfileBody extends SignalHookWidget {
       return _ErrorView(message: error, onRetry: model.fetch);
     }
 
-    if (profile == null) {
-      return const Center(child: Spinner());
-    }
+    if (profile == null) return const Center(child: Spinner());
 
     return _ProfileContent(profile: profile);
   }
@@ -167,7 +163,7 @@ class _ProfileContent extends SignalHookWidget {
           _StatsStrip(stats: stats),
           const SizedBox(height: 48),
           const _SalesHistorySection(),
-          const SizedBox(height: 48),
+          const SizedBox(height: 24),
           const _ProfileMenu(),
           const SizedBox(height: 32),
         ],
@@ -313,39 +309,27 @@ class _SalesHistorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('SALES HISTORY', style: theme.textTheme.labelSm),
-          const SizedBox(height: 8),
-          ListTile(
-            leading: Icon(
-              LucideIcons.shoppingBag,
-              color: theme.colorScheme.primary,
-            ),
-            title: const Text('My Purchases'),
-            trailing: Icon(
-              LucideIcons.chevronRight,
-              color: theme.colorScheme.mutedForeground,
-            ),
-            onTap: () => context.push(UsRoutes.myPurchases),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('SALES HISTORY', style: theme.textTheme.labelSm),
+        const SizedBox(height: 8),
+        GestureDetector(
+          child: const _MenuRow(
+            icon: LucideIcons.shoppingBag,
+            label: 'MY PURCHASES',
           ),
-          ListTile(
-            leading: Icon(
-              LucideIcons.store,
-              color: theme.colorScheme.primary,
-            ),
-            title: const Text('My Sales'),
-            trailing: Icon(
-              LucideIcons.chevronRight,
-              color: theme.colorScheme.mutedForeground,
-            ),
-            onTap: () => context.push(UsRoutes.mySales),
+          onTap: () => context.push(UsRoutes.myPurchases),
+        ),
+        GestureDetector(
+          child: const _MenuRow(
+            icon: LucideIcons.store,
+            label: 'MY SALES',
+            addDivider: false,
           ),
-        ],
-      ),
+          onTap: () => context.push(UsRoutes.mySales),
+        ),
+      ],
     );
   }
 }
@@ -355,22 +339,35 @@ class _ProfileMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    final theme = ShadTheme.of(context);
+    return Column(
+      crossAxisAlignment: .stretch,
       children: [
-        _MenuRow(icon: LucideIcons.tag, label: 'MY LISTINGS'),
-        _MenuRow(icon: LucideIcons.bookmark, label: 'SAVED ITEMS'),
-        _MenuRow(icon: LucideIcons.history, label: 'TRANSACTION HISTORY'),
-        _MenuRow(icon: LucideIcons.headset, label: 'SUPPORT'),
+        Text('PROFILE MENU', style: theme.textTheme.labelSm),
+        const SizedBox(height: 8),
+        const _MenuRow(icon: LucideIcons.tag, label: 'MY LISTINGS'),
+        const _MenuRow(icon: LucideIcons.bookmark, label: 'SAVED ITEMS'),
+        const _MenuRow(icon: LucideIcons.history, label: 'TRANSACTION HISTORY'),
+        const _MenuRow(
+          icon: LucideIcons.headset,
+          label: 'SUPPORT',
+          addDivider: false,
+        ),
       ],
     );
   }
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.label});
+  const _MenuRow({
+    required this.icon,
+    required this.label,
+    this.addDivider = true,
+  });
 
   final IconData icon;
   final String label;
+  final bool addDivider;
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +399,8 @@ class _MenuRow extends StatelessWidget {
               ],
             ),
           ),
-          Container(height: 1, color: theme.colorScheme.borderSubtle),
+          if (addDivider)
+            Container(height: 1, color: theme.colorScheme.borderSubtle),
         ],
       ),
     );
