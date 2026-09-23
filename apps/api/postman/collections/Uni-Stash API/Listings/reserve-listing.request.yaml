@@ -3,4 +3,54 @@ name: Reserve Listing
 method: POST
 url: '{{baseUrl}}/api/v1/listings/{{listingId}}/reserve'
 order: 7000
-headers: []
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Reserve a listing for the authenticated buyer.
+
+    Marks the listing as `reserved` and records the buyer's ID and the
+    reservation timestamp. The listing remains visible in the browse feed
+    with a `reserved` status badge. Only the seller can unreserve or mark
+    it as sold.
+
+    ## State machine
+
+    Only `active` listings can be reserved. Sellers cannot reserve their
+    own listings.
+
+    | Transition          | Allowed?                                    |
+    | ------------------- | ------------------------------------------- |
+    | `active` → `reserved` | Yes (any verified buyer except the seller) |
+    | `reserved` → `reserved` | No — already reserved (409)            |
+    | `sold` / `deleted` → `reserved` | No (409)                       |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "listing reserved",
+      "data": {
+        "id": "01984af1-…",
+        "status": "reserved",
+        "reserved_by": "buyer-uuid",
+        "reserved_at": "2026-09-23T11:00:00Z",
+        ...
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                  | Meaning                                     |
+    | ------ | --------------------- | ------------------------------------------- |
+    | 401    | `unauthorized`        | Missing or invalid token                    |
+    | 403    | `email_not_verified`  | Buyer's email not verified                  |
+    | 403    | `forbidden`           | Seller trying to reserve their own listing  |
+    | 404    | `not_found`           | Listing not found                           |
+    | 409    | `conflict`            | Listing is not active                       |
+    | 429    | `too_many_requests`   | Rate limited                                |

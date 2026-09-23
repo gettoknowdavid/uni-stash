@@ -3,4 +3,48 @@ name: Unreserve Listing
 method: POST
 url: '{{baseUrl}}/api/v1/listings/{{listingId}}/unreserve'
 order: 7500
-headers: []
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Cancel a reservation on a listing (seller only).
+
+    Transitions the listing from `reserved` back to `active`, clearing
+    `reserved_by` and `reserved_at`. Only the listing's seller can unreserve.
+
+    ## State machine
+
+    | Transition              | Allowed?                    |
+    | ----------------------- | --------------------------- |
+    | `reserved` → `active`   | Yes (seller only)           |
+    | `active` → `active`     | No — not reserved (409)     |
+    | `sold` / `deleted`      | No (409)                    |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "listing unreserved",
+      "data": {
+        "id": "01984af1-…",
+        "status": "active",
+        "reserved_by": null,
+        "reserved_at": null,
+        ...
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token             |
+    | 403    | `forbidden`    | Not the listing seller               |
+    | 404    | `not_found`    | Listing not found                    |
+    | 409    | `conflict`     | Listing is not currently reserved    |
+    | 429    | `too_many_requests` | Rate limited                    |

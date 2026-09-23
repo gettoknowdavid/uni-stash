@@ -1,0 +1,65 @@
+$kind: http-request
+name: List Messages
+method: GET
+url: '{{baseUrl}}/api/v1/chats/{{chatId}}/messages'
+order: 3000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+queryParams:
+  - key: cursor
+    value: ''
+    disabled: true
+  - key: limit
+    value: '30'
+    disabled: true
+docs:
+  description: |-
+    Fetch the message history for a chat thread (participants only).
+
+    Messages are returned **newest first** (reverse chronological) with
+    cursor-based pagination. Pass `next_cursor` from the previous response
+    as `cursor` to load older messages.
+
+    Only participants (buyer or seller) can access a thread's messages.
+    Non-participants receive `403 Forbidden`.
+
+    ## Query params
+
+    | Param    | Default | Max | Description                                    |
+    | -------- | ------- | --- | ---------------------------------------------- |
+    | `cursor` | —       | —   | Opaque cursor from previous `next_cursor`      |
+    | `limit`  | 30      | 100 | Max messages per page                          |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "ok",
+      "data": {
+        "messages": [
+          {
+            "id": "01984af1-…",
+            "chat_id": "…",
+            "sender_id": "…",
+            "body": "Is it still available?",
+            "read_at": null,
+            "created_at": "2026-09-23T10:55:00Z"
+          }
+        ],
+        "next_cursor": "eyJjcmVhdGVkX2F0IjoiMjAyNi0wOS0yM1QxMDo1NTowMFoiLCJpZCI6Ii4uLiJ9"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token             |
+    | 403    | `forbidden`    | Not a participant of this chat       |
+    | 404    | `not_found`    | Chat not found                       |
+    | 429    | `too_many_requests` | Rate limited                    |

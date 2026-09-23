@@ -1,12 +1,13 @@
 $kind: http-request
 name: Sign Up
 method: POST
-url: "{{baseUrl}}/api/v1/auth/signup"
+url: '{{baseUrl}}/api/v1/auth/signup'
 order: 1000
 auth:
   type: noauth
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
@@ -15,3 +16,67 @@ body:
       "password": "Prdha9phd?",
       "display_name": "David Michael"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("accessToken", body.data.access_token);
+          pm.collectionVariables.set("refreshToken", body.data.refresh_token);
+      }
+docs:
+  description: |-
+    Register a new student account.
+
+    The email domain must belong to a recognised partner school (e.g.
+    `@stu.cu.edu.ng`). If the domain is unknown the request is rejected with
+    `400 Bad Request`.
+
+    On success the account is created, a 6-digit OTP is sent to the supplied
+    email address, and a **pre-verification** access + refresh token pair is
+    returned so the client can reach the OTP verification screen on relaunch
+    without requiring the user to log in again.
+
+    > **Note:** The returned tokens are valid but the user's `email_verified`
+    > flag is `false`. Most write endpoints (create listing, send message, etc.)
+    > require `email_verified = true` and will return `403 email_not_verified`
+    > until the user completes `POST /auth/verify-otp`.
+
+    ## Request body
+
+    | Field          | Type   | Rules                                      |
+    | -------------- | ------ | ------------------------------------------ |
+    | `email`        | string | Must be a valid email from a partner school |
+    | `password`     | string | Minimum 10 characters                      |
+    | `display_name` | string | 1–80 characters                            |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "account created successfully",
+      "data": {
+        "access_token": "eyJ…",
+        "refresh_token": "v2.local.…",
+        "expires_in": 900,
+        "user": {
+          "id": "01984af1-…",
+          "email": "david.michael@stu.cu.edu.ng",
+          "display_name": "David Michael",
+          "email_verified": false,
+          "role": "user"
+        }
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                  | Meaning                                      |
+    | ------ | --------------------- | -------------------------------------------- |
+    | 400    | `bad_request`         | Email domain not a recognised partner school |
+    | 409    | `conflict`            | Email already registered                     |
+    | 422    | `validation`          | Missing/invalid fields                       |
+    | 429    | `too_many_requests`   | Rate limited (10 req/min per IP)             |

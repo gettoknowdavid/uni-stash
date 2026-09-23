@@ -61,18 +61,25 @@ class ChatViewModel implements Disposable {
       final result = await _repository.listMessages(chatId);
       if (_disposed) return;
 
-      switch (result) {
-        case Success(:final value):
-          // Backend returns newest-first; reverse for display
-          // (oldest at top).
-          messages.value = value.messages.reversed.toList();
-          _nextCursor = value.nextCursor;
-          _hasMore = value.nextCursor != null;
-        case Failure(:final message):
-          error.value = message;
-      }
+      // One notification for the whole outcome (messages + isLoading).
+      batch(() {
+        switch (result) {
+          case Success(:final value):
+            // Backend returns newest-first; reverse for display
+            // (oldest at top).
+            messages.value = value.messages.reversed.toList();
+            _nextCursor = value.nextCursor;
+            _hasMore = value.nextCursor != null;
+            // Opening the chat marks the counterpart's messages read
+            // server-side, so unread badges don't resurrect on the next
+            // thread fetch (ties guide 7.7 ↔ 7.8 together).
+            unawaited(markRead());
+          case Failure(:final message):
+            error.value = message;
+        }
 
-      isLoading.value = false;
+        isLoading.value = false;
+      });
 
       // Subscribe to realtime events after the first load.
       _subscribeToRealtime();
@@ -85,20 +92,24 @@ class ChatViewModel implements Disposable {
       final result = await _repository.sendMessage(chatId, body.trim());
       if (_disposed) return;
 
-      switch (result) {
-        case Success(:final value):
-          // Optimistically add the sent message. Realtime (or a concurrent
-          // refresh) may already have delivered it — dedupe by id.
-          final current = messages.value.toList();
-          if (!current.any((m) => m.id == value.id)) {
-            current.add(value);
-            messages.value = current;
-          }
-        case Failure(:final message):
-          error.value = message;
-      }
+      // One notification for the whole outcome (messages/error +
+      // isSending) — see the signals guidance on batching same-tick writes.
+      batch(() {
+        switch (result) {
+          case Success(:final value):
+            // Optimistically add the sent message. Realtime (or a concurrent
+            // refresh) may already have delivered it — dedupe by id.
+            final current = messages.value.toList();
+            if (!current.any((m) => m.id == value.id)) {
+              current.add(value);
+              messages.value = current;
+            }
+          case Failure(:final message):
+            error.value = message;
+        }
 
-      isSending.value = false;
+        isSending.value = false;
+      });
     };
   }
 

@@ -102,6 +102,11 @@ void main() {
     );
     pages.clear();
     listCalls = 0;
+    // Opening a chat marks the counterpart's messages read server-side
+    // (ties the thread badge to the chat page).
+    when(
+      () => repo.markRead('c1'),
+    ).thenAnswer((_) async => const Result.success(null));
   });
 
   tearDown(() => model.dispose());
@@ -125,6 +130,8 @@ void main() {
     expect(realtime.subscribedChatId, 'c1');
     expect(realtime.onNewMessage, isNotNull);
     expect(realtime.onReadReceipt, isNotNull);
+    // Opening the chat clears the unread count server-side too.
+    verify(() => repo.markRead('c1')).called(1);
   });
 
   test('loadMessages failure surfaces the error', () async {

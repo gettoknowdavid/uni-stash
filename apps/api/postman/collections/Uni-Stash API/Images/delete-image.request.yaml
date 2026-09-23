@@ -3,3 +3,34 @@ name: Delete Image
 method: DELETE
 url: '{{baseUrl}}/api/v1/images/{{imageId}}'
 order: 3000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Delete an image from a listing (listing owner only).
+
+    Removes the database row **and** deletes the object from the storage
+    bucket (Backblaze B2). The remaining images are **not** re-ordered —
+    position slots may become sparse (e.g. positions 0 and 2 remain after
+    deleting position 1).
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "image deleted"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token             |
+    | 403    | `forbidden`    | Not the listing owner                |
+    | 404    | `not_found`    | Image not found                      |
+    | 429    | `too_many_requests` | Rate limited                    |

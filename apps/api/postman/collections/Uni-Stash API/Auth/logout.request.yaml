@@ -14,3 +14,34 @@ body:
     {
       "refresh_token": "{{refreshToken}}"
     }
+docs:
+  description: |-
+    Revoke the supplied refresh token, ending the current session.
+
+    The access token is short-lived (15 min) and cannot be explicitly revoked —
+    it will expire naturally. To fully sign out on the client, discard both
+    tokens from local storage after calling this endpoint.
+
+    Passing an already-revoked or unknown token still returns **200** — the
+    operation is idempotent.
+
+    ## Request body
+
+    | Field           | Type   | Rules     |
+    | --------------- | ------ | --------- |
+    | `refresh_token` | string | Non-empty |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "logged out"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning      |
+    | ------ | ------------------- | ------------ |
+    | 429    | `too_many_requests` | Rate limited |

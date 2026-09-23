@@ -6,4 +6,34 @@ order: 4000
 auth:
   type: bearer
   credentials:
-    token: "{{adminAccessToken}}"
+    - key: token
+      value: '{{adminAccessToken}}'
+docs:
+  description: |-
+    Deactivate an admin account (super admin only).
+
+    Sets `is_active = false` on the target admin. Deactivated admins cannot
+    log in — their credentials return `401 unauthorized`. The account row
+    is preserved (not deleted) and can be reactivated via `PATCH /admin/admins/{id}`
+    with `{ "is_active": true }`.
+
+    A super admin cannot deactivate their own account.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "admin deactivated"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                    |
+    | ------ | -------------- | ------------------------------------------ |
+    | 400    | `bad_request`  | Attempting to deactivate own account       |
+    | 401    | `unauthorized` | Missing or invalid admin token             |
+    | 403    | `forbidden`    | Requester is not a super admin             |
+    | 404    | `not_found`    | Admin not found                            |
+    | 429    | `too_many_requests` | Rate limited                          |

@@ -1,10 +1,16 @@
 $kind: http-request
 name: Create School
 method: POST
-url: "{{baseUrl}}/api/v1/schools"
+url: '{{baseUrl}}/api/v1/schools'
 order: 4000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{adminAccessToken}}'
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
@@ -14,9 +20,47 @@ body:
     }
 scripts:
   - type: afterResponse
+    language: text/javascript
     code: |-
       if (pm.response.code === 201) {
           const body = pm.response.json();
-          pm.collectionVariables.set("schoolId", body.id);
+          pm.collectionVariables.set("schoolId", body.data.id);
       }
-    language: text/javascript
+docs:
+  description: |-
+    Create a new partner school (admin only, requires `schools:write` permission).
+
+    The `domain` is the email domain suffix used to validate student
+    registrations (e.g. `stu.cu.edu.ng`). Domains must be unique.
+
+    ## Request body
+
+    | Field    | Type   | Rules                                  |
+    | -------- | ------ | -------------------------------------- |
+    | `name`   | string | Non-empty, unique school name          |
+    | `domain` | string | Email domain suffix, must be unique    |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "school created successfully",
+      "data": {
+        "id": 5,
+        "name": "Covenant University",
+        "domain": "stu.cu.edu.ng",
+        "message": "school created successfully"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid admin token       |
+    | 403    | `forbidden`    | Admin lacks `schools:write` permission |
+    | 409    | `conflict`     | Domain already registered            |
+    | 422    | `validation`   | Missing/invalid fields               |
+    | 429    | `too_many_requests` | Rate limited                    |

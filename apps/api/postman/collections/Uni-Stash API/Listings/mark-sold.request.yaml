@@ -3,4 +3,67 @@ name: Mark Sold
 method: POST
 url: '{{baseUrl}}/api/v1/listings/{{listingId}}/mark-sold'
 order: 8000
-headers: []
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "buyer_id": "{{buyerUserId}}"
+    }
+docs:
+  description: |-
+    Mark a listing as sold and record the sale (seller only).
+
+    Transitions the listing to `sold` status and creates a row in the `sales`
+    table linking the listing to the buyer. The `buyer_id` must be the UUID
+    of the user who purchased the item.
+
+    ## State machine
+
+    Both `active` and `reserved` listings can be marked as sold. A `deleted`
+    listing cannot be sold.
+
+    | From status  | Allowed? |
+    | ------------ | -------- |
+    | `active`     | Yes      |
+    | `reserved`   | Yes      |
+    | `sold`       | No (409) |
+    | `deleted`    | No (409) |
+
+    ## Request body
+
+    | Field      | Type | Rules                                    |
+    | ---------- | ---- | ---------------------------------------- |
+    | `buyer_id` | UUID | Must be a registered user (not the seller) |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "listing marked as sold",
+      "data": {
+        "id": "01984af1-…",
+        "status": "sold",
+        ...
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                     |
+    | ------ | -------------- | ------------------------------------------- |
+    | 400    | `bad_request`  | Seller cannot be the buyer                  |
+    | 401    | `unauthorized` | Missing or invalid token                    |
+    | 403    | `forbidden`    | Not the listing seller                      |
+    | 404    | `not_found`    | Listing or buyer not found                  |
+    | 409    | `conflict`     | Listing is already sold or deleted          |
+    | 429    | `too_many_requests` | Rate limited                           |

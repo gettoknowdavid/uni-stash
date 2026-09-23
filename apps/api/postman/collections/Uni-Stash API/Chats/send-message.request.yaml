@@ -1,0 +1,74 @@
+$kind: http-request
+name: Send Message
+method: POST
+url: '{{baseUrl}}/api/v1/chats/{{chatId}}/messages'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "body": "Is it still available?"
+    }
+docs:
+  description: |-
+    Send a message in a chat thread (participants only).
+
+    After the message is persisted, the server publishes a `message.new`
+    event to the Pusher private channel `private-chat-{chat_id}`. Both
+    participants receive the event in real time if they are subscribed.
+
+    If Pusher is unavailable the message is still saved — clients can
+    always fall back to polling `GET /chats/{id}/messages`.
+
+    ## Realtime event payload
+
+    ```json
+    {
+      "type": "message_new",
+      "chat_id": "01984af1-…"
+    }
+    ```
+
+    The client should re-fetch messages on receiving this event.
+
+    ## Request body
+
+    | Field  | Type   | Rules                |
+    | ------ | ------ | -------------------- |
+    | `body` | string | 1–5000 characters    |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "message sent",
+      "data": {
+        "id": "01984af1-…",
+        "chat_id": "…",
+        "sender_id": "…",
+        "body": "Is it still available?",
+        "read_at": null,
+        "created_at": "2026-09-23T11:00:00Z"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                  | Meaning                              |
+    | ------ | --------------------- | ------------------------------------ |
+    | 401    | `unauthorized`        | Missing or invalid token             |
+    | 403    | `email_not_verified`  | Sender's email not verified          |
+    | 403    | `forbidden`           | Not a participant of this chat       |
+    | 404    | `not_found`           | Chat not found                       |
+    | 422    | `validation`          | Empty body or body > 5000 chars      |
+    | 429    | `too_many_requests`   | Rate limited                         |

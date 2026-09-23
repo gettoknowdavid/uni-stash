@@ -6,4 +6,32 @@ order: 4000
 auth:
   type: bearer
   credentials:
-    token: "{{adminAccessToken}}"
+    - key: token
+      value: '{{adminAccessToken}}'
+docs:
+  description: |-
+    Return the authenticated admin's profile and permissions.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "ok",
+      "data": {
+        "id": "01984af1-…",
+        "email": "admin@uni-stash.com",
+        "display_name": "Super Admin",
+        "level": "super",
+        "is_active": true,
+        "permissions": {}
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                   |
+    | ------ | -------------- | ------------------------- |
+    | 401    | `unauthorized` | Missing or invalid token  |
+    | 403    | `token_expired`| Access token has expired  |

@@ -1,14 +1,85 @@
 $kind: http-request
 name: Get Presigned Upload URL
 method: POST
-url: "{{baseUrl}}/api/v1/images/presign"
+url: '{{baseUrl}}/api/v1/images/presign'
 order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
     {
-      "listing_id": "0aba3ad9-8e87-4e23-a99c-6371a026d7de",
+      "listing_id": "{{listingId}}",
       "content_type": "image/jpeg"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 200) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("objectKey", body.data.object_key);
+      }
+docs:
+  description: |-
+    Request a short-lived presigned PUT URL for direct client-to-storage
+    image upload (Backblaze B2 / R2-compatible).
+
+    The backend **never proxies image bytes** — it only issues the URL.
+    The client uploads directly to the storage bucket using the returned
+    `upload_url`, then calls `POST /images/confirm` to register the image.
+
+    ## Upload flow
+
+    ```
+    1. POST /images/presign  →  { upload_url, object_key, position }
+    2. PUT  <upload_url>     →  (direct to B2, no auth header needed)
+    3. POST /images/confirm  →  { id, url, position, … }
+    ```
+
+    ## Constraints
+
+    - Max **3 images** per listing. Requesting a 4th returns `409 Conflict`.
+    - Only the listing's **owner** can presign images for it.
+    - Listing must be `active` (not deleted/sold).
+
+    ## Request body
+
+    | Field          | Type   | Rules                                              |
+    | -------------- | ------ | -------------------------------------------------- |
+    | `listing_id`   | UUID   | Must be an existing listing owned by the requester |
+    | `content_type` | string | `image/jpeg`, `image/png`, or `image/webp`         |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "presigned url generated",
+      "data": {
+        "upload_url": "https://s3.us-east-005.backblazeb2.com/…?X-Amz-Signature=…",
+        "object_key": "listings/01984af1-…/0_1727085600.jpg",
+        "position": 0
+      }
+    }
+    ```
+
+    The `upload_url` is valid for a short window (typically 15 minutes).
+    Use `object_key` in the subsequent `/confirm` call.
+
+    ## Errors
+
+    | Status | Code           | Meaning                                          |
+    | ------ | -------------- | ------------------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token                         |
+    | 403    | `forbidden`    | Not the listing owner                            |
+    | 404    | `not_found`    | Listing not found                                |
+    | 409    | `conflict`     | Listing already has 3 images (max reached)       |
+    | 422    | `validation`   | Unsupported content type                         |
+    | 429    | `too_many_requests` | Rate limited                                |

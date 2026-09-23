@@ -6,7 +6,8 @@ order: 1000
 auth:
   type: bearer
   credentials:
-    token: "{{adminAccessToken}}"
+    - key: token
+      value: '{{adminAccessToken}}'
 headers:
   - key: Content-Type
     value: application/json
@@ -14,10 +15,14 @@ body:
   type: json
   content: |-
     {
-      "email": "newadmin@university.edu",
+      "email": "newadmin@uni-stash.com",
       "password": "Password123!",
       "display_name": "New Admin",
-      "level": "standard"
+      "level": "standard",
+      "permissions": {
+        "schools": ["write"],
+        "categories": ["write"]
+      }
     }
 scripts:
   - type: afterResponse
@@ -25,5 +30,66 @@ scripts:
     code: |-
       if (pm.response.code === 201) {
           const body = pm.response.json();
-          pm.collectionVariables.set("adminId", body.id);
+          pm.collectionVariables.set("adminId", body.data.id);
       }
+docs:
+  description: |-
+    Create a new admin account (super admin only).
+
+    Only admins with `level: "super"` can create other admins. The new admin
+    can be `standard` (scoped permissions) or `super` (full access).
+
+    ## Admin levels & permissions
+
+    | Level      | Access                                                   |
+    | ---------- | -------------------------------------------------------- |
+    | `super`    | Full access to all resources; can manage other admins    |
+    | `standard` | Access scoped by the `permissions` object                |
+
+    The `permissions` object maps resource names to allowed actions:
+
+    ```json
+    {
+      "schools": ["write"],
+      "categories": ["write"]
+    }
+    ```
+
+    An empty `{}` means no write access to any resource.
+
+    ## Request body
+
+    | Field          | Type   | Rules                                          |
+    | -------------- | ------ | ---------------------------------------------- |
+    | `email`        | string | Valid email, must be unique                    |
+    | `password`     | string | Minimum 10 characters                          |
+    | `display_name` | string | Non-empty                                      |
+    | `level`        | string | `"super"` or `"standard"` (default: standard)  |
+    | `permissions`  | object | Optional — resource → actions map              |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "admin created successfully",
+      "data": {
+        "id": "01984af1-…",
+        "email": "newadmin@uni-stash.com",
+        "display_name": "New Admin",
+        "level": "standard",
+        "message": "admin created successfully"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                    |
+    | ------ | -------------- | ------------------------------------------ |
+    | 400    | `bad_request`  | Invalid level value                        |
+    | 401    | `unauthorized` | Missing or invalid admin token             |
+    | 403    | `forbidden`    | Requester is not a super admin             |
+    | 409    | `conflict`     | Email already registered                   |
+    | 422    | `validation`   | Missing/invalid fields                     |
+    | 429    | `too_many_requests` | Rate limited                          |

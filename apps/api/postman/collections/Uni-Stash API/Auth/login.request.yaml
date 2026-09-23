@@ -1,12 +1,13 @@
 $kind: http-request
 name: Login
 method: POST
-url: "{{baseUrl}}/api/v1/auth/login"
+url: '{{baseUrl}}/api/v1/auth/login'
 order: 3000
 auth:
   type: noauth
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
@@ -16,10 +17,57 @@ body:
     }
 scripts:
   - type: afterResponse
+    language: text/javascript
     code: |-
       if (pm.response.code === 200) {
           const body = pm.response.json();
           pm.collectionVariables.set("accessToken", body.data.access_token);
           pm.collectionVariables.set("refreshToken", body.data.refresh_token);
       }
-    language: text/javascript
+docs:
+  description: |-
+    Authenticate with email and password. Returns a short-lived access token
+    (15 min) and a long-lived refresh token.
+
+    The access token is a signed JWT. Pass it as `Authorization: Bearer <token>`
+    on all authenticated endpoints. When it expires, use `POST /auth/refresh`
+    to obtain a new pair without re-entering credentials.
+
+    > **Email verification is not required to log in**, but most write
+    > endpoints will reject unverified users with `403 email_not_verified`.
+
+    ## Request body
+
+    | Field      | Type   | Rules              |
+    | ---------- | ------ | ------------------ |
+    | `email`    | string | Valid email format |
+    | `password` | string | Non-empty          |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "login successful",
+      "data": {
+        "access_token": "eyJ…",
+        "refresh_token": "v2.local.…",
+        "expires_in": 900,
+        "user": {
+          "id": "01984af1-…",
+          "email": "david.michael@stu.cu.edu.ng",
+          "display_name": "David Michael",
+          "email_verified": true,
+          "role": "user"
+        }
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning                          |
+    | ------ | ------------------- | -------------------------------- |
+    | 401    | `unauthorized`      | Invalid email or password        |
+    | 422    | `validation`        | Missing/invalid fields           |
+    | 429    | `too_many_requests` | Rate limited (10 req/min per IP) |

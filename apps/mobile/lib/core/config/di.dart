@@ -10,6 +10,7 @@ import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
+import 'package:uni_stash_mobile/features/chats/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/images/data/images_api.dart';
 import 'package:uni_stash_mobile/features/images/data/images_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_api.dart';
@@ -18,6 +19,7 @@ import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
+import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
@@ -191,6 +193,28 @@ void _registerChats() {
     dependsOn: [Dio],
     dispose: (client) => client.disconnect(),
   );
+
+  // Shared: the CHAT tab badge in MainShell and ChatPage read the same
+  // instance (guide 7.5/7.7). Constructed lazily on the first access
+  // (the shell build), which also triggers the initial fetch.
+  di.registerLazySingleton<ChatThreadsViewModel>(
+    () => ChatThreadsViewModel(di<ChatsRepository>()),
+    onCreated: (instance) => instance.fetch(),
+    dispose: (vm) => vm.dispose(),
+  );
+}
+
+/// Push notifications registrations (guide 7.9).
+void _registerNotifications() {
+  di.registerSingletonWithDependencies<NotificationsApiClient>(
+    () => NotificationsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<NotificationsRepository>(
+    () => NotificationsRepository(di<NotificationsApiClient>(), di<Logger>()),
+    dependsOn: [NotificationsApiClient],
+  );
 }
 
 /// Sales feature registrations.
@@ -218,6 +242,7 @@ void configureAuthenticatedScope() {
   _registerProfile();
   _registerChats();
   _registerSales();
+  _registerNotifications();
 }
 
 Future<void> tearDownAuthenticatedScope() async {

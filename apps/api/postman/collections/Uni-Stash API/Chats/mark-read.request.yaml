@@ -1,0 +1,46 @@
+$kind: http-request
+name: Mark Read
+method: POST
+url: '{{baseUrl}}/api/v1/chats/{{chatId}}/read'
+order: 5000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Mark all unread messages in a chat thread as read for the authenticated
+    participant.
+
+    After updating the database, the server publishes a `message.read` event
+    to the Pusher private channel `private-chat-{chat_id}` so the other
+    participant's UI can update read receipts in real time.
+
+    ## Realtime event payload
+
+    ```json
+    {
+      "type": "message_read",
+      "chat_id": "01984af1-…",
+      "last_read_message_id": "uuid-of-last-message"
+    }
+    ```
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "messages marked as read"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token             |
+    | 403    | `forbidden`    | Not a participant of this chat       |
+    | 404    | `not_found`    | Chat not found                       |
+    | 429    | `too_many_requests` | Rate limited                    |

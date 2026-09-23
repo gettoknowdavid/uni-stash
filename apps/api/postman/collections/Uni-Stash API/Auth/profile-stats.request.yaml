@@ -1,0 +1,42 @@
+$kind: http-request
+name: Profile Stats
+method: GET
+url: '{{baseUrl}}/api/v1/auth/me/stats'
+order: 5750
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Return listing statistics for the authenticated user's profile.
+
+    Counts are computed with exact `COUNT(*)` queries — not cached estimates.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "ok",
+      "data": {
+        "active_listings": 4,
+        "items_sold": 12,
+        "saved": 0
+      }
+    }
+    ```
+
+    | Field             | Description                                      |
+    | ----------------- | ------------------------------------------------ |
+    | `active_listings` | Listings with status `active` or `reserved`      |
+    | `items_sold`      | Listings the user has marked as sold             |
+    | `saved`           | Saved/bookmarked listings (not yet implemented)  |
+
+    ## Errors
+
+    | Status | Code           | Meaning                  |
+    | ------ | -------------- | ------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token |
+    | 429    | `too_many_requests` | Rate limited        |

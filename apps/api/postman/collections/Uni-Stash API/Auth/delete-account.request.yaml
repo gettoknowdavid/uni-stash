@@ -5,7 +5,9 @@ url: '{{baseUrl}}/api/v1/auth/delete-account'
 order: 8000
 auth:
   type: bearer
-  token: '{{accessToken}}'
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
 headers:
   - key: Content-Type
     value: application/json
@@ -15,3 +17,40 @@ body:
     {
       "password": "Prdha9phd?"
     }
+docs:
+  description: |-
+    Soft-delete the authenticated user's account.
+
+    The user must confirm with their current password. On success the account
+    enters a **30-day grace period** — it is not immediately destroyed. During
+    this window the user can contact support to recover the account. After 30
+    days a background job permanently hard-deletes the row.
+
+    All active refresh tokens are revoked immediately, ending all sessions.
+
+    ## Request body
+
+    | Field      | Type   | Rules                          |
+    | ---------- | ------ | ------------------------------ |
+    | `password` | string | Current password for confirmation |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "account soft-deleted successfully",
+      "data": {
+        "message": "account scheduled for deletion. It will be permanently deleted after 30 days.",
+        "deletion_scheduled_at": "2026-10-23T11:00:00Z"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                    |
+    | ------ | -------------- | ------------------------------------------ |
+    | 400    | `bad_request`  | Account already scheduled for deletion     |
+    | 401    | `unauthorized` | Wrong password or missing/invalid token    |
+    | 429    | `too_many_requests` | Rate limited                          |

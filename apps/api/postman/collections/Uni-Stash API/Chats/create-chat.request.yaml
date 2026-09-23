@@ -1,0 +1,66 @@
+$kind: http-request
+name: Create Chat
+method: POST
+url: '{{baseUrl}}/api/v1/chats'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "listing_id": "{{listingId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("chatId", body.data.chat_id);
+      }
+docs:
+  description: |-
+    Start a new chat thread between the authenticated buyer and the seller
+    of a listing.
+
+    A chat is scoped to a single listing. If a thread already exists between
+    the same buyer and seller for the same listing, the existing `chat_id` is
+    returned (idempotent).
+
+    Sellers cannot start a chat on their own listing — that returns
+    `400 Bad Request`.
+
+    ## Request body
+
+    | Field        | Type | Rules                                  |
+    | ------------ | ---- | -------------------------------------- |
+    | `listing_id` | UUID | Must be an existing, non-deleted listing |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "chat ready",
+      "data": {
+        "chat_id": "01984af1-…"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                  | Meaning                                      |
+    | ------ | --------------------- | -------------------------------------------- |
+    | 400    | `bad_request`         | Seller trying to chat on their own listing   |
+    | 401    | `unauthorized`        | Missing or invalid token                     |
+    | 403    | `email_not_verified`  | Buyer's email not verified                   |
+    | 404    | `not_found`           | Listing not found                            |
+    | 429    | `too_many_requests`   | Rate limited                                 |

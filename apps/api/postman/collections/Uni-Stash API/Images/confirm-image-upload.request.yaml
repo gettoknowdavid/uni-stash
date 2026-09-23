@@ -3,6 +3,11 @@ name: Confirm Image Upload
 method: POST
 url: '{{baseUrl}}/api/v1/images/confirm'
 order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
 headers:
   - key: Content-Type
     value: application/json
@@ -13,3 +18,59 @@ body:
       "object_key": "{{objectKey}}",
       "listing_id": "{{listingId}}"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 201) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("imageId", body.data.id);
+      }
+docs:
+  description: |-
+    Confirm that a client upload landed in storage and register the image
+    in the database.
+
+    Call this **after** completing the `PUT` to the presigned URL from
+    `POST /images/presign`. The server performs a HEAD check against the
+    storage bucket to verify the object exists and is within size limits
+    before inserting the database row.
+
+    > **Important:** If the client never calls `/confirm`, the object
+    > remains in storage but is not linked to any listing. Orphaned objects
+    > are cleaned up by a periodic background job.
+
+    ## Request body
+
+    | Field        | Type   | Rules                                              |
+    | ------------ | ------ | -------------------------------------------------- |
+    | `listing_id` | UUID   | Must match the listing used in `/presign`          |
+    | `object_key` | string | The `object_key` returned by `/presign`            |
+
+    ## Success (201)
+
+    ```json
+    {
+      "status": true,
+      "message": "image confirmed successfully",
+      "data": {
+        "id": "01984af1-…",
+        "listing_id": "…",
+        "object_key": "listings/…/0_1727085600.jpg",
+        "url": "https://cdn.example.com/listings/…/0_1727085600.jpg",
+        "position": 0,
+        "created_at": "2026-09-23T11:00:00Z"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                              |
+    | ------ | -------------- | ---------------------------------------------------- |
+    | 400    | `bad_request`  | Object not found in storage (upload may have failed) |
+    | 401    | `unauthorized` | Missing or invalid token                             |
+    | 403    | `forbidden`    | Not the listing owner                                |
+    | 404    | `not_found`    | Listing not found                                    |
+    | 409    | `conflict`     | Image already confirmed for this object key          |
+    | 429    | `too_many_requests` | Rate limited                                    |

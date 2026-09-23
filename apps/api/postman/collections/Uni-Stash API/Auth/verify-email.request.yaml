@@ -1,12 +1,13 @@
 $kind: http-request
 name: Verify OTP
 method: POST
-url: "{{baseUrl}}/api/v1/auth/verify-otp"
+url: '{{baseUrl}}/api/v1/auth/verify-otp'
 order: 2000
 auth:
   type: noauth
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
@@ -16,14 +17,75 @@ body:
     }
 scripts:
   - type: afterResponse
+    language: text/javascript
     code: |-
       if (pm.response.code === 200) {
           const body = pm.response.json();
-          // For email_verify, the response includes tokens — capture them
-          // so the user is immediately authenticated after verification.
-          if (body.access_token) {
-              pm.collectionVariables.set("accessToken", body.access_token);
-              pm.collectionVariables.set("refreshToken", body.refresh_token);
+          if (body.data && body.data.access_token) {
+              pm.collectionVariables.set("accessToken", body.data.access_token);
+              pm.collectionVariables.set("refreshToken", body.data.refresh_token);
           }
       }
-    language: text/javascript
+docs:
+  description: |-
+    Verify a 6-digit OTP code. Handles two flows depending on `otp_type`:
+
+    | `otp_type`       | Triggered by                        | Effect on success                                      |
+    | ---------------- | ----------------------------------- | ------------------------------------------------------ |
+    | `email_verify`   | `POST /auth/signup` or `/resend-verification` | Marks email as verified; returns fresh access + refresh tokens |
+    | `password_reset` | `POST /auth/forgot-password`        | Returns `verified: true`; client then calls `/reset-password` |
+
+    OTP codes expire after **10 minutes** and are single-use.
+
+    ## Request body
+
+    | Field      | Type   | Rules                                    |
+    | ---------- | ------ | ---------------------------------------- |
+    | `code`     | string | Exactly 6 digits                         |
+    | `otp_type` | string | `"email_verify"` or `"password_reset"`   |
+
+    ## Success (200) — email_verify
+
+    ```json
+    {
+      "status": true,
+      "message": "email verified",
+      "data": {
+        "verified": true,
+        "access_token": "eyJ…",
+        "refresh_token": "v2.local.…",
+        "expires_in": 900,
+        "user": {
+          "id": "01984af1-…",
+          "email": "david.michael@stu.cu.edu.ng",
+          "display_name": "David Michael",
+          "email_verified": true,
+          "role": "user"
+        }
+      }
+    }
+    ```
+
+    ## Success (200) — password_reset
+
+    ```json
+    {
+      "status": true,
+      "message": "otp verified",
+      "data": {
+        "verified": true,
+        "access_token": null,
+        "refresh_token": null,
+        "expires_in": null,
+        "user": { "id": "…", "email": "…", "email_verified": true, "role": "user" }
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning                              |
+    | ------ | ------------------- | ------------------------------------ |
+    | 400    | `bad_request`       | Invalid or expired OTP               |
+    | 422    | `validation`        | Code not exactly 6 digits            |
+    | 429    | `too_many_requests` | Rate limited                         |

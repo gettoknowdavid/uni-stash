@@ -26,6 +26,7 @@ class UsBottomNavBar extends StatelessWidget {
     required this.destinations,
     required this.currentIndex,
     required this.onDestinationSelected,
+    this.badgedIndices = const {},
     super.key,
   });
 
@@ -40,6 +41,10 @@ class UsBottomNavBar extends StatelessWidget {
 
   /// The callback invoked when a destination is selected.
   final ValueChanged<int> onDestinationSelected;
+
+  /// Indices of destinations that should show an unread badge dot
+  /// (e.g. the CHAT tab while threads have unread messages).
+  final Set<int> badgedIndices;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +64,7 @@ class UsBottomNavBar extends StatelessWidget {
                 child: _UsNavBarItem(
                   destination: destinations[i],
                   selected: i == currentIndex,
+                  showBadge: badgedIndices.contains(i),
                   onTap: () => onDestinationSelected(i),
                 ),
               ),
@@ -73,11 +79,13 @@ class _UsNavBarItem extends StatelessWidget {
   const _UsNavBarItem({
     required this.destination,
     required this.selected,
+    required this.showBadge,
     required this.onTap,
   });
 
   final UsNavDestination destination;
   final bool selected;
+  final bool showBadge;
   final VoidCallback onTap;
 
   @override
@@ -90,7 +98,9 @@ class _UsNavBarItem extends StatelessWidget {
     return Semantics(
       selected: selected,
       button: true,
-      label: destination.label,
+      label: showBadge
+          ? '${destination.label}, unread messages'
+          : destination.label,
       child: GestureDetector(
         behavior: .opaque,
         onTap: onTap,
@@ -108,12 +118,30 @@ class _UsNavBarItem extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: .center,
                 children: [
-                  Icon(
-                    selected
-                        ? (destination.selectedIcon ?? destination.icon)
-                        : destination.icon,
-                    size: 24,
-                    color: color,
+                  Stack(
+                    clipBehavior: .none,
+                    children: [
+                      Icon(
+                        selected
+                            ? (destination.selectedIcon ?? destination.icon)
+                            : destination.icon,
+                        size: 24,
+                        color: color,
+                      ),
+                      if (showBadge)
+                        Positioned(
+                          top: 0,
+                          right: -8,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

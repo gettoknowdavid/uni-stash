@@ -14,3 +14,50 @@ body:
     {
       "refresh_token": "{{refreshToken}}"
     }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 200) {
+          const body = pm.response.json();
+          pm.collectionVariables.set("accessToken", body.data.access_token);
+          pm.collectionVariables.set("refreshToken", body.data.refresh_token);
+      }
+docs:
+  description: |-
+    Exchange a valid refresh token for a new access + refresh token pair
+    (token rotation).
+
+    ## Token rotation & reuse detection
+
+    Each refresh token is **single-use**. On success the old token is revoked
+    and a new pair is issued. If a **revoked** token is presented (reuse
+    detected), the entire token family is invalidated — all sessions for that
+    user are terminated and they must log in again.
+
+    ## Request body
+
+    | Field           | Type   | Rules     |
+    | --------------- | ------ | --------- |
+    | `refresh_token` | string | Non-empty |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "token refreshed",
+      "data": {
+        "access_token": "eyJ…",
+        "refresh_token": "v2.local.…",
+        "expires_in": 900
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning                                        |
+    | ------ | ------------------- | ---------------------------------------------- |
+    | 401    | `unauthorized`      | Token invalid, expired, or reuse detected      |
+    | 429    | `too_many_requests` | Rate limited                                   |

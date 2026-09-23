@@ -6,7 +6,8 @@ order: 3000
 auth:
   type: bearer
   credentials:
-    token: "{{adminAccessToken}}"
+    - key: token
+      value: '{{adminAccessToken}}'
 headers:
   - key: Content-Type
     value: application/json
@@ -17,6 +18,60 @@ body:
       "display_name": "Updated Admin Name",
       "level": "standard",
       "permissions": {
-        "schools": ["write"]
+        "schools": ["write"],
+        "categories": ["write"]
       }
     }
+docs:
+  description: |-
+    Partially update an admin account (super admin only).
+
+    At least one field must be provided. Fields not included are left
+    unchanged. A super admin cannot downgrade their own level.
+
+    ## Request body
+
+    | Field          | Type   | Rules                                         |
+    | -------------- | ------ | --------------------------------------------- |
+    | `display_name` | string | Optional — new display name                   |
+    | `level`        | string | Optional — `"super"` or `"standard"`          |
+    | `permissions`  | object | Optional — replaces the entire permissions map |
+    | `is_active`    | bool   | Optional — reactivate a deactivated admin     |
+
+    ## Permissions object
+
+    The `permissions` object maps resource names to allowed actions. Setting
+    it replaces the entire existing permissions map:
+
+    ```json
+    {
+      "schools": ["write"],
+      "categories": ["write"]
+    }
+    ```
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "admin updated successfully",
+      "data": {
+        "id": "01984af1-…",
+        "email": "admin@uni-stash.com",
+        "display_name": "Updated Admin Name",
+        "level": "standard",
+        "message": "admin updated successfully"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                    |
+    | ------ | -------------- | ------------------------------------------ |
+    | 400    | `bad_request`  | No fields provided / invalid level         |
+    | 401    | `unauthorized` | Missing or invalid admin token             |
+    | 403    | `forbidden`    | Requester is not a super admin             |
+    | 404    | `not_found`    | Admin not found                            |
+    | 429    | `too_many_requests` | Rate limited                          |

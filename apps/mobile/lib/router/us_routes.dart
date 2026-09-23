@@ -30,6 +30,9 @@ final class UsRoutes {
   static const String search = '/search';
   static const String sell = '/sell';
   static const String chat = '/chat';
+
+  /// Full-screen chat conversation (guide 7.8), pushed above the shell.
+  static const String chatDetail = '/chat/:id';
   static const String profile = '/profile';
 
   static const String listingDetails = '/listings/:id';
@@ -44,4 +47,5 @@ final class UsRoutes {
 
   static String listingDetailsRoute(String id) => '/listings/$id';
   static String listingEditRoute(String id) => '/listings/$id/edit';
+  static String chatDetailRoute(String id) => '/chat/$id';
 }

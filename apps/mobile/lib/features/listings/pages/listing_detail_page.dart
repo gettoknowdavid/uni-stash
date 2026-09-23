@@ -369,9 +369,18 @@ class _ListingDetailView extends SignalWidget {
     final createdChatId = model.createdChatId.value;
     if (createdChatId != null) {
       model.consumeChatResult();
-      // The chat thread list lives in the Chats tab. Phase 7 adds the
-      // /chat/:id detail route and will deep-link straight into it.
-      context.go(UsRoutes.chat);
+      // Deep-link straight into the conversation (guide 6.8 + 7.8).
+      final detail = model.detail.value;
+      unawaited(
+        context.push(
+          UsRoutes.chatDetailRoute(createdChatId),
+          extra: {
+            'chatId': createdChatId,
+            'counterpartName': detail?.seller.displayName ?? 'Seller',
+            'listingTitle': detail?.title ?? '',
+          },
+        ),
+      );
     }
 
     final feedback = model.feedback.value;

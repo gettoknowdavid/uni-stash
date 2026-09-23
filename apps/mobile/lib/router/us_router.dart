@@ -73,6 +73,21 @@ final GoRouter routerConfig = GoRouter(
       path: UsRoutes.mySales,
       builder: (context, state) => const MySalesPage(),
     ),
+    // Full-screen chat conversation (guide 7.8). Deep links and push
+    // notifications (guide 7.10) may arrive without `extra`, so the
+    // display names fall back to neutral labels rather than crashing.
+    GoRoute(
+      path: UsRoutes.chatDetail,
+      builder: (context, state) {
+        final extra = state.extra;
+        final map = extra is Map ? extra : const <String, Object?>{};
+        return ChatDetailPage(
+          chatId: state.pathParameters['id']!,
+          counterpartName: (map['counterpartName'] as String?) ?? 'Chat',
+          listingTitle: (map['listingTitle'] as String?) ?? '',
+        );
+      },
+    ),
     GoRoute(
       path: UsRoutes.listingEditor,
       builder: (context, state) => const ListingEditor(),

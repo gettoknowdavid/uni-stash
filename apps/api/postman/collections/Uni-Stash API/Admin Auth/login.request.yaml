@@ -6,7 +6,8 @@ order: 1000
 auth:
   type: noauth
 headers:
-  Content-Type: application/json
+  - key: Content-Type
+    value: application/json
 body:
   type: json
   content: |-
@@ -28,3 +29,50 @@ scripts:
           pm.collectionVariables.set("adminRefreshToken", body.data.refresh_token);
       }
     language: text/javascript
+docs:
+  description: |-
+    Authenticate as an admin. Returns a short-lived access token (15 min)
+    and a long-lived refresh token.
+
+    Admin tokens are separate from student tokens — they carry a different
+    JWT claim (`admin_id` + `level`) and are validated by a different
+    middleware. Do not mix admin and student tokens.
+
+    Deactivated admin accounts return `401 unauthorized` (same as wrong
+    password — no enumeration).
+
+    ## Admin levels
+
+    | Level      | Description                                              |
+    | ---------- | -------------------------------------------------------- |
+    | `super`    | Full access — can manage other admins                    |
+    | `standard` | Scoped access — permissions defined per resource         |
+
+    ## Request body
+
+    | Field      | Type   | Rules              |
+    | ---------- | ------ | ------------------ |
+    | `email`    | string | Valid email format |
+    | `password` | string | Non-empty          |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "login successful",
+      "data": {
+        "access_token": "eyJ…",
+        "refresh_token": "v2.local.…",
+        "expires_in": 900
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning                          |
+    | ------ | ------------------- | -------------------------------- |
+    | 401    | `unauthorized`      | Invalid credentials or deactivated account |
+    | 422    | `validation`        | Missing/invalid fields           |
+    | 429    | `too_many_requests` | Rate limited (10 req/min per IP) |

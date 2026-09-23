@@ -3,3 +3,33 @@ name: Delete School
 method: DELETE
 url: '{{baseUrl}}/api/v1/schools/{{schoolId}}'
 order: 6000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{adminAccessToken}}'
+docs:
+  description: |-
+    Delete a partner school (admin only, requires `schools:write`).
+
+    > **Warning:** Deleting a school will cascade-delete all users registered
+    > with that school's email domain. This is a destructive operation and
+    > should only be used when decommissioning a school partnership.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "school deleted"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid admin token       |
+    | 403    | `forbidden`    | Admin lacks `schools:write` permission |
+    | 404    | `not_found`    | School not found                     |
+    | 429    | `too_many_requests` | Rate limited                    |

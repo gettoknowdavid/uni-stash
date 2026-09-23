@@ -3,6 +3,11 @@ name: Update School
 method: PATCH
 url: '{{baseUrl}}/api/v1/schools/{{schoolId}}'
 order: 5000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{adminAccessToken}}'
 headers:
   - key: Content-Type
     value: application/json
@@ -10,5 +15,44 @@ body:
   type: json
   content: |-
     {
-      "name": "University of Port Harcourt (Updated)"
+      "name": "Covenant University (Updated)"
     }
+docs:
+  description: |-
+    Update a partner school's name or domain (admin only, requires `schools:write`).
+
+    At least one field must be provided. Fields not included in the body
+    are left unchanged.
+
+    ## Request body
+
+    | Field    | Type   | Rules                                  |
+    | -------- | ------ | -------------------------------------- |
+    | `name`   | string | Optional — new school name             |
+    | `domain` | string | Optional — new email domain suffix     |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "school updated successfully",
+      "data": {
+        "id": 1,
+        "name": "Covenant University (Updated)",
+        "domain": "stu.cu.edu.ng",
+        "created_at": "2026-01-01T00:00:00Z"
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                              |
+    | ------ | -------------- | ------------------------------------ |
+    | 400    | `bad_request`  | No fields provided                   |
+    | 401    | `unauthorized` | Missing or invalid admin token       |
+    | 403    | `forbidden`    | Admin lacks `schools:write` permission |
+    | 404    | `not_found`    | School not found                     |
+    | 409    | `conflict`     | New domain already in use            |
+    | 429    | `too_many_requests` | Rate limited                    |

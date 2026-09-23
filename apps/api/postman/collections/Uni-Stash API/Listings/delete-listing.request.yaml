@@ -3,3 +3,44 @@ name: Delete Listing
 method: DELETE
 url: '{{baseUrl}}/api/v1/listings/{{listingId}}'
 order: 5000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+docs:
+  description: |-
+    Soft-delete a listing (owner only).
+
+    The listing's status transitions to `deleted`. It is no longer returned
+    in the default browse feed but remains visible to the owner via
+    `GET /listings?status=deleted`. The row is never hard-deleted.
+
+    ## State machine
+
+    Only `active` listings can be deleted. Attempting to delete a `reserved`
+    or `sold` listing returns `409 Conflict`.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "listing deleted",
+      "data": {
+        "id": "01984af1-…",
+        "status": "deleted",
+        ...
+      }
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                       |
+    | ------ | -------------- | --------------------------------------------- |
+    | 401    | `unauthorized` | Missing or invalid token                      |
+    | 403    | `forbidden`    | Not the listing owner                         |
+    | 404    | `not_found`    | Listing not found                             |
+    | 409    | `conflict`     | Listing is reserved or sold (cannot delete)   |
+    | 429    | `too_many_requests` | Rate limited                             |

@@ -14,3 +14,23 @@ body:
     {
       "refresh_token": "{{adminRefreshToken}}"
     }
+docs:
+  description: |-
+    Revoke the admin refresh token, ending the current admin session.
+
+    Idempotent — passing an already-revoked or unknown token still returns 200.
+
+    ## Request body
+
+    | Field           | Type   | Rules     |
+    | --------------- | ------ | --------- |
+    | `refresh_token` | string | Non-empty |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "logged out"
+    }
+    ```

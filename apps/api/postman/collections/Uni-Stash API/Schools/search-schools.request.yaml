@@ -1,7 +1,35 @@
 $kind: http-request
 name: Search Schools
 method: GET
-url: '{{baseUrl}}/api/v1/schools?q=university'
+url: '{{baseUrl}}/api/v1/schools'
 order: 2000
 auth:
   type: noauth
+queryParams:
+  - key: search
+    value: university
+docs:
+  description: |-
+    Search partner schools by name (convenience alias for `GET /schools?search=…`).
+
+    Returns schools whose name contains the search term (case-insensitive).
+    Useful for autocomplete in the sign-up flow.
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "ok",
+      "data": {
+        "schools": [
+          {
+            "id": 1,
+            "name": "Covenant University",
+            "domain": "stu.cu.edu.ng",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      }
+    }
+    ```

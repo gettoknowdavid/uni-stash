@@ -12,5 +12,37 @@ body:
   type: json
   content: |-
     {
-      "email": "student@university.edu"
+      "email": "david.michael@stu.cu.edu.ng"
     }
+docs:
+  description: |-
+    Re-send the email verification OTP to an unverified account.
+
+    Use this when the original OTP from sign-up expired or was never received.
+    The endpoint is intentionally **always 200** regardless of whether the
+    email exists — this prevents account enumeration.
+
+    A new OTP is only generated and sent if the account exists **and** is not
+    yet verified. Verified accounts silently receive no email.
+
+    ## Request body
+
+    | Field   | Type   | Rules              |
+    | ------- | ------ | ------------------ |
+    | `email` | string | Valid email format |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "if that email is registered and unverified, a new code has been sent"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code                | Meaning          |
+    | ------ | ------------------- | ---------------- |
+    | 422    | `validation`        | Invalid email    |
+    | 429    | `too_many_requests` | Rate limited     |

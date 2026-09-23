@@ -1,0 +1,93 @@
+$kind: http-request
+name: Register Device
+method: POST
+url: '{{baseUrl}}/api/v1/notifications/register-device'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+      "platform": "ios"
+    }
+docs:
+  description: |-
+    Register a device push notification token with Pusher Beams.
+
+    Call this after the user grants push notification permission on their
+    device. The token is stored in the `device_tokens` table and associated
+    with the authenticated user. Re-registering the same token is idempotent
+    — it updates the platform field if it changed.
+
+    Pusher Beams uses **interests** as the addressing mechanism. Each user's
+    devices are automatically subscribed to the interest `user-{user_id}`.
+    When the backend needs to notify a user (e.g. new chat message), it
+    publishes to that interest and all registered devices receive the push.
+
+    ## Platform values
+
+    | Value     | Description                                    |
+    | --------- | ---------------------------------------------- |
+    | `ios`     | Apple Push Notification Service (APNs) token   |
+    | `android` | Firebase Cloud Messaging (FCM) token           |
+    | `web`     | Web Push / browser notification token          |
+
+    ## Beams interest naming
+
+    The server subscribes each device to: `user-{user_uuid}`
+
+    Example: `user-01984af1-3b2c-7d8e-9f0a-1b2c3d4e5f6a`
+
+    ## Push notification payload shape
+
+    When a push is sent, the payload follows platform-specific formats:
+
+    **iOS (APNs):**
+    ```json
+    {
+      "aps": {
+        "alert": { "title": "New message", "body": "Ada: Is it still available?" },
+        "sound": "default"
+      }
+    }
+    ```
+
+    **Android (FCM):**
+    ```json
+    {
+      "notification": { "title": "New message", "body": "Ada: Is it still available?" },
+      "data": { "chat_id": "uuid", "type": "message_new" }
+    }
+    ```
+
+    ## Request body
+
+    | Field      | Type   | Rules                                          |
+    | ---------- | ------ | ---------------------------------------------- |
+    | `token`    | string | 1–512 characters — the OS push token           |
+    | `platform` | string | `"ios"`, `"android"`, or `"web"`               |
+
+    ## Success (200)
+
+    ```json
+    {
+      "status": true,
+      "message": "device registered"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                    |
+    | ------ | -------------- | ------------------------------------------ |
+    | 401    | `unauthorized` | Missing or invalid token                   |
+    | 422    | `validation`   | Invalid platform or empty token            |
+    | 429    | `too_many_requests` | Rate limited                          |

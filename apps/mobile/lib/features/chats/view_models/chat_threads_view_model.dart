@@ -39,14 +39,17 @@ class ChatThreadsViewModel implements Disposable {
       final result = await _repository.listThreads();
       if (_disposed) return;
 
-      switch (result) {
-        case Success(:final value):
-          threads.value = value;
-        case Failure(:final message):
-          error.value = message;
-      }
+      // One notification for the whole outcome (threads/error + isLoading).
+      batch(() {
+        switch (result) {
+          case Success(:final value):
+            threads.value = value;
+          case Failure(:final message):
+            error.value = message;
+        }
 
-      isLoading.value = false;
+        isLoading.value = false;
+      });
     });
   }
 

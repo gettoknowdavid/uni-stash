@@ -1,0 +1,82 @@
+$kind: http-request
+name: Pusher Channel Auth
+method: POST
+url: '{{baseUrl}}/api/v1/realtime/auth'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{accessToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "socket_id": "{{pusherSocketId}}",
+      "channel_name": "private-chat-{{chatId}}"
+    }
+docs:
+  description: |-
+    Authenticate a Pusher Channels private-channel subscription.
+
+    Pusher's client SDK calls this endpoint automatically when the client
+    tries to subscribe to a `private-*` channel. The server validates that
+    the authenticated user is a participant of the requested chat, then
+    returns a signed auth string that the Pusher SDK uses to complete the
+    subscription handshake.
+
+    > **This endpoint is called by the Pusher SDK, not directly by your
+    > application code.** Configure your Pusher client with:
+    > ```
+    > authEndpoint: "{{baseUrl}}/api/v1/realtime/auth"
+    > auth: { headers: { Authorization: "Bearer <accessToken>" } }
+    > ```
+
+    ## Channel naming convention
+
+    | Channel                    | Purpose                                    |
+    | -------------------------- | ------------------------------------------ |
+    | `private-chat-{chat_id}`   | Real-time messages for a specific chat thread |
+
+    ## Request body
+
+    | Field          | Type   | Description                                          |
+    | -------------- | ------ | ---------------------------------------------------- |
+    | `socket_id`    | string | The socket ID provided by the Pusher client SDK      |
+    | `channel_name` | string | The private channel name to authenticate (e.g. `private-chat-{uuid}`) |
+
+    ## Success (200)
+
+    Returns the Pusher auth string. The Pusher SDK uses this directly:
+
+    ```json
+    {
+      "auth": "app_key:hmac_sha256_signature"
+    }
+    ```
+
+    ## Errors
+
+    | Status | Code           | Meaning                                              |
+    | ------ | -------------- | ---------------------------------------------------- |
+    | 401    | `unauthorized` | Missing or invalid user token                        |
+    | 403    | `forbidden`    | User is not a participant of the requested chat      |
+    | 404    | `not_found`    | Chat not found                                       |
+    | 400    | `bad_request`  | Realtime provider not configured (null publisher)    |
+
+    ## Realtime events
+
+    Once subscribed to `private-chat-{chat_id}`, the client receives:
+
+    | Event name      | Payload                                                    | Trigger                          |
+    | --------------- | ---------------------------------------------------------- | -------------------------------- |
+    | `message.new`   | `{ "type": "message_new", "chat_id": "uuid" }`             | New message sent in the thread   |
+    | `message.read`  | `{ "type": "message_read", "chat_id": "uuid", "last_read_message_id": "uuid" }` | Other participant marked messages as read |
+
+    On receiving `message.new`, re-fetch `GET /chats/{id}/messages` to get
+    the new message content. The event payload intentionally carries only
+    the `chat_id` — not the message body — to keep the realtime layer
+    stateless and avoid duplication with the REST API.

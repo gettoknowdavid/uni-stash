@@ -35,11 +35,17 @@ class RealtimeClient {
     required this.pusherKey,
     required this.pusherCluster,
     required this.authEndpoint,
+    WebSocketChannel Function(Uri uri)? connector,
   }) : _dio = dio,
-       _logger = logger;
+       _logger = logger,
+       _connector = connector ?? WebSocketChannel.connect;
 
   final Dio _dio;
   final Logger _logger;
+
+  /// Opens the WebSocket — injectable for tests; defaults to
+  /// [WebSocketChannel.connect].
+  final WebSocketChannel Function(Uri uri) _connector;
 
   /// The public Pusher app key (safe to ship in the client).
   final String pusherKey;
@@ -90,7 +96,7 @@ class RealtimeClient {
     if (_disposed || _channel != null) return;
     _reconnectTimer?.cancel();
 
-    final channel = WebSocketChannel.connect(_wsUri);
+    final channel = _connector(_wsUri);
     _channel = channel;
     _wsSubscription = channel.stream.listen(
       _handleFrame,
