@@ -364,7 +364,7 @@ Ticket ID scheme: `CM-<epic>.<seq>`. Each epic's tickets are meant to be worked 
 **Description:** Implement the listing browse endpoint with category/price/status filters and cursor-based pagination.
 **Acceptance Criteria:**
 
-- Supports query params: `category`, `min_price`, `max_price`, `status` (defaults to `active` only), `cursor`, `limit`
+- Supports query params: `category`, `min_price`, `max_price`, `status` (defaults to `active` + `reserved`; `sold`/`deleted` only via explicit `status`), `cursor`, `limit`
 - Pagination is cursor-based (opaque cursor, not offset), stable under concurrent writes
 - Default `limit` and a max enforced `limit` (e.g. cap at 50) to prevent abuse
 - Response includes a `next_cursor` (or null if no more results)

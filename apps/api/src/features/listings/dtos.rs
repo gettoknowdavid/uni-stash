@@ -168,7 +168,10 @@ pub struct ListingFilters {
     pub category: Option<i16>,
     pub min_price: Option<i64>,
     pub max_price: Option<i64>,
-    pub status: models::ListingStatus,
+    /// Statuses to include. The default feed passes
+    /// `[Active, Reserved]` (reserved cards render the RESERVED badge);
+    /// an explicit `?status=` filter passes a single status.
+    pub statuses: Vec<models::ListingStatus>,
     pub seller: Option<uuid::Uuid>,
     pub cursor: Option<cursor::Cursor>,
     pub limit: i64,

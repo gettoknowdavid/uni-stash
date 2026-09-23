@@ -82,8 +82,17 @@ async fn seed_listing(
     status: &str,
 ) -> uuid::Uuid {
     sqlx::query_scalar::<_, uuid::Uuid>(
-        "INSERT INTO listings (seller_id, category_id, title, description, price, condition, status)
-         VALUES ($1, $2, $3, '', $4, $5, $6) RETURNING id",
+        // The `reserved_fields_consistent` CHECK requires reserved_by /
+        // reserved_at to be set exactly when status = 'reserved', so the
+        // seed fills them (reserver = seller) for reserved rows.
+        "INSERT INTO listings
+             (seller_id, category_id, title, description, price, condition,
+              status, reserved_by, reserved_at)
+         VALUES
+             ($1, $2, $3, '', $4, $5, $6,
+              CASE WHEN $6 = 'reserved' THEN $1 END,
+              CASE WHEN $6 = 'reserved' THEN now() END)
+         RETURNING id",
     )
     .bind(seller_id)
     .bind(category_id)
@@ -127,7 +136,8 @@ async fn call_browse(state: &web::Data<AppState>, query: &str) -> actix_web::dev
 }
 
 // ===========================================================================
-// Default: active status filter, limit 20
+// Default: active + reserved included (reserved cards carry the
+// RESERVED badge in the feed), sold excluded, limit 20
 // ===========================================================================
 
 #[sqlx::test]
@@ -138,7 +148,7 @@ async fn default_limit_and_status_filter_applied(pool: PgPool) {
 
     seed_listing(&pool, seller, cat, "Active 1", Some(10), "new", "active").await;
     seed_listing(&pool, seller, cat, "Active 2", Some(20), "used", "active").await;
-    seed_listing(&pool, seller, cat, "Active 3", Some(30), "fair", "active").await;
+    seed_listing(&pool, seller, cat, "Reserved Item", Some(30), "fair", "reserved").await;
     seed_listing(&pool, seller, cat, "Sold Item", Some(50), "new", "sold").await;
 
     let state = test_state(pool);
@@ -148,7 +158,19 @@ async fn default_limit_and_status_filter_applied(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
     let data = json["data"].as_object().expect("data");
     let listings = data["listings"].as_array().unwrap();
-    assert_eq!(listings.len(), 3, "sold listing must be excluded");
+    assert_eq!(listings.len(), 3, "reserved included, sold excluded");
+    let titles: Vec<&str> = listings
+        .iter()
+        .map(|l| l["title"].as_str().unwrap())
+        .collect();
+    assert!(
+        titles.contains(&"Reserved Item"),
+        "reserved listing must stay on the main feed"
+    );
+    assert!(
+        !titles.contains(&"Sold Item"),
+        "sold listing must be excluded"
+    );
     assert!(data["next_cursor"].is_null());
 }
 

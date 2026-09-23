@@ -64,17 +64,25 @@ impl ListingsRepo {
             QueryBuilder::new(
                 "SELECT l.id, l.title, l.price, l.currency::TEXT AS currency, l.barter_request, l.condition, l.status, l.created_at
                  FROM listings l
-                 WHERE l.status = ",
+                 WHERE l.status IN (",
             )
         } else {
             QueryBuilder::new(
                 "SELECT id, title, price, currency::TEXT AS currency, barter_request, condition, status, created_at
                  FROM listings
-                 WHERE status = ",
+                 WHERE status IN (",
             )
         };
 
-        query.push_bind(filters.status.to_string());
+        // Bind each status (default feed: active + reserved; explicit
+        // filter: a single status), comma-separated inside the IN (...).
+        for (i, status) in filters.statuses.iter().enumerate() {
+            if i > 0 {
+                query.push(", ");
+            }
+            query.push_bind(status.to_string());
+        }
+        query.push(")");
 
         // When a search query is present, filter by tsvector match
         // and order by relevance rank. plainto_tsquery handles stemming and

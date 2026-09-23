@@ -69,11 +69,15 @@ pub async fn list_listings(
     state: web::Data<AppState>,
     query: web::Query<ListListingsQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let status = match query.status.as_deref() {
-        Some("reserved") => ListingStatus::Reserved,
-        Some("sold") => ListingStatus::Sold,
-        Some("deleted") => ListingStatus::Deleted,
-        _ => ListingStatus::Active,
+    // Default feed shows everything still on the market: active AND
+    // reserved (the client renders a RESERVED badge on those cards).
+    // Sold/deleted only surface through an explicit `?status=` filter.
+    let statuses = match query.status.as_deref() {
+        Some("reserved") => vec![ListingStatus::Reserved],
+        Some("sold") => vec![ListingStatus::Sold],
+        Some("deleted") => vec![ListingStatus::Deleted],
+        Some(_) => vec![ListingStatus::Active],
+        None => vec![ListingStatus::Active, ListingStatus::Reserved],
     };
 
     let limit = query.limit.unwrap_or(20).clamp(1, 50);
@@ -101,7 +105,7 @@ pub async fn list_listings(
         category: query.category,
         min_price: query.min_price,
         max_price: query.max_price,
-        status,
+        statuses,
         seller: query.seller,
         cursor,
         limit,
