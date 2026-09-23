@@ -169,7 +169,6 @@ void _registerProfile() {
   );
 }
 
-/// Chats feature registrations.
 void _registerChats() {
   di.registerSingletonWithDependencies<ChatsApiClient>(
     () => ChatsApiClient(di<Dio>()),
@@ -181,8 +180,6 @@ void _registerChats() {
     dependsOn: [ChatsApiClient],
   );
 
-  // Pusher realtime client (guide 7.4) — one shared socket per
-  // authenticated scope; chat view models subscribe through it.
   di.registerSingletonWithDependencies<RealtimeClient>(
     () => RealtimeClient(
       dio: di<Dio>(),

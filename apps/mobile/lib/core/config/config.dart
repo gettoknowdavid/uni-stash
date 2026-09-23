@@ -10,10 +10,6 @@ final class Config {
   final String baseUrl;
   final String wsUrl;
   final String env;
-
-  /// Pusher Channels credentials for the realtime chat client
-  /// (`RealtimeClient`). The key is public by design; the secret never
-  /// leaves the backend.
   final String pusherKey;
   final String pusherCluster;
 }
