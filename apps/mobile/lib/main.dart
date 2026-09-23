@@ -16,6 +16,8 @@ void main() async {
     baseUrl: DevEnv.baseUrl,
     wsUrl: DevEnv.wsUrl,
     env: DevEnv.env,
+    pusherKey: DevEnv.pusherKey,
+    pusherCluster: DevEnv.pusherCluster,
   );
   configureDependencies(config);
   await GetIt.I.allReady();

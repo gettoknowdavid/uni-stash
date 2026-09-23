@@ -180,6 +180,20 @@ void _registerChats() {
     () => ChatsRepositoryImpl(di<ChatsApiClient>(), di<Logger>()),
     dependsOn: [ChatsApiClient],
   );
+
+  // Pusher realtime client (guide 7.4) — one shared socket per
+  // authenticated scope; chat view models subscribe through it.
+  di.registerSingletonWithDependencies<RealtimeClient>(
+    () => RealtimeClient(
+      dio: di<Dio>(),
+      logger: di<Logger>(),
+      pusherKey: di<Config>().pusherKey,
+      pusherCluster: di<Config>().pusherCluster,
+      authEndpoint: '${di<Config>().baseUrl}/api/v1/realtime/auth',
+    ),
+    dependsOn: [Dio],
+    dispose: (client) => client.disconnect(),
+  );
 }
 
 /// Sales feature registrations.
