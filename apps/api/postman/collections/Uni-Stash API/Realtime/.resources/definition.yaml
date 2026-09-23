@@ -1,0 +1,85 @@
+$kind: collection
+name: Realtime
+description: |-
+  Realtime communication for Uni-Stash — Pusher Channels (WebSocket chat) and
+  Pusher Beams (push notifications).
+
+  ---
+
+  ## Requests in this folder
+
+  | Request | Type | Purpose |
+  |---------|------|---------|
+  | **Pusher Channels: Connect & Subscribe** | WebSocket | Connect to Pusher's WebSocket endpoint and subscribe to a private chat channel to receive live `message.new` and `message.read` events |
+  | **Pusher Channel Auth** | HTTP POST | Authenticate a private-channel subscription — called by the Pusher SDK (or manually during testing) to get the HMAC-signed auth token |
+  | **Register Device** | HTTP POST | Register a device push token with Pusher Beams so the user receives background push notifications |
+  | **Pusher Beams: Publish Test Notification** | HTTP POST | Send a test push notification directly to the Pusher Beams REST API to verify the pipeline end-to-end |
+
+  ---
+
+  ## Full testing workflow
+
+  ### A — Test realtime chat (Pusher Channels)
+
+  **Prerequisites:** Two user accounts, a listing, and a chat thread.
+
+  1. **Log in** as User A → `POST /auth/login` → `accessToken` is saved automatically.
+  2. **Create a chat** → `POST /chats` with a `listing_id` → `chatId` is saved.
+  3. **Connect to WebSocket** → Open *Pusher Channels: Connect & Subscribe* and click **Connect**.
+  4. **Capture `socket_id`** → Copy the value from the `pusher:connection_established` frame and paste it into the `pusherSocketId` environment variable.
+  5. **Authenticate the channel** → Open *Pusher Channel Auth*, send it. Copy the `auth` string from the response and paste it into `pusherChannelAuth`.
+  6. **Subscribe** → Back in the WebSocket tab, send:
+     ```json
+     {
+       "event": "pusher:subscribe",
+       "data": {
+         "channel": "private-chat-{{chatId}}",
+         "auth": "{{pusherChannelAuth}}"
+       }
+     }
+     ```
+     You should receive `pusher_internal:subscription_succeeded`.
+  7. **Trigger an event** → In a second Postman tab (logged in as User B), send `POST /chats/{{chatId}}/messages`.
+  8. **Watch the event arrive** in the WebSocket tab:
+     ```json
+     {
+       "event": "message.new",
+       "channel": "private-chat-{{chatId}}",
+       "data": "{\"type\":\"message_new\",\"chat_id\":\"...\"}"
+     }
+     ```
+
+  ### B — Test push notifications (Pusher Beams)
+
+  **Prerequisites:** A real device with the app installed, or a Beams debug token.
+
+  1. **Register the device** → `POST /notifications/register-device` with the device token and platform.
+  2. **Set `targetUserId`** → Paste the user's UUID into the `targetUserId` environment variable.
+  3. **Send a test push** → Open *Pusher Beams: Publish Test Notification* and send it.
+  4. The device should receive the notification within a few seconds.
+
+  ---
+
+  ## Keep-alive (Pusher ping/pong)
+
+  Pusher sends a `pusher:ping` frame every ~30 seconds. If you don't reply,
+  the connection closes after the `activity_timeout` (120 s by default).
+  Send this manually to keep the connection alive during testing:
+
+  ```json
+  { "event": "pusher:pong", "data": {} }
+  ```
+
+  ---
+
+  ## Architecture notes
+
+  - **Realtime events are signals, not data.** The `message.new` payload only
+    contains the `chat_id`. The client must call `GET /chats/{id}/messages`
+    to fetch the actual message content.
+  - **REST is always the source of truth.** If the WebSocket connection drops,
+    messages are still persisted. Poll `GET /chats/{id}/messages` as a fallback.
+  - **Private channels require auth.** The `private-` prefix means Pusher will
+    reject subscriptions without a valid HMAC signature from your server.
+    The `/api/v1/realtime/auth` endpoint handles this and also validates that
+    the requesting user is a participant of the chat.

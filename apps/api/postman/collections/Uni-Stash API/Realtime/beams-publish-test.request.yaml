@@ -1,0 +1,97 @@
+$kind: http-request
+name: 'Pusher Beams: Publish Test Notification'
+url: 'https://rest.pusher.com/publish-api/v1/instances/{{pusherInstanceId}}/publishes/interests/user-{{targetUserId}}'
+order: 3000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{pusherBeamsSecretKey}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "interests": ["user-{{targetUserId}}"],
+      "apns": {
+        "aps": {
+          "alert": {
+            "title": "New message",
+            "body": "Ada: Is it still available?"
+          },
+          "sound": "default"
+        }
+      },
+      "fcm": {
+        "notification": {
+          "title": "New message",
+          "body": "Ada: Is it still available?"
+        },
+        "data": {
+          "chat_id": "{{chatId}}",
+          "type": "message_new"
+        }
+      },
+      "web": {
+        "notification": {
+          "title": "New message",
+          "body": "Ada: Is it still available?"
+        }
+      }
+    }
+docs:
+  description: |-
+    Publish a test push notification directly to the Pusher Beams REST API,
+    bypassing the Uni-Stash backend entirely.
+
+    Use this to verify that:
+    - Your Beams instance ID and secret key are correct
+    - The target device is registered and subscribed to the right interest
+    - APNs / FCM credentials are configured correctly in the Beams dashboard
+
+    > **This calls Pusher's API directly** — not the Uni-Stash backend.
+    > The `Authorization: Bearer` token here is the **Beams secret key**
+    > (`pusherBeamsSecretKey`), not the user's JWT access token.
+
+    ## Interest naming
+
+    Each user's devices are subscribed to: `user-{user_uuid}`
+
+    The URL already includes `user-` as a prefix — set `targetUserId` to
+    just the UUID (e.g. `01984af1-3b2c-7d8e-9f0a-1b2c3d4e5f6a`).
+
+    ## How the backend sends notifications
+
+    When a user sends a chat message, the backend calls:
+
+    ```
+    POST https://rest.pusher.com/publish-api/v1/instances/{instanceId}/publishes/interests/user-{recipient_uuid}
+    Authorization: Bearer {PUSHER_SECRET_KEY}
+    ```
+
+    With the same payload shape as this request. The `data` object in the
+    FCM block carries key-value pairs the mobile app can read when the
+    notification is tapped (e.g. to navigate to the right chat screen).
+
+    ## Environment variables used
+
+    | Variable               | Description                                              |
+    | ---------------------- | -------------------------------------------------------- |
+    | `pusherInstanceId`     | Beams instance ID (from Pusher dashboard)                |
+    | `pusherBeamsSecretKey` | Beams secret key — **keep this server-side only**        |
+    | `targetUserId`         | UUID of the user to notify (without the `user-` prefix)  |
+    | `chatId`               | UUID of the chat (passed in FCM `data` payload)          |
+
+    ## Success (200)
+
+    Pusher returns an empty `{}` body on success.
+
+    ## Errors
+
+    | Status | Meaning                                                    |
+    | ------ | ---------------------------------------------------------- |
+    | 401    | Invalid or missing Beams secret key                        |
+    | 404    | Instance ID not found                                      |
+    | 400    | Malformed payload or unknown interest                      |

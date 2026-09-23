@@ -19,3 +19,29 @@ values:
   - key: adminId
     value: ""
     type: secret
+  # ── Pusher Channels (WebSocket / realtime chat) ──────────────────────────
+  - key: pusherKey
+    value: 53cd5ebf1a56a0117575
+    type: default
+  - key: pusherCluster
+    value: eu
+    type: default
+  - key: pusherSocketId
+    value: ""
+    type: default
+    description: 'Captured from pusher:connection_established — paste here after connecting'
+  - key: pusherChannelAuth
+    value: ""
+    type: secret
+    description: 'Auth string from POST /api/v1/realtime/auth — paste here after authenticating'
+  # ── Pusher Beams (push notifications) ────────────────────────────────────
+  - key: pusherInstanceId
+    value: 71b7e676-d2f6-4b77-b1e4-a758145e82f7
+    type: default
+  - key: pusherBeamsSecretKey
+    value: 1B103407F2B9F35C2886533A5354090477AA0C97CB67D54988EDEC59C310F7A3
+    type: secret
+  - key: targetUserId
+    value: ""
+    type: default
+    description: 'UUID of the user to send a test push notification to'

@@ -1,0 +1,134 @@
+$kind: websocket-request
+name: "Pusher Channels: Connect & Subscribe"
+description: ""
+url: wss://ws-{{vault:pusherCluster}}.pusher.com/app/{{vault:pusherKey}}?protocol=7&client=postman&version=1.0
+settings: {}
+order: 500
+queryParams:
+  protocol: "7"
+  client: postman
+  version: "1.0"
+docs:
+  description: |-
+    Connect to Pusher Channels over the native WebSocket protocol and
+    subscribe to a private chat channel.
+
+    ## How to use this request
+
+    ### Step 1 — Connect
+    Click **Connect**. Pusher immediately sends a `pusher:connection_established`
+    frame containing your `socket_id`:
+
+    ```json
+    {
+      "event": "pusher:connection_established",
+      "data": "{\"socket_id\":\"123456.789012\",\"activity_timeout\":120}"
+    }
+    ```
+
+    Copy the `socket_id` value and save it to the `pusherSocketId` collection
+    variable (or environment variable).
+
+    ### Step 2 — Authenticate the private channel
+    Open the **Pusher Channel Auth** HTTP request in this folder and send it
+    with the `socket_id` you just copied. It calls `POST /api/v1/realtime/auth`
+    and returns:
+
+    ```json
+    { "auth": "53cd5ebf1a56a0117575:abc123..." }
+    ```
+
+    Copy the full `auth` string.
+
+    ### Step 3 — Subscribe
+    Back in this WebSocket tab, send the following message to subscribe to
+    the private channel (replace `<auth>` and `<chat_id>`):
+
+    ```json
+    {
+      "event": "pusher:subscribe",
+      "data": {
+        "channel": "private-chat-<chat_id>",
+        "auth": "<auth_string_from_step_2>"
+      }
+    }
+    ```
+
+    Pusher responds with:
+
+    ```json
+    {
+      "event": "pusher_internal:subscription_succeeded",
+      "channel": "private-chat-<chat_id>",
+      "data": "{}"
+    }
+    ```
+
+    ### Step 4 — Receive events
+    You are now subscribed. Send a message via `POST /chats/{id}/messages`
+    (from another tab or another user) and watch the events arrive here:
+
+    **`message.new`** — fires when a new message is sent:
+    ```json
+    {
+      "event": "message.new",
+      "channel": "private-chat-<chat_id>",
+      "data": "{\"type\":\"message_new\",\"chat_id\":\"<uuid>\"}"
+    }
+    ```
+
+    **`message.read`** — fires when the other participant marks messages read:
+    ```json
+    {
+      "event": "message.read",
+      "channel": "private-chat-<chat_id>",
+      "data": "{\"type\":\"message_read\",\"chat_id\":\"<uuid>\",\"last_read_message_id\":\"<uuid>\"}"
+    }
+    ```
+
+    > **Note:** The `data` field is a JSON-encoded string (double-serialised),
+    > which is standard Pusher wire format. Parse it with `JSON.parse(frame.data)`.
+
+    ## Keep-alive (ping/pong)
+    Pusher sends `pusher:ping` every ~30 s. Reply with:
+    ```json
+    { "event": "pusher:pong", "data": {} }
+    ```
+    Postman does not auto-respond to pings — you can send the pong manually
+    from the message composer to keep the connection alive during testing.
+
+    ## Useful subscribe messages
+
+    ### Subscribe (copy-paste ready)
+    ```json
+    {
+      "event": "pusher:subscribe",
+      "data": {
+        "channel": "private-chat-{{chatId}}",
+        "auth": "{{pusherChannelAuth}}"
+      }
+    }
+    ```
+
+    ### Pong (keep-alive reply)
+    ```json
+    { "event": "pusher:pong", "data": {} }
+    ```
+
+    ### Unsubscribe
+    ```json
+    {
+      "event": "pusher:unsubscribe",
+      "data": { "channel": "private-chat-{{chatId}}" }
+    }
+    ```
+
+    ## Environment variables used
+
+    | Variable            | Description                                          |
+    | ------------------- | ---------------------------------------------------- |
+    | `pusherCluster`     | Pusher cluster region (e.g. `eu`)                    |
+    | `pusherKey`         | Pusher app key (safe to expose to clients)           |
+    | `pusherSocketId`    | Captured from `connection_established` — set manually |
+    | `pusherChannelAuth` | Auth string from `POST /realtime/auth` — set manually |
+    | `chatId`            | UUID of the chat thread to subscribe to              |
