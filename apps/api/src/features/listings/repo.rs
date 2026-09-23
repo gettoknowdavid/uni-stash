@@ -231,7 +231,7 @@ impl ListingsRepo {
         listing_id: Uuid,
     ) -> Result<Option<ListingDetailResponse>, AppError> {
         let row = sqlx::query!(
-            "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.created_at,
+            "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.reserved_by, l.reserved_at, l.created_at,
                     u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,
                     sc.domain AS seller_domain,
                     c.id AS category_id, c.slug AS category_slug, c.label AS category_label
@@ -275,6 +275,8 @@ impl ListingsRepo {
             barter_request: row.barter_request,
             condition: row.condition.into(),
             status: row.status.into(),
+            reserved_by: row.reserved_by,
+            reserved_at: row.reserved_at,
             created_at: row.created_at,
             seller: SellerSummary {
                 id: row.seller_id,

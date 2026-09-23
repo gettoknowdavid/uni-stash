@@ -140,6 +140,41 @@ async fn active_listing_returns_full_detail(pool: PgPool) {
     assert!(data["seller"]["photo_url"].is_null());
     assert_eq!(data["category"]["slug"], "books");
     assert_eq!(data["images"].as_array().unwrap().len(), 2);
+    // Fresh listing: reservation fields present-but null, never absent —
+    // the mobile detail page reads them to pick the reserve/unreserve button.
+    assert!(data["reserved_by"].is_null());
+    assert!(data["reserved_at"].is_null());
+}
+
+#[sqlx::test]
+async fn reserved_listing_returns_reserved_fields(pool: PgPool) {
+    let school = seed_school(&pool).await;
+    let seller = seed_user(&pool, school, "seller@test.edu").await;
+    let buyer = seed_user(&pool, school, "buyer@test.edu").await;
+    let cat = seed_category(&pool, "books").await;
+    let listing_id = seed_listing(&pool, seller, cat, "active").await;
+
+    // The CHECK `reserved_fields_consistent` requires reserved_by/
+    // reserved_at whenever status = 'reserved'.
+    sqlx::query(
+        "UPDATE listings SET status = 'reserved', reserved_by = $1, reserved_at = now() WHERE id = $2",
+    )
+    .bind(buyer)
+    .bind(listing_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let state = test_state(pool);
+    let resp = call_detail(&state, listing_id).await;
+    assert_eq!(resp.status(), 200);
+
+    let json: serde_json::Value = test::read_body_json(resp).await;
+    let data = json["data"].as_object().expect("data");
+    assert_eq!(data["status"], "reserved");
+    assert_eq!(data["reserved_by"], buyer.to_string());
+    // rfc3339 string, not null — the whole point of the regression.
+    assert!(data["reserved_at"].is_string());
 }
 
 #[sqlx::test]

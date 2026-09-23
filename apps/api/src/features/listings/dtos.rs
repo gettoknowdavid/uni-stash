@@ -186,6 +186,12 @@ pub struct ListingDetailResponse {
     pub barter_request: Option<String>,
     pub condition: models::Condition,
     pub status: models::ListingStatus,
+    /// Set exactly while `status == reserved` (CHECK
+    /// `reserved_fields_consistent`), so clients can tell the reserver
+    /// apart from the seller on refetch.
+    pub reserved_by: Option<uuid::Uuid>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub reserved_at: Option<time::OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
     pub seller: SellerSummary,

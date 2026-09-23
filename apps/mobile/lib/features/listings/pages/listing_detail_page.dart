@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logger/logger.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:signals_hooks/signals_hooks.dart';
@@ -19,9 +20,6 @@ import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-/// Placeholder detail page for a single listing.
-///
-/// The [ListingSummary] is passed via `extra` from the home grid.
 class ListingDetailPage extends SignalStatefulWidget {
   const ListingDetailPage({required this.id, super.key});
 
@@ -110,9 +108,7 @@ class _ListingDetailView extends SignalWidget {
     final isCreatingChat = listingModel.isCreatingChat.value;
 
     if (detail == null && isLoading && error == null) {
-      return const UsPage(
-        body: Center(child: Spinner()),
-      );
+      return const UsPage(body: Center(child: Spinner()));
     }
 
     if (detail == null && error != null) {
@@ -153,7 +149,6 @@ class _ListingDetailView extends SignalWidget {
                       crossAxisAlignment: .start,
                       mainAxisAlignment: .spaceBetween,
                       children: [
-                        // StatusBadge(status: detail.status),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: .stretch,
@@ -297,8 +292,6 @@ class _ListingDetailView extends SignalWidget {
                         ),
                       ),
                     ],
-                    // Report/flag entry point (guide 6.12) —
-                    // non-owners only; Phase 8 builds the full flow.
                     if (detail.status != .deleted) ...[
                       const SizedBox(height: 16),
                       Center(
@@ -552,6 +545,9 @@ class _ReserveButton extends SignalWidget {
     // says which mutation (if any) is in flight for the spinners.
     final pending = model.pendingAction.value;
 
+    di<Logger>().w('Auth is $currentUserId, Seller is ${detail.seller.id}');
+    di<Logger>().w('Reserved by ${detail.reservedBy}');
+
     return ShadDecorator(
       decoration: ShadDecoration(
         border: ShadBorder(
@@ -625,7 +621,6 @@ class _SellerFooter extends SignalWidget {
       child: Padding(
         padding: const .all(16),
         child: switch (detail.status) {
-          // ACTIVE/SOLD/DELETED: the seller has nothing to do here.
           .reserved => Row(
             children: [
               Expanded(
@@ -655,8 +650,6 @@ class _SellerFooter extends SignalWidget {
     );
   }
 
-  /// Marking as sold records the sale irreversibly, so confirm first
-  /// (guide 6.7) before handing off to the view model.
   Future<void> _confirmAndMarkSold(BuildContext context, String id) async {
     final confirmed = await showShadDialog<bool>(
       context: context,
@@ -710,8 +703,6 @@ class _EditButton extends StatelessWidget {
         ),
         onPressed: () async {
           await context.push<void>(UsRoutes.listingEditRoute(id));
-          // The editor may have changed the listing — re-fetch so the
-          // detail view doesn't show stale data after returning.
           di<ListingDetailViewModel>().fetch(id);
         },
         icon: Icon(LucideIcons.pencil, size: size * 0.6),
@@ -890,7 +881,6 @@ class _ImageCarouselState extends State<_ImageCarousel> {
     return Column(
       mainAxisSize: .min,
       children: [
-        // Main carousel
         SizedBox(
           height: 360,
           width: double.infinity,
@@ -926,8 +916,6 @@ class _ImageCarouselState extends State<_ImageCarousel> {
             ),
           ),
         ),
-
-        // Thumbnail strip
         if (serverImages.length > 1)
           Container(
             height: 48,

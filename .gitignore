@@ -12,6 +12,7 @@ Thumbs.db
 
 ### --- Rust (apps/api/) ---
 apps/api/target/
+apps/api/target-test/
 apps/api/**/*.rs.bk
 **/*.pdb
 
@@ -83,7 +84,6 @@ apps/api/load-tests/*.json
 apps/api/load-tests/raw/
 
 .freebuff/
-.agents/
 
 # Generated OpenAPI spec
 apps/api/openapi.json

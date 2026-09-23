@@ -158,15 +158,13 @@ class ListingDetailViewModel implements Disposable {
 
       switch (result) {
         case Success(:final value):
-          // Optimistic in spirit, authoritative in fact: the endpoint
-          // returns the updated listing, so fold it in — no refetch.
           _applyListing(value);
           feedback.value = const ListingFeedback(.reserved);
         case Failure(:final message, :final code):
           if (code == 'email_not_verified') {
             feedback.value = const ListingFeedback(.verifyEmail);
           } else if (_isTakenMessage(message)) {
-            // 409 conflict: another buyer won the race, so our cached
+            // 409 conflict: another buyer already reseved, so our cached
             // detail IS stale — this is the one case worth refetching.
             await _fetch(id);
             if (_disposed) return;
