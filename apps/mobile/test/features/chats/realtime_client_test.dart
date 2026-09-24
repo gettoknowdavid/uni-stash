@@ -61,12 +61,12 @@ void main() {
 
   void stubAuthOk() {
     when(
-      () => dio.post<Map<String, dynamic>>(
+      () => dio.post<Object?>(
         any(),
         data: any(named: 'data'),
       ),
     ).thenAnswer(
-      (_) async => Response<Map<String, dynamic>>(
+      (_) async => Response<Object?>(
         requestOptions: RequestOptions(path: '/api/v1/realtime/auth'),
         data: <String, dynamic>{'auth': 'test-key:signature'},
       ),
@@ -136,7 +136,7 @@ void main() {
       expect(decoded, <String, dynamic>{'auth': 'test-key:signature'});
 
       final captured = verify(
-        () => dio.post<Map<String, dynamic>>(
+        () => dio.post<Object?>(
           'https://api.test/api/v1/realtime/auth',
           data: captureAny(named: 'data'),
         ),
@@ -154,7 +154,7 @@ void main() {
     'failed private-channel auth returns null instead of throwing',
     () async {
       when(
-        () => dio.post<Map<String, dynamic>>(
+        () => dio.post<Object?>(
           any(),
           data: any(named: 'data'),
         ),

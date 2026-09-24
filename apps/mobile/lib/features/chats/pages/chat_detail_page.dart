@@ -189,10 +189,6 @@ class _ConnectionBanner extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Message list
-// ---------------------------------------------------------------------------
-
 class _ChatBody extends StatelessWidget {
   const _ChatBody({
     required this.currentUserId,
@@ -227,7 +223,7 @@ class _ChatBody extends StatelessWidget {
 
         return ListView.builder(
           controller: scrollController,
-          padding: const .all(16),
+          padding: const .symmetric(vertical: 16),
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final message = messages[index];
@@ -241,10 +237,6 @@ class _ChatBody extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Single message bubble
-// ---------------------------------------------------------------------------
 
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.message, required this.isMe});

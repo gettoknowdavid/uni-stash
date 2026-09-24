@@ -222,7 +222,10 @@ class RealtimeClient {
     dynamic options,
   ) async {
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
+      // Intentionally untyped: the endpoint returns JSON without an
+      // application/json content type, so Dio hands the body over as a String
+      // and a `Map<String, dynamic>` cast would throw.
+      final response = await _dio.post<Object?>(
         authEndpoint,
         data: {'socket_id': socketId, 'channel_name': channelName},
       );
