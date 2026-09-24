@@ -32,6 +32,7 @@ dependencies:
   signals_flutter: ^7.1.0
   signals_hooks: ^7.1.0
   timeago: ^3.7.1
+  url_launcher: ^6.3.2
   web_socket_channel: ^3.0.3
 
 dev_dependencies:

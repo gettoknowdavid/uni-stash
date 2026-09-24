@@ -492,14 +492,14 @@ pub async fn get_profile_stats(
     state: web::Data<AppState>,
     auth_user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
-    let (active, sold) = state.auth_repo.get_user_stats(&auth_user.id).await?;
+    let (active, sold, saved) = state.auth_repo.get_user_stats(&auth_user.id).await?;
 
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ProfileStatsResponse, ErrorBody>::success(
             ProfileStatsResponse {
                 active_listings: active,
                 items_sold: sold,
-                saved: 0, // Not yet implemented
+                saved,
             },
             "ok",
         )),

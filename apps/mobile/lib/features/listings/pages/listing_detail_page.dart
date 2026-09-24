@@ -837,12 +837,18 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
 
   Future<void> _toggle() async {
     if (_busy) return;
-    setState(() => _busy = true);
+    final previous = _saved ?? false;
+    // Optimistic: flip immediately, roll back if the request fails.
+    setState(() {
+      _busy = true;
+      _saved = !previous;
+    });
     final result = await di<SavedItemsRepository>().toggle(widget.listingId);
     if (!mounted) return;
     setState(() => _busy = false);
     switch (result) {
       case Success(:final value):
+        // Align with the server's authoritative outcome.
         setState(() => _saved = value);
         ShadToaster.of(context).show(
           ShadToast(
@@ -855,6 +861,8 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
           ),
         );
       case Failure(:final message):
+        // Roll back the optimistic flip.
+        setState(() => _saved = previous);
         ShadToaster.of(context).show(
           ShadToast.destructive(
             title: const Text('Something went wrong'),

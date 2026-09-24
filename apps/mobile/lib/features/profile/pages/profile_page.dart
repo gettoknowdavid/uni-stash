@@ -359,10 +359,13 @@ class _ProfileMenu extends StatelessWidget {
           ),
           onTap: () => context.push(UsRoutes.savedItems),
         ),
-        const _MenuRow(
-          icon: LucideIcons.headset,
-          label: 'SUPPORT',
-          addDivider: false,
+        GestureDetector(
+          child: const _MenuRow(
+            icon: LucideIcons.headset,
+            label: 'SUPPORT',
+            addDivider: false,
+          ),
+          onTap: () => context.push(UsRoutes.support),
         ),
       ],
     );

@@ -4,10 +4,8 @@ import 'package:uni_stash_mobile/core/api/dio_error.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
-import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
-import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
-/// Profile stats: real counts fetched from the listings API.
+/// Profile stats: exact counts from GET /auth/me/stats.
 class ProfileStats {
   const ProfileStats({
     required this.activeListings,
@@ -34,10 +32,9 @@ abstract interface class ProfileRepository {
 }
 
 class ProfileRepositoryImpl implements ProfileRepository {
-  ProfileRepositoryImpl(this._authClient, this._listingsClient, this._logger);
+  ProfileRepositoryImpl(this._authClient, this._logger);
 
   final AuthApiClient _authClient;
-  final ListingsApiClient _listingsClient;
   final Logger _logger;
 
   @override
@@ -60,27 +57,18 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<Result<ProfileStats>> getStats(String userId) async {
     try {
-      // We can't get a total count from the paginated API, so we fetch up
-      // to 100 and count — good enough for profile stats.
-      final activeAll = await _listingsClient.getList(
-        sellerId: userId,
-        status: ListingStatus.active,
-        limit: 100,
-      );
-      final activeCount = activeAll.data?.listings.length ?? 0;
-
-      // Fetch sold listings count
-      final soldResponse = await _listingsClient.getList(
-        sellerId: userId,
-        status: ListingStatus.sold,
-        limit: 100,
-      );
-      final soldCount = soldResponse.data?.listings.length ?? 0;
+      // The backend /auth/me/stats endpoint computes exact COUNT(*)s,
+      // including the real saved-items count.
+      final response = await _authClient.getProfileStats();
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
 
       return Result.success(
         ProfileStats(
-          activeListings: activeCount,
-          itemsSold: soldCount,
+          activeListings: data.activeListings,
+          itemsSold: data.itemsSold,
+          saved: data.saved,
         ),
       );
     } on DioException catch (e) {

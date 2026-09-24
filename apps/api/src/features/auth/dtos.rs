@@ -170,6 +170,6 @@ pub struct ProfileStatsResponse {
     pub active_listings: i64,
     /// Number of sold listings owned by the user.
     pub items_sold: i64,
-    /// Placeholder for saved items (not yet implemented).
+    /// Number of listings the user has bookmarked (saved_items).
     pub saved: i64,
 }

@@ -114,16 +114,21 @@ impl AuthRepo {
     ///
     /// Uses COUNT(*) with proper WHERE clauses — accurate to the exact row,
     /// regardless of how many listings the user has.
-    pub async fn get_user_stats(&self, user_id: &uuid::Uuid) -> Result<(i64, i64), AppError> {
+    pub async fn get_user_stats(&self, user_id: &uuid::Uuid) -> Result<(i64, i64, i64), AppError> {
         let row = sqlx::query!(
             "SELECT
                (SELECT COUNT(*) FROM listings WHERE seller_id = $1 AND status = 'active') AS active,
-               (SELECT COUNT(*) FROM listings WHERE seller_id = $1 AND status = 'sold') AS sold",
+               (SELECT COUNT(*) FROM listings WHERE seller_id = $1 AND status = 'sold') AS sold,
+               (SELECT COUNT(*) FROM saved_items WHERE user_id = $1) AS saved",
             user_id,
         )
         .fetch_one(&self.db)
         .await?;
-        Ok((row.active.unwrap_or(0), row.sold.unwrap_or(0)))
+        Ok((
+            row.active.unwrap_or(0),
+            row.sold.unwrap_or(0),
+            row.saved.unwrap_or(0),
+        ))
     }
 
     pub async fn find_user_by_id(&self, user_id: &uuid::Uuid) -> Result<Option<User>, AppError> {

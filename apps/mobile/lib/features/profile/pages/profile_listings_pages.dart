@@ -283,8 +283,13 @@ class _SavedItemsBody extends SignalWidget {
       itemBuilder: (context, index) {
         final listing = listings[index];
         return GestureDetector(
-          onTap: () =>
-              context.push(UsRoutes.listingDetailsRoute(listing.id)),
+          // Await the return: the detail page's bookmark toggle can have
+          // changed the saved set while we were away, so re-fetch to keep
+          // the grid in sync.
+          onTap: () async {
+            await context.push(UsRoutes.listingDetailsRoute(listing.id));
+            model.fetch();
+          },
           child: ListingCard(listing: listing),
         );
       },
