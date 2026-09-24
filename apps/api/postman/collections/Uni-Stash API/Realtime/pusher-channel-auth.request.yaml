@@ -18,6 +18,31 @@ body:
       "socket_id": "{{pusherSocketId}}",
       "channel_name": "private-chat-{{chatId}}"
     }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      // Guard: ensure pusherSocketId is set and looks like a valid Pusher socket_id
+      // (format: "digits.digits", e.g. "295071.2184705").
+      // If it's wrong, the server will sign the wrong payload and Pusher will reject it.
+      const socketId = pm.collectionVariables.get("pusherSocketId");
+      if (!socketId || !/^\d+\.\d+$/.test(socketId)) {
+        throw new Error(
+          "pusherSocketId is missing or invalid (got: " + socketId + "). " +
+          "Copy the socket_id from the pusher:connection_established message in the WS tab and update the collection variable before running this request."
+        );
+      }
+      console.log("pusherSocketId looks valid:", socketId);
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Automatically save the Pusher auth token to the collection variable
+      // so the WS subscribe message can reference it via {{pusherChannelAuth}}.
+      const res = pm.response.json();
+      if (res && res.auth) {
+        pm.collectionVariables.set("pusherChannelAuth", res.auth);
+        console.log("pusherChannelAuth updated:", res.auth);
+      }
 docs:
   description: |-
     Authenticate a Pusher Channels private-channel subscription.
