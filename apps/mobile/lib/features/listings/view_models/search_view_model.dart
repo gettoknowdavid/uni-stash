@@ -81,10 +81,6 @@ class SearchViewModel implements Disposable {
 
   bool get hasPriceFilter => minPrice.value != null || maxPrice.value != null;
 
-  // -------------------------------------------------------------------------
-  // Query editing
-  // -------------------------------------------------------------------------
-
   /// Called on every keystroke: updates [query] and re-runs the search
   /// after a short pause. Clearing the query back to no criteria at all
   /// returns to the idle state immediately (no pointless browse fetch).
@@ -138,10 +134,6 @@ class SearchViewModel implements Disposable {
     await _history.clear();
   }
 
-  // -------------------------------------------------------------------------
-  // Filters
-  // -------------------------------------------------------------------------
-
   void setCategory(int? id) {
     if (categoryId.value == id) return;
     categoryId.value = id;
@@ -170,10 +162,6 @@ class SearchViewModel implements Disposable {
     }
     unawaited(search());
   }
-
-  // -------------------------------------------------------------------------
-  // Fetching
-  // -------------------------------------------------------------------------
 
   /// Fetches the first page with the current criteria, replacing results.
   Future<void> search() => _run(showLoading: true);

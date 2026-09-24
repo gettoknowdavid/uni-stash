@@ -12,11 +12,6 @@ import 'package:uni_stash_mobile/router/_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
-/// Chat threads list (guide 7.7) — the CHAT tab of the bottom nav.
-///
-/// The [ChatThreadsViewModel] is an authenticated-scope singleton shared
-/// with `MainShell`, so the nav bar's unread badge and this list always
-/// read the same source of truth.
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 

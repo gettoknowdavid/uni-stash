@@ -88,10 +88,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Search field
-// ---------------------------------------------------------------------------
-
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
@@ -149,10 +145,6 @@ class _SearchField extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Filter bar: category chips + price-range filter
-// ---------------------------------------------------------------------------
 
 class _FilterBar extends SignalWidget {
   const _FilterBar();
@@ -344,10 +336,6 @@ class _PriceFilterSheetState extends State<_PriceFilterSheet> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Body: idle (recent searches) / loading / error / empty / results
-// ---------------------------------------------------------------------------
 
 class _SearchBody extends SignalWidget {
   const _SearchBody({

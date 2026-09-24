@@ -143,8 +143,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 }
 
-/// Slim status strip under the header surfacing the Pusher socket state
-/// (guide 7.8 acceptance: connection indicator). Hidden while connected.
 class _ConnectionBanner extends StatelessWidget {
   const _ConnectionBanner();
 
@@ -316,10 +314,6 @@ class _MessageBubble extends StatelessWidget {
         '${time.minute.toString().padLeft(2, '0')}';
   }
 }
-
-// ---------------------------------------------------------------------------
-// Input bar
-// ---------------------------------------------------------------------------
 
 class _ChatInputBar extends StatelessWidget {
   const _ChatInputBar({required this.controller, required this.onSend});
