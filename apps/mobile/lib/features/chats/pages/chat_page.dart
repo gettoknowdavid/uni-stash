@@ -24,6 +24,7 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const UsPage(
       header: UsPageHeader(title: Text('CHATS')),
+      gutters: .zero,
       body: _ChatThreadsList(),
     );
   }
@@ -145,10 +146,10 @@ class _ChatThreadTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: .ellipsis,
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     thread.lastMessagePreview ?? 'No messages yet',
-                    style: theme.textTheme.muted.copyWith(
+                    style: theme.textTheme.small.copyWith(
+                      color: theme.colorScheme.mutedForeground,
                       fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                     ),
                     maxLines: 1,

@@ -148,7 +148,16 @@ async fn default_limit_and_status_filter_applied(pool: PgPool) {
 
     seed_listing(&pool, seller, cat, "Active 1", Some(10), "new", "active").await;
     seed_listing(&pool, seller, cat, "Active 2", Some(20), "used", "active").await;
-    seed_listing(&pool, seller, cat, "Reserved Item", Some(30), "fair", "reserved").await;
+    seed_listing(
+        &pool,
+        seller,
+        cat,
+        "Reserved Item",
+        Some(30),
+        "fair",
+        "reserved",
+    )
+    .await;
     seed_listing(&pool, seller, cat, "Sold Item", Some(50), "new", "sold").await;
 
     let state = test_state(pool);

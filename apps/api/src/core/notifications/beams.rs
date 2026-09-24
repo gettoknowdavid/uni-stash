@@ -143,7 +143,10 @@ mod tests {
     #[test]
     fn user_interest_is_prefixed_with_user() {
         let id = uuid::Uuid::parse_str("67d3e10c-4a2f-4d5b-9c1e-2f4b5a697c88").unwrap();
-        assert_eq!(BeamsPushSender::user_interest(&id), "user-67d3e10c-4a2f-4d5b-9c1e-2f4b5a697c88");
+        assert_eq!(
+            BeamsPushSender::user_interest(&id),
+            "user-67d3e10c-4a2f-4d5b-9c1e-2f4b5a697c88"
+        );
     }
 
     #[test]
