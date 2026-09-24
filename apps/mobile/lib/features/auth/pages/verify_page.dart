@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
-import 'package:logger/web.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:logger/logger.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
