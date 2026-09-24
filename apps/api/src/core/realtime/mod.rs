@@ -114,6 +114,31 @@ pub mod pusher;
 
 pub use pusher::PusherPublisher;
 
+/// Build the active publisher from configuration. `pusher` requires its
+/// four config values (validated earlier in `Config`); anything else falls
+/// back to the no-op publisher so the server still runs — chat simply
+/// degrades to REST-only polling.
+pub fn from_config(config: &crate::core::config::Config) -> std::sync::Arc<dyn RealtimePublisher> {
+    match config.realtime_provider.as_str() {
+        "pusher" => {
+            let publisher = PusherPublisher::new(
+                config.pusher_app_id.clone(),
+                config.pusher_key.clone(),
+                config.pusher_secret.clone(),
+                config.pusher_cluster.clone(),
+            );
+            std::sync::Arc::new(publisher)
+        }
+        other => {
+            tracing::warn!(
+                provider = %other,
+                "unknown realtime_provider — realtime publishing disabled (chat falls back to REST polling)"
+            );
+            std::sync::Arc::new(NullPublisher)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,30 +174,5 @@ mod tests {
         assert_eq!(parsed["type"], "message_new");
         assert_eq!(parsed["chat_id"], chat_id.to_string());
         assert_eq!(parsed["sender_id"], sender_id.to_string());
-    }
-}
-
-/// Build the active publisher from configuration. `pusher` requires its
-/// four config values (validated earlier in `Config`); anything else falls
-/// back to the no-op publisher so the server still runs — chat simply
-/// degrades to REST-only polling.
-pub fn from_config(config: &crate::core::config::Config) -> std::sync::Arc<dyn RealtimePublisher> {
-    match config.realtime_provider.as_str() {
-        "pusher" => {
-            let publisher = PusherPublisher::new(
-                config.pusher_app_id.clone(),
-                config.pusher_key.clone(),
-                config.pusher_secret.clone(),
-                config.pusher_cluster.clone(),
-            );
-            std::sync::Arc::new(publisher)
-        }
-        other => {
-            tracing::warn!(
-                provider = %other,
-                "unknown realtime_provider — realtime publishing disabled (chat falls back to REST polling)"
-            );
-            std::sync::Arc::new(NullPublisher)
-        }
     }
 }
