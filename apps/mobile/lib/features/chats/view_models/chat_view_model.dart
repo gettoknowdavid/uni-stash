@@ -21,6 +21,7 @@ class ChatViewModel implements Disposable {
     this._realtimeClient, {
     required this.chatId,
     required this.currentUserId,
+    this.onMessageSent,
   }) {
     _init();
   }
@@ -35,6 +36,11 @@ class ChatViewModel implements Disposable {
   /// counterpart's when applying read receipts.
   final String currentUserId;
 
+  /// Called after a message is successfully sent — the shell uses it to
+  /// refresh the thread list so the preview/order update immediately,
+  /// without waiting for a realtime round-trip.
+  final void Function()? onMessageSent;
+
   /// Chronological message list (oldest at the top for display).
   final Signal<List<ChatMessage>> messages = signal([]);
   final Signal<bool> isLoading = signal(false);
@@ -48,6 +54,7 @@ class ChatViewModel implements Disposable {
   bool _hasMore = true;
   bool _disposed = false;
 
+  RealtimeSubscription? _realtimeSubscription;
   void Function({required bool connected})? _connectionListener;
 
   late final void Function() loadMessages;
@@ -110,6 +117,10 @@ class ChatViewModel implements Disposable {
 
         isSending.value = false;
       });
+
+      if (result case Success()) {
+        onMessageSent?.call();
+      }
     };
   }
 
@@ -120,13 +131,22 @@ class ChatViewModel implements Disposable {
     _realtimeClient.onConnectionChanged = _connectionListener;
     isConnected.value = _realtimeClient.isConnected;
 
-    unawaited(
-      _realtimeClient.subscribeToChat(
-        chatId,
-        onNewMessage: (_) => unawaited(_refreshLatest()),
-        onReadReceipt: _applyReadReceipt,
-      ),
+    unawaited(_subscribe());
+  }
+
+  Future<void> _subscribe() async {
+    final subscription = await _realtimeClient.subscribeToChat(
+      chatId,
+      onNewMessage: (_) => unawaited(_refreshLatest()),
+      onReadReceipt: _applyReadReceipt,
     );
+    // The page was closed while the subscription was in flight — cancel so
+    // the channel doesn't keep handlers bound to a disposed view model.
+    if (_disposed) {
+      subscription.cancel();
+      return;
+    }
+    _realtimeSubscription = subscription;
   }
 
   /// Fetches the newest page and merges it into the loaded history.
@@ -146,6 +166,9 @@ class ChatViewModel implements Disposable {
         // Already-loaded messages that aren't in the fresh page are older.
         final older = messages.value.where((m) => !pageIds.contains(m.id));
         messages.value = [...page, ...older];
+        // The chat is on screen, so whatever just arrived is being read —
+        // keep the thread badge cleared server-side too.
+        unawaited(markRead());
       case Failure():
         // Transient — the next load/refresh catches up.
         break;
@@ -210,7 +233,8 @@ class ChatViewModel implements Disposable {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _realtimeClient.unsubscribeFromChat(chatId);
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = null;
     if (identical(_realtimeClient.onConnectionChanged, _connectionListener)) {
       _realtimeClient.onConnectionChanged = null;
     }

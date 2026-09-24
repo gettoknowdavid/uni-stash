@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/core/config/scope.dart';
+import 'package:uni_stash_mobile/core/notifications/in_app_chat_notifier.dart';
 import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
@@ -53,6 +54,14 @@ void _setupConfig(Config config) {
       storage: di<FlutterSecureStorage>(),
       logger: di<Logger>(),
     ),
+  );
+
+  // Tappable in-app "new message" notifications — shared by the chat
+  // realtime coordinator and the Beams foreground push handler so the same
+  // message never produces two toasts (dedup lives inside).
+  di.registerLazySingleton<InAppChatNotifier>(
+    () => InAppChatNotifier(logger: di<Logger>()),
+    dispose: (notifier) => notifier.detach(),
   );
 }
 

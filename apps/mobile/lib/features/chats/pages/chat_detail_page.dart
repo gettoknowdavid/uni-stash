@@ -8,6 +8,7 @@ import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/chats/models/models.dart';
+import 'package:uni_stash_mobile/features/chats/open_chat.dart';
 import 'package:uni_stash_mobile/features/chats/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
@@ -43,6 +44,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   @override
   void initState() {
     super.initState();
+    // Messages for THIS chat update the list in place; every other chat
+    // raises an in-app notification instead (see OpenChat).
+    OpenChat.open(widget.chatId);
     _scopeName = pushPageScope(
       baseName: 'chat-${widget.chatId}',
       init: (getIt) {
@@ -52,6 +56,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             di<RealtimeClient>(),
             chatId: widget.chatId,
             currentUserId: di<UserViewModel>().currentUser.value?.id ?? '',
+            // Sender-side: refresh the thread list immediately so the
+            // preview/order update without waiting for a push round-trip.
+            onMessageSent: () => unawaited(di<ChatThreadsViewModel>().fetch()),
           ),
           onCreated: (model) async => model.loadMessages(),
           dispose: (vm) => vm.dispose(),
@@ -74,6 +81,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _inputController.dispose();
+    OpenChat.close(widget.chatId);
     // popScope() is async but dispose() is sync, so the pop is fired,
     // not awaited — see [popPageScope].
     final scopeName = _scopeName;

@@ -45,12 +45,18 @@ void main() {
         .setMockMethodCallHandler(_channel, null);
   });
 
-  RealtimeClient buildClient({String key = 'test-key'}) => RealtimeClient(
+  RealtimeClient buildClient({
+    String key = 'test-key',
+    Duration healthCheckInterval = const Duration(seconds: 6),
+    Duration resubscribeGrace = const Duration(milliseconds: 1200),
+  }) => RealtimeClient(
     dio: dio,
     logger: Logger(level: Level.off),
     pusherKey: key,
     pusherCluster: 'mt1',
     authEndpoint: 'https://api.test/api/v1/realtime/auth',
+    healthCheckInterval: healthCheckInterval,
+    resubscribeGrace: resubscribeGrace,
   );
 
   List<String> methods() =>
@@ -284,5 +290,176 @@ void main() {
 
     expect(_outbound, isEmpty);
     expect(client.isConnected, isFalse);
+  });
+
+  test(
+    'subscribers fan out and cancel independently (re-enter safe)',
+    () async {
+      final client = buildClient();
+      final first = <Map<String, dynamic>>[];
+      final second = <Map<String, dynamic>>[];
+
+      final subA = await client.subscribeToChat(
+        'c1',
+        onNewMessage: first.add,
+        onReadReceipt: (_) {},
+      );
+      final subB = await client.subscribeToChat(
+        'c1',
+        onNewMessage: second.add,
+        onReadReceipt: (_) {},
+      );
+
+      // One native subscribe serves both subscribers.
+      expect(
+        _outbound.where((call) => call.method == 'subscribe'),
+        hasLength(1),
+      );
+
+      await _inject('onEvent', <String, dynamic>{
+        'channelName': 'private-chat-c1',
+        'eventName': 'message.new',
+        'data': jsonEncode(<String, dynamic>{'id': 'm1'}),
+      });
+      expect(first, hasLength(1));
+      expect(second, hasLength(1));
+
+      // A late dispose (previous page visit) cancels ONLY its own handlers —
+      // the new page keeps receiving events.
+      subA.cancel();
+      await _inject('onEvent', <String, dynamic>{
+        'channelName': 'private-chat-c1',
+        'eventName': 'message.new',
+        'data': jsonEncode(<String, dynamic>{'id': 'm2'}),
+      });
+      expect(first, hasLength(1), reason: 'cancelled subscriber is detached');
+      expect(
+        second,
+        hasLength(2),
+        reason: 'surviving subscriber still gets it',
+      );
+      expect(
+        _outbound.where((call) => call.method == 'unsubscribe'),
+        isEmpty,
+        reason: 'channel stays up while a subscriber remains',
+      );
+
+      // Last subscriber out turns the lights off.
+      subB.cancel();
+      await pumpEventQueue();
+      expect(
+        _outbound.where((call) => call.method == 'unsubscribe'),
+        hasLength(1),
+      );
+
+      await client.disconnect();
+    },
+  );
+
+  test('subscribeToUserChannel subscribes private-user-{id}', () async {
+    final client = buildClient();
+    final received = <Map<String, dynamic>>[];
+
+    await client.subscribeToUserChannel(
+      'u42',
+      onNewMessage: received.add,
+    );
+
+    final subscribe = callNamed('subscribe').arguments as Map;
+    expect(subscribe['channelName'], 'private-user-u42');
+
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-user-u42',
+      'eventName': 'message.new',
+      'data': jsonEncode(<String, dynamic>{
+        'type': 'message_new',
+        'chat_id': 'c9',
+        'sender_id': 'u7',
+      }),
+    });
+    expect(received.single['chat_id'], 'c9');
+
+    await client.disconnect();
+  });
+
+  test(
+    'an unconfirmed subscription is forced again after the health window',
+    () async {
+      final client = buildClient(
+        healthCheckInterval: const Duration(milliseconds: 10),
+      );
+      await client.subscribeToChat(
+        'c1',
+        onNewMessage: (_) {},
+        onReadReceipt: (_) {},
+      );
+      // No pusher:subscription_succeeded arrives — the watchdog must force
+      // an unsubscribe→subscribe round-trip instead of silently rotting.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      expect(
+        _outbound.where((call) => call.method == 'unsubscribe'),
+        isNotEmpty,
+        reason: 'stuck channel is unsubscribed first',
+      );
+      expect(
+        _outbound.where((call) => call.method == 'subscribe'),
+        hasLength(greaterThan(1)),
+        reason: 'then re-subscribed',
+      );
+
+      await client.disconnect();
+    },
+  );
+
+  test('a confirmed subscription is left alone by the health window', () async {
+    final client = buildClient(
+      healthCheckInterval: const Duration(milliseconds: 10),
+    );
+    await client.subscribeToChat(
+      'c1',
+      onNewMessage: (_) {},
+      onReadReceipt: (_) {},
+    );
+
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-chat-c1',
+      'eventName': 'pusher:subscription_succeeded',
+      'data': '{}',
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    expect(
+      _outbound.where((call) => call.method == 'unsubscribe'),
+      isEmpty,
+      reason: 'healthy channels are not churned',
+    );
+
+    await client.disconnect();
+  });
+
+  test('reconnect re-confirms channels that never confirmed', () async {
+    final client = buildClient(
+      resubscribeGrace: const Duration(milliseconds: 10),
+    );
+    await client.subscribeToChat(
+      'c1',
+      onNewMessage: (_) {},
+      onReadReceipt: (_) {},
+    );
+
+    await _inject('onConnectionStateChange', <String, dynamic>{
+      'currentState': 'connected',
+      'previousState': 'connecting',
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    expect(
+      _outbound.where((call) => call.method == 'unsubscribe'),
+      isNotEmpty,
+      reason: 'unconfirmed channels are forced after reconnect',
+    );
+
+    await client.disconnect();
   });
 }

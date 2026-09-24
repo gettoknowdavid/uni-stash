@@ -94,4 +94,27 @@ void main() {
 
     expect(target!.chatId, 'c1');
   });
+
+  test('a foreground push routes through the installed shell handler '
+      '(in-app notification, not a blind navigation)', () {
+    final seen = <ChatPushTarget>[];
+    foregroundChatPushHandler = seen.add;
+    addTearDown(() => foregroundChatPushHandler = null);
+
+    handleForegroundPush(const {'chat_id': 'c1', 'sender_name': 'Ada'});
+
+    expect(seen, hasLength(1));
+    expect(seen.single.chatId, 'c1');
+    expect(seen.single.counterpartName, 'Ada');
+  });
+
+  test(
+    'a notification tap with a non-chat payload never touches the router',
+    () {
+      // Reaching the router would throw (no DI in this test) — a clean pass
+      // proves the parse guard returns first.
+      handleNotificationTap(const {'listing_id': 'l1'});
+      handleNotificationTap(const {'chat_id': ''});
+    },
+  );
 }

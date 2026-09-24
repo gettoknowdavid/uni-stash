@@ -11,6 +11,23 @@ class MockChatsRepository extends Mock implements ChatsRepository {}
 
 /// Test double that records the realtime callbacks the view model
 /// registers, so tests can simulate incoming Pusher events.
+class FakeSubscription implements RealtimeSubscription {
+  FakeSubscription(this.onCancel);
+
+  final void Function() onCancel;
+  bool _canceled = false;
+
+  @override
+  bool get isCanceled => _canceled;
+
+  @override
+  void cancel() {
+    if (_canceled) return;
+    _canceled = true;
+    onCancel();
+  }
+}
+
 class FakeRealtimeClient extends Fake implements RealtimeClient {
   String? subscribedChatId;
   String? unsubscribedChatId;
@@ -24,7 +41,7 @@ class FakeRealtimeClient extends Fake implements RealtimeClient {
   bool get isConnected => false;
 
   @override
-  Future<void> subscribeToChat(
+  Future<RealtimeSubscription> subscribeToChat(
     String chatId, {
     required void Function(Map<String, dynamic> data) onNewMessage,
     required void Function(Map<String, dynamic> data) onReadReceipt,
@@ -32,11 +49,7 @@ class FakeRealtimeClient extends Fake implements RealtimeClient {
     subscribedChatId = chatId;
     this.onNewMessage = onNewMessage;
     this.onReadReceipt = onReadReceipt;
-  }
-
-  @override
-  void unsubscribeFromChat(String chatId) {
-    unsubscribedChatId = chatId;
+    return FakeSubscription(() => unsubscribedChatId = chatId);
   }
 }
 
@@ -307,5 +320,53 @@ void main() {
 
     expect(realtime.unsubscribedChatId, 'c1');
     expect(realtime.onConnectionChanged, isNull);
+  });
+
+  test(
+    'a realtime refresh marks the chat read so the badge stays clear',
+    () async {
+      await loadInitial([buildMessage(id: 'm2'), buildMessage()]);
+
+      pages.add(
+        page([buildMessage(id: 'm3'), buildMessage(id: 'm2'), buildMessage()]),
+      );
+      realtime.onNewMessage!(const {'type': 'message_new', 'chat_id': 'c1'});
+      await pumpEventQueue();
+
+      // Once for the initial load, once for the realtime refresh.
+      verify(() => repo.markRead('c1')).called(2);
+    },
+  );
+
+  test('onMessageSent fires only after a successful send', () async {
+    var sent = 0;
+    final withHook = ChatViewModel(
+      repo,
+      realtime,
+      chatId: 'c1',
+      currentUserId: 'me',
+      onMessageSent: () => sent++,
+    );
+    addTearDown(withHook.dispose);
+
+    pages.add(page([buildMessage()]));
+    stubListMessages();
+    withHook.loadMessages();
+    await pumpEventQueue();
+    expect(sent, 0, reason: 'loading is not sending');
+
+    when(() => repo.sendMessage('c1', 'yo')).thenAnswer(
+      (_) async => Result.success(
+        buildMessage(id: 'm3', senderId: 'me', body: 'yo'),
+      ),
+    );
+    await withHook.sendMessage('yo');
+    expect(sent, 1);
+
+    when(
+      () => repo.sendMessage('c1', 'nope'),
+    ).thenAnswer((_) async => const Result.failure('blocked'));
+    await withHook.sendMessage('nope');
+    expect(sent, 1, reason: 'failed sends must not refresh the thread list');
   });
 }

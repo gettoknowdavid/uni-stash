@@ -60,15 +60,44 @@ ChatPushTarget? parseChatPush(Map<String, dynamic> data) {
   return null;
 }
 
-/// Navigates to the chat a push notification refers to (guide 7.10).
-/// Non-chat payloads are ignored.
+/// Installed by the authenticated app shell while it is mounted: turns a
+/// foreground-received chat push into an **in-app notification** whose tap
+/// opens the conversation (requirement: don't navigate without a tap).
+/// Cleared again by `MainShell.dispose`.
 ///
-/// Registered as the Beams foreground handler (and cold-start tap handler)
-/// by `PushNotifications` in `core/notifications/push_notifications.dart`.
+/// When null (shell not mounted yet), [handleForegroundPush] falls back to
+/// navigating directly so the message is never silently dropped.
+void Function(ChatPushTarget target)? foregroundChatPushHandler;
+
+/// A chat push arrived while the app was in the foreground (guide 7.10).
+///
+/// Registered as the Beams foreground handler by `PushNotifications` in
+/// `core/notifications/push_notifications.dart`. With the shell mounted the
+/// message surfaces as a tappable in-app notification; the fallback keeps
+/// the old behaviour when nothing can host one.
 void handleForegroundPush(Map<String, dynamic> data) {
   final target = parseChatPush(data);
   if (target == null) return;
 
+  final handler = foregroundChatPushHandler;
+  if (handler != null) {
+    handler(target);
+    return;
+  }
+  navigateToChat(target);
+}
+
+/// The user tapped a notification that launched (or reopened) the app
+/// (guide 7.10) — navigate straight into the conversation. Non-chat
+/// payloads are ignored.
+void handleNotificationTap(Map<String, dynamic> data) {
+  final target = parseChatPush(data);
+  if (target == null) return;
+  navigateToChat(target);
+}
+
+/// Opens the chat detail route with the display context from [target].
+void navigateToChat(ChatPushTarget target) {
   unawaited(
     routerConfig.push(
       UsRoutes.chatDetailRoute(target.chatId),

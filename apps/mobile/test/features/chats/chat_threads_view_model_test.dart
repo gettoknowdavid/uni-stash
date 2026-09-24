@@ -44,7 +44,7 @@ void main() {
       ]),
     );
 
-    model.fetch();
+    await model.fetch();
     await pumpEventQueue();
 
     expect(model.threads.value.length, 3);
@@ -58,7 +58,7 @@ void main() {
       () => repo.listThreads(),
     ).thenAnswer((_) async => const Result.failure('boom'));
 
-    model.fetch();
+    await model.fetch();
     await pumpEventQueue();
 
     expect(model.error.value, 'boom');
@@ -74,7 +74,7 @@ void main() {
       ).thenAnswer(
         (_) async => Result.success([buildThread(), buildThread(id: 'c2')]),
       );
-      model.fetch();
+      await model.fetch();
       await pumpEventQueue();
 
       model.onNewMessage('c1', 'See you there');
@@ -100,7 +100,7 @@ void main() {
         buildThread(id: 'c2', unreadCount: 7),
       ]),
     );
-    model.fetch();
+    await model.fetch();
     await pumpEventQueue();
 
     model.markThreadRead('c1');

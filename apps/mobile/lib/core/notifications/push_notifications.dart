@@ -168,7 +168,9 @@ class PushNotifications {
 
   /// Deep-link when the app was launched by tapping a notification.
   /// The SDK keeps this in memory for the current launch only, so it can
-  /// never re-fire on a later, unrelated cold start.
+  /// never re-fire on a later, unrelated cold start. A tap is a navigation
+  /// intent — go straight to the chat (unlike foreground *delivery*, which
+  /// only raises an in-app notification).
   Future<void> _handleInitialMessage() async {
     try {
       final Object? message = await PusherBeams.instance.getInitialMessage();
@@ -178,7 +180,7 @@ class PushNotifications {
         nested is Map ? nested : Map<Object?, Object?>.from(message),
       );
       if (data.isEmpty) return;
-      handleForegroundPush(data);
+      handleNotificationTap(data);
     } on Object catch (e, s) {
       _logger.w(
         'Push notifications: initial message failed',

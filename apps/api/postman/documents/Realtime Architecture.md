@@ -100,6 +100,15 @@ private-{suffix}
 | Channel | Pattern | Example |
 |---|---|---|
 | Chat channel | `private-chat-{chat_uuid}` | `private-chat-a1b2c3d4-e5f6-...` |
+| User channel | `private-user-{user_uuid}` | `private-user-a1b2c3d4-e5f6-...` |
+
+> ⚠️ **Build chat channel names with `chat_channel(&chat_id)`** (or literally
+> `private-chat-{uuid}`). Constructing them as `private_channel(&id.to_string())`
+> yields `private-{uuid}` — Pusher accepts and counts publishes to that name,
+> but no client ever subscribes to it, so events silently reach nobody. The
+> user channel (`private_user_channel(&user_id)`) carries `message.new` for
+> messages addressed to that user in *any* chat and may only be signed by the
+> account owner (enforced by `realtime/auth`).
 
 Private channels require client-side authentication before Pusher will allow a subscription (see [Authentication Flow](#authentication-flow) below).
 
@@ -466,6 +475,7 @@ Use this checklist when integrating realtime features into a new client.
 - [ ] Initialize the Pusher client SDK with the auth endpoint: `POST /api/v1/realtime/auth`
 - [ ] Pass the user's JWT token in the `Authorization` header of auth requests
 - [ ] Subscribe to `private-chat-{chat_uuid}` when opening a chat screen
+- [ ] Subscribe to `private-user-{user_uuid}` once per session (in-app notifications + live thread list for chats you are not viewing)
 - [ ] Bind handlers for `message.new` and `message.read` events
 - [ ] On `message.new` → call `GET /api/v1/chats/{id}/messages` to fetch new messages
 - [ ] On `message.read` → update read receipt state locally using `last_read_message_id`

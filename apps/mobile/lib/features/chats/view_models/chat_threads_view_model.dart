@@ -27,7 +27,10 @@ class ChatThreadsViewModel implements Disposable {
     () => threads.value.fold(0, (sum, t) => sum + t.unreadCount),
   );
 
-  late final void Function() fetch;
+  /// Fetches the thread list. Returns a future so callers that must
+  /// sequence on the reload (the realtime coordinator) can await it;
+  /// fire-and-forget callers may keep treating it as void.
+  late final Future<void> Function() fetch;
 
   bool _disposed = false;
 
