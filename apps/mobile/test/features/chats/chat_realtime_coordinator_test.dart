@@ -139,20 +139,22 @@ void main() {
 
   Future<void> pump() => pumpEventQueue();
 
-  test('start subscribes the user channel and installs the push hook',
-      () async {
-    coordinator.start();
-    await pump();
+  test(
+    'start subscribes the user channel and installs the push hook',
+    () async {
+      coordinator.start();
+      await pump();
 
-    expect(coordinator.isStarted, isTrue);
-    expect(realtime.userChannelUserId, 'me');
-    expect(foregroundChatPushHandler, isNotNull);
+      expect(coordinator.isStarted, isTrue);
+      expect(realtime.userChannelUserId, 'me');
+      expect(foregroundChatPushHandler, isNotNull);
 
-    coordinator.stop();
-    await pump();
-    expect(realtime.canceled, isTrue);
-    expect(foregroundChatPushHandler, isNull);
-  });
+      coordinator.stop();
+      await pump();
+      expect(realtime.canceled, isTrue);
+      expect(foregroundChatPushHandler, isNull);
+    },
+  );
 
   test('start without a user id stays inert', () {
     final noUser = ChatRealtimeCoordinator(
@@ -187,24 +189,26 @@ void main() {
     expect(toast.onOpen, isNotNull);
   });
 
-  test('message.new for the OPEN chat stays silent (list updates in place)',
-      () async {
-    OpenChat.open('c1');
-    coordinator.start();
-    await pump();
+  test(
+    'message.new for the OPEN chat stays silent (list updates in place)',
+    () async {
+      OpenChat.open('c1');
+      coordinator.start();
+      await pump();
 
-    realtime.onUserMessage!(
-      const {'type': 'message_new', 'chat_id': 'c1', 'sender_id': 'u9'},
-    );
-    await pump();
+      realtime.onUserMessage!(
+        const {'type': 'message_new', 'chat_id': 'c1', 'sender_id': 'u9'},
+      );
+      await pump();
 
-    expect(notifier.shown, isEmpty);
-    // Badge is cleared locally once the refresh lands.
-    expect(
-      threads.threads.value.firstWhere((t) => t.id == 'c1').unreadCount,
-      0,
-    );
-  });
+      expect(notifier.shown, isEmpty);
+      // Badge is cleared locally once the refresh lands.
+      expect(
+        threads.threads.value.firstWhere((t) => t.id == 'c1').unreadCount,
+        0,
+      );
+    },
+  );
 
   test('foreground push shows the same notification — except for the open '
       'chat', () async {

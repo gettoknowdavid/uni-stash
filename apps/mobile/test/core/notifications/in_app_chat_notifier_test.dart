@@ -19,8 +19,10 @@ void main() {
       isFalse,
     );
     // Different chat is unaffected.
-    expect(notifier.shouldShow('c2', t0.add(const Duration(seconds: 2))),
-        isTrue);
+    expect(
+      notifier.shouldShow('c2', t0.add(const Duration(seconds: 2))),
+      isTrue,
+    );
     // After the window it shows again.
     expect(
       notifier.shouldShow(
