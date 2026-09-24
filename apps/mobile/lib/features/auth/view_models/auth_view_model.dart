@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
@@ -9,7 +8,6 @@ import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/models/models.dart';
-import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 
 /// Represents the authentication status of the user.
 enum AuthStatus { loading, authenticated, unauthenticated }
@@ -18,7 +16,11 @@ const String _accessTokenKey = 'access_token';
 const String _refreshTokenKey = 'refresh_token';
 
 class AuthViewModel {
-  AuthViewModel(this._repository, this._storage) {
+  AuthViewModel({
+    required this._repository,
+    required this._pushNotifications,
+    required this._storage,
+  }) {
     authenticate = action1<UserCredentials, void>((credentials) async {
       await Future.wait([
         _storage.write(key: _accessTokenKey, value: credentials.accessToken),
@@ -32,7 +34,8 @@ class AuthViewModel {
       di<UserViewModel>().setUser(credentials.user);
       // Push notification device registration (guide 7.9) —
       // fire-and-forget, never blocks or fails the login.
-      unawaited(_registerPushDevice());
+      // unawaited(_registerPushDevice());
+      unawaited(_pushNotifications.onUserSignedIn(credentials.user.id));
     });
     unauthenticate = action0<void>(() async {
       await _clearTokens();
@@ -42,10 +45,12 @@ class AuthViewModel {
         _status.value = .unauthenticated;
       });
       di<UserViewModel>().setUser(null);
+      unawaited(_pushNotifications.onUserSignedOut());
     });
   }
 
   final IAuthRepository _repository;
+  final PushNotifications _pushNotifications;
   final FlutterSecureStorage _storage;
 
   final Signal<AuthStatus> _status = signal(.loading);
@@ -95,7 +100,8 @@ class AuthViewModel {
           _status.value = .authenticated;
         });
         di<UserViewModel>().setUser(user);
-        unawaited(_registerPushDevice());
+        // unawaited(_registerPushDevice());
+        unawaited(_pushNotifications.onUserSignedIn(user.id));
       },
       (error) async {
         await _clearTokens();
@@ -105,31 +111,31 @@ class AuthViewModel {
     );
   }
 
-  /// Registers this device's push token after login (guide 7.9).
-  ///
-  /// Fire-and-forget: push registration must never block or fail the
-  /// login flow. Skips silently while [PushNotifications.getToken] has no
-  /// SDK behind it yet (resolves null).
-  Future<void> _registerPushDevice() async {
-    try {
-      final token = await PushNotifications.getToken();
-      if (token == null) return;
-
-      // The authenticated-scope registrations settle right after
-      // configureAuthenticatedScope(); wait for the container before
-      // resolving the repository.
-      await di.allReady();
-
-      final platform = switch (defaultTargetPlatform) {
-        TargetPlatform.iOS => 'ios',
-        TargetPlatform.android => 'android',
-        _ => 'web',
-      };
-      await di<NotificationsRepository>().registerDevice(token, platform);
-    } on Object catch (_) {
-      // Silently fail — push registration is best-effort.
-    }
-  }
+//   /// Registers this device's push token after login (guide 7.9).
+//   ///
+//   /// Fire-and-forget: push registration must never block or fail the
+//   /// login flow. Skips silently while [PushNotifications.getToken] has no
+//   /// SDK behind it yet (resolves null).
+//   Future<void> _registerPushDevice() async {
+//     try {
+//       final token = await PushNotifications.getToken();
+//       if (token == null) return;
+// 
+//       // The authenticated-scope registrations settle right after
+//       // configureAuthenticatedScope(); wait for the container before
+//       // resolving the repository.
+//       await di.allReady();
+// 
+//       final platform = switch (defaultTargetPlatform) {
+//         TargetPlatform.iOS => 'ios',
+//         TargetPlatform.android => 'android',
+//         _ => 'web',
+//       };
+//       await di<NotificationsRepository>().registerDevice(token, platform);
+//     } on Object catch (_) {
+//       // Silently fail — push registration is best-effort.
+//     }
+//   }
 
   /// Reads the access token from the secure storage.
   Future<String?> readAccessToken() => _storage.read(key: _accessTokenKey);

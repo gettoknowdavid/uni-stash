@@ -5,6 +5,7 @@ final class Config {
     required this.env,
     required this.pusherKey,
     required this.pusherCluster,
+    required this.beamsInstanceId,
   });
 
   final String baseUrl;
@@ -12,4 +13,5 @@ final class Config {
   final String env;
   final String pusherKey;
   final String pusherCluster;
+  final String beamsInstanceId;
 }

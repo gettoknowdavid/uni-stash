@@ -16,6 +16,9 @@ abstract class ProdEnv {
   @EnviedField(varName: 'PUSHER_CLUSTER')
   static final String pusherCluster = _ProdEnv.pusherCluster;
 
+  @EnviedField(varName: 'BEAMS_INSTANCE_ID')
+  static final String beamsInstanceId = _ProdEnv.beamsInstanceId;
+
   @EnviedField(varName: 'ENV')
   static final String env = _ProdEnv.env;
 }

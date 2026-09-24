@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_client.dart';
 import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/core/config/scope.dart';
+import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
@@ -37,12 +38,22 @@ void configureDependencies(Config config) {
 
 void _setupConfig(Config config) {
   di.registerSingleton<Config>(config);
+  di.registerSingleton<Logger>(Logger());
+  di.registerSingleton<FlutterSecureStorage>(const FlutterSecureStorage());
+
+  // Push notifications (Pusher Beams). App-lifetime: the Settings toggle
+  // reads `enabled`, auth hooks call onUserSignedIn/onUserSignedOut.
+  di.registerSingleton<PushNotifications>(
+    PushNotifications(
+      instanceId: config.beamsInstanceId,
+      storage: di<FlutterSecureStorage>(),
+      logger: di<Logger>(),
+    ),
+  );
 }
 
 /// App-wide infrastructure shared by every feature.
 void _registerCore() {
-  di.registerSingleton<FlutterSecureStorage>(const FlutterSecureStorage());
-  di.registerSingleton<Logger>(Logger());
   di.registerSingleton<UserViewModel>(UserViewModel());
 
   // Dio is wired through callbacks rather than a direct AuthViewModel
@@ -77,7 +88,11 @@ void _registerAuth() {
   );
 
   di.registerSingletonWithDependencies<AuthViewModel>(
-    () => AuthViewModel(di<IAuthRepository>(), di<FlutterSecureStorage>()),
+    () => AuthViewModel(
+      repository: di<IAuthRepository>(),
+      storage: di<FlutterSecureStorage>(),
+      pushNotifications: di<PushNotifications>(),
+    ),
     dependsOn: [IAuthRepository],
   );
 

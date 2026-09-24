@@ -4,30 +4,36 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
-/// Pusher Channels client for real-time chat events (guide 7.4).
+/// Realtime chat transport built on the official `pusher_channels_flutter`
+/// plugin (guide 7.4). The plugin wraps the native Pusher SDKs
+/// (pusher-websocket-java / pusher-websocket-swift), which own the socket,
+/// automatic reconnection and channel resubscription.
 ///
-/// This is the ONLY file that knows Pusher's wire protocol. The rest of the
-/// app talks to [RealtimeClient] through its plain methods, so swapping
-/// Pusher for another provider means changing only this file.
+/// The app-facing surface is intentionally small:
 ///
-/// Transport: the Pusher WebSocket protocol over `web_socket_channel`
-/// (already in pubspec.yaml) — no native Pusher SDK needed.
+/// * [connect] / [disconnect] — socket lifecycle for the authenticated scope
+/// * [subscribeToChat] / [unsubscribeFromChat] — `private-chat-{id}` channels
+/// * [isConnected] / [onConnectionChanged] — drives the chat page's
+///   connection banner (guide 7.8)
 ///
-/// Flow:
-///  1. [connect] opens `wss://ws-{cluster}.pusher.com/app/{key}`.
-///  2. Pusher sends `pusher:connection_established` carrying a `socket_id`.
-///  3. [subscribeToChat] registers the channel's callbacks, POSTs
-///     `{socket_id, channel_name}` to the backend's `/api/v1/realtime/auth`
-///     to get a signature, then sends `pusher:subscribe`.
-///  4. The backend publishes `message.new` / `message.read` on
-///     `private-chat-{id}` (see `apps/api/src/core/realtime/pusher.rs`);
-///     frames for registered channels are dispatched to the callbacks.
+/// **Private-channel auth:** when the native SDK subscribes to a
+/// `private-*` channel it calls back into [_authorize] (the plugin's
+/// `onAuthorizer`), which POSTs `{socket_id, channel_name}` to the backend
+/// — on the auth-bearing [Dio], so the JWT interceptor applies — and returns
+/// `{'auth': ...}`, the exact shape both native SDKs consume (iOS force-casts
+/// `[String: String]`, Android gson-serializes the map). A failed auth
+/// returns null, which lets the native SDK fail that subscription gracefully
+/// while REST-loaded content stays on screen.
 ///
-/// Everything degrades to REST: if the socket or the channel auth fails,
-/// subscriptions simply don't happen — the DB row stays the source of
-/// truth and clients catch up by refetching.
+/// Reconnection: the native SDKs retry on their own; [_scheduleReconnect]
+/// adds a bounded exponential backoff (1s → 30s) on top for the case where
+/// they give up, and always resubscribes channels that are still wanted.
+///
+/// Note: this app targets Android/iOS, where the Dart authorizer above runs.
+/// On web the embedded pusher-js would fetch [authEndpoint] itself — without
+/// auth headers — so private channels are not supported there.
 class RealtimeClient {
   RealtimeClient({
     required Dio dio,
@@ -35,270 +41,306 @@ class RealtimeClient {
     required this.pusherKey,
     required this.pusherCluster,
     required this.authEndpoint,
-    WebSocketChannel Function(Uri uri)? connector,
   }) : _dio = dio,
-       _logger = logger,
-       _connector = connector ?? WebSocketChannel.connect;
+       _logger = logger;
 
   final Dio _dio;
   final Logger _logger;
 
-  /// Opens the WebSocket — injectable for tests; defaults to
-  /// [WebSocketChannel.connect].
-  final WebSocketChannel Function(Uri uri) _connector;
-
-  /// The public Pusher app key (safe to ship in the client).
+  /// Pusher Channels app key (`Config.pusherKey`).
   final String pusherKey;
 
-  /// Pusher cluster, e.g. `eu` — also builds the WebSocket host.
+  /// Pusher Channels cluster (`Config.pusherCluster`).
   final String pusherCluster;
 
-  /// Full URL of the backend's private-channel auth endpoint,
-  /// `POST /api/v1/realtime/auth`.
+  /// Backend private-channel auth endpoint; posted to with the JWT attached.
   final String authEndpoint;
 
-  WebSocketChannel? _channel;
-  StreamSubscription<dynamic>? _wsSubscription;
-  String? _socketId;
-  bool _isConnected = false;
-  bool _disposed = false;
-  int _reconnectAttempt = 0;
-  Timer? _reconnectTimer;
+  final PusherChannelsFlutter _pusher = PusherChannelsFlutter.getInstance();
 
-  /// Registered per-channel callbacks — also the source of truth for
-  /// re-subscribing after a reconnect.
-  final Map<String, _ChatSubscription> _subscriptions = {};
-
-  /// Notified whenever the socket goes up/down so view models can surface
-  /// it (e.g. `ChatViewModel.isConnected`). Set by the owning view model,
-  /// cleared on its dispose.
+  /// Invoked with `connected: true|false` whenever the socket state changes.
   void Function({required bool connected})? onConnectionChanged;
 
-  /// Whether the Pusher handshake has completed on the current socket.
-  bool get isConnected => _isConnected;
+  final Set<String> _subscriptions = <String>{};
 
-  Uri get _wsUri => Uri(
-    scheme: 'wss',
-    host: 'ws-$pusherCluster.pusher.com',
-    path: '/app/$pusherKey',
-    queryParameters: const {
-      'protocol': '7',
-      'client': 'uni-stash-flutter',
-      'version': '1.0.0',
-      'flash': 'false',
-    },
-  );
+  bool _initialized = false;
+  bool _connected = false;
+  bool _connecting = false;
+  bool _connectRequested = false;
+  bool _disposed = false;
+  int _reconnectAttempts = 0;
+  Timer? _reconnectTimer;
 
-  /// Opens the WebSocket. Idempotent — an existing socket is left alone.
-  /// Completes immediately; [onConnectionChanged] reports when the Pusher
-  /// handshake actually finishes.
+  /// Whether the socket is currently connected.
+  bool get isConnected => _connected;
+
+  /// The private channel name for a conversation.
+  String channelNameFor(String chatId) => 'private-chat-$chatId';
+
+  /// Initializes the plugin (once) and opens the socket. Idempotent.
   Future<void> connect() async {
-    if (_disposed || _channel != null) return;
-    _reconnectTimer?.cancel();
+    if (_disposed || pusherKey.isEmpty) return;
 
-    final channel = _connector(_wsUri);
-    _channel = channel;
-    _wsSubscription = channel.stream.listen(
-      _handleFrame,
-      onDone: _handleDisconnect,
-      onError: (Object _, StackTrace _) => _handleDisconnect(),
-      cancelOnError: true,
+    if (!_initialized) {
+      try {
+        await _initialize();
+        _initialized = true;
+      } on Object catch (e, s) {
+        // No native plugin (e.g. tests/web) or bad options — stay in
+        // REST-only mode rather than crashing chat.
+        _logger.e('Pusher init failed', error: e, stackTrace: s);
+        return;
+      }
+    }
+
+    _connectRequested = true;
+    if (_connected || _connecting) return;
+
+    _connecting = true;
+    try {
+      await _pusher.connect();
+    } on Object catch (e, s) {
+      _connecting = false;
+      _logger.w('Pusher connect failed, will retry', error: e, stackTrace: s);
+      _scheduleReconnect();
+    }
+  }
+
+  Future<void> _initialize() async {
+    await _pusher.init(
+      apiKey: pusherKey,
+      cluster: pusherCluster,
+      authEndpoint: authEndpoint,
+      onConnectionStateChange: _onConnectionStateChange,
+      onSubscriptionError: (message, error) {
+        _logger.w('Pusher subscription error: $message ($error)');
+      },
+      onError: (message, code, error) {
+        _logger.w('Pusher error ($code): $message ($error)');
+      },
+      onAuthorizer: _authorize,
     );
   }
 
-  /// Registers [onNewMessage]/[onReadReceipt] for `private-chat-{chatId}`
-  /// and authenticates the subscription once the socket is up.
+  /// Subscribes to `private-chat-{chatId}` and routes the two backend events
+  /// (see `core/realtime/pusher.rs`) to the given handlers. Safe to call
+  /// repeatedly; the socket is connected on demand.
   Future<void> subscribeToChat(
     String chatId, {
     required void Function(Map<String, dynamic> data) onNewMessage,
     required void Function(Map<String, dynamic> data) onReadReceipt,
   }) async {
-    if (_disposed) return;
-    final channel = 'private-chat-$chatId';
-    _subscriptions[channel] = _ChatSubscription(onNewMessage, onReadReceipt);
+    if (_disposed || chatId.isEmpty) return;
 
     await connect();
+    // Init failed or no key configured — degrade to REST-only.
+    if (!_initialized || _disposed) return;
 
-    // No handshake yet — the subscription is flushed when
-    // `pusher:connection_established` arrives (see _resubscribeAll).
-    if (_socketId == null) return;
-    await _authenticateAndSubscribe(channel);
-  }
+    final channelName = channelNameFor(chatId);
+    if (!_subscriptions.add(channelName)) return;
 
-  /// Stops listening to a chat channel.
-  void unsubscribeFromChat(String chatId) {
-    final channel = 'private-chat-$chatId';
-    if (_subscriptions.remove(channel) == null) return;
-    _send({
-      'event': 'pusher:unsubscribe',
-      'data': {'channel': channel},
-    });
-  }
-
-  /// Tears everything down (socket, timers, subscriptions) and stops
-  /// reconnecting. Terminal — DI disposes this on scope teardown.
-  void disconnect() {
-    _disposed = true;
-    _reconnectTimer?.cancel();
-    unawaited(_wsSubscription?.cancel());
-    _wsSubscription = null;
-    unawaited(_channel?.sink.close());
-    _channel = null;
-    _socketId = null;
-    _subscriptions.clear();
-    _setConnected(false);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Pusher protocol handling
-  // ---------------------------------------------------------------------------
-
-  void _handleFrame(dynamic raw) {
-    final frame = _decodeJson(raw);
-    if (frame == null) return;
-
-    switch (frame['event'] as String?) {
-      case 'pusher:connection_established':
-        final data = _decodeJson(frame['data']);
-        _socketId = data?['socket_id'] as String?;
-        _reconnectAttempt = 0;
-        _setConnected(true);
-        unawaited(_resubscribeAll());
-
-      case 'pusher:error':
-        // Non-fatal protocol error (e.g. bad subscription auth) — log and
-        // keep the socket; the affected chat degrades to REST.
-        _logger.w('Pusher error frame: ${frame['data']}');
-
-      case 'pusher:ping':
-        _send({'event': 'pusher:pong', 'data': <String, dynamic>{}});
-
-      case 'message.new':
-        _dispatch(frame, (sub, data) => sub.onNewMessage(data));
-
-      case 'message.read':
-        _dispatch(frame, (sub, data) => sub.onReadReceipt(data));
-
-      // `pusher_internal:*` subscription acknowledgements, pong replies
-      // and anything else need no handling.
-      default:
-        break;
-    }
-  }
-
-  void _dispatch(
-    Map<String, dynamic> frame,
-    void Function(_ChatSubscription sub, Map<String, dynamic> data) run,
-  ) {
-    final channel = frame['channel'];
-    if (channel is! String) return;
-    final sub = _subscriptions[channel];
-    if (sub == null) return;
-    final data = _decodeJson(frame['data']);
-    if (data == null) return;
-    run(sub, data);
-  }
-
-  Future<void> _resubscribeAll() async {
-    for (final channel in _subscriptions.keys.toList()) {
-      await _authenticateAndSubscribe(channel);
-    }
-  }
-
-  Future<void> _authenticateAndSubscribe(String channel) async {
-    final socketId = _socketId;
-    if (socketId == null) return;
-
-    final auth = await _authenticateChannel(socketId, channel);
-    // Auth failed: degrade to REST (the chat still works, just without
-    // live updates), or the socket was replaced mid-auth — either way
-    // don't subscribe on a stale socket.
-    if (auth == null || _disposed || _socketId != socketId) return;
-
-    _send({
-      'event': 'pusher:subscribe',
-      'data': {'channel': channel, 'auth': auth},
-    });
-  }
-
-  /// Signs a private-channel subscription with the backend.
-  ///
-  /// POSTs `{ socket_id, channel_name }` to `/api/v1/realtime/auth` on the
-  /// authenticated Dio (its interceptor attaches the JWT). Returns the
-  /// `auth` signature, or null on any failure — callers then skip the
-  /// subscription and the chat degrades to REST.
-  Future<String?> _authenticateChannel(String socketId, String channel) async {
     try {
-      final response = await _dio.post<dynamic>(
-        authEndpoint,
-        data: {'socket_id': socketId, 'channel_name': channel},
+      await _pusher.subscribe(
+        channelName: channelName,
+        onEvent: (dynamic raw) {
+          if (raw is! PusherEvent || _disposed) return;
+          final data = _decodeData(raw.data);
+          if (data == null) return;
+          switch (raw.eventName) {
+            case 'message.new':
+              onNewMessage(data);
+            case 'message.read':
+              onReadReceipt(data);
+            default:
+              break;
+          }
+        },
       );
-      // The backend answers with the auth JSON; depending on content-type
-      // Dio may hand it back already decoded or as a raw string.
-      final body = _decodeJson(response.data);
-      final auth = body?['auth'];
-      return auth is String ? auth : null;
-    } on DioException catch (e) {
-      _logger.e('[RealtimeClient] channel auth failed', error: e);
-      return null;
-    } on Object catch (e) {
-      _logger.e('[RealtimeClient] channel auth unexpected error', error: e);
+      if (!_connected) _scheduleReconnect();
+    } on Object catch (e, s) {
+      _subscriptions.remove(channelName);
+      _logger.w(
+        'Pusher subscribe failed for $channelName',
+        error: e,
+        stackTrace: s,
+      );
+      _scheduleReconnect();
+    }
+  }
+
+  /// Unsubscribes from a chat's channel. Fire-and-forget: the native SDK
+  /// performs the round-trip.
+  void unsubscribeFromChat(String chatId) {
+    if (chatId.isEmpty) return;
+    final channelName = channelNameFor(chatId);
+    if (!_subscriptions.remove(channelName)) return;
+    if (_disposed) return;
+    unawaited(_unsubscribe(channelName));
+  }
+
+  Future<void> _unsubscribe(String channelName) async {
+    try {
+      await _pusher.unsubscribe(channelName: channelName);
+    } on Object catch (e, s) {
+      _logger.w(
+        'Pusher unsubscribe failed for $channelName',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Disconnects the socket and releases the client (authenticated-scope
+  /// disposal, i.e. logout). Idempotent; no further reconnects after this.
+  Future<void> disconnect() async {
+    _disposed = true;
+    _connectRequested = false;
+    _connecting = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _subscriptions.clear();
+    if (_connected) {
+      _connected = false;
+      onConnectionChanged?.call(connected: false);
+    }
+    try {
+      await _pusher.disconnect();
+    } on Object catch (e, s) {
+      _logger.w('Pusher disconnect failed', error: e, stackTrace: s);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Auth
+  // -------------------------------------------------------------------------
+
+  /// The plugin's `onAuthorizer`: called by the native SDK right before it
+  /// subscribes to a private channel.
+  Future<dynamic> _authorize(
+    String channelName,
+    String socketId,
+    dynamic options,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        authEndpoint,
+        data: {'socket_id': socketId, 'channel_name': channelName},
+      );
+      final auth = _authFrom(response.data);
+      if (auth == null) {
+        _logger.w('Pusher auth response missing "auth" for $channelName');
+        return null;
+      }
+      return <String, String>{'auth': auth};
+    } on Object catch (e, s) {
+      _logger.w(
+        'Pusher auth failed for $channelName',
+        error: e,
+        stackTrace: s,
+      );
       return null;
     }
   }
 
-  void _handleDisconnect() {
-    _channel = null;
-    _wsSubscription = null;
-    _socketId = null;
-    _setConnected(false);
-    if (_disposed || _subscriptions.isEmpty) return;
+  /// Accepts both decoded maps and raw JSON text — the backend's auth
+  /// endpoint returns JSON without an application/json content type, so Dio
+  /// may hand the body over as a [String].
+  String? _authFrom(Object? body) {
+    if (body is Map) {
+      final auth = body['auth'];
+      if (auth is String && auth.isNotEmpty) return auth;
+      return null;
+    }
+    if (body is String) {
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is Map) {
+          final auth = decoded['auth'];
+          if (auth is String && auth.isNotEmpty) return auth;
+        }
+      } on Object catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Connection state & reconnect
+  // -------------------------------------------------------------------------
+
+  void _onConnectionStateChange(String current, String previous) {
+    if (_disposed) return;
+
+    if (current == 'CONNECTED') {
+      _reconnectAttempts = 0;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _connecting = false;
+      if (_connected) return;
+      _connected = true;
+      onConnectionChanged?.call(connected: true);
+      return;
+    }
+
+    _connecting = false;
+    if (current == 'CONNECTING') {
+      // The native SDK is already retrying on its own — stand down.
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      return;
+    }
+    if (_connected) {
+      _connected = false;
+      onConnectionChanged?.call(connected: false);
+    }
     _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
-    _reconnectTimer?.cancel();
-    // Exponential backoff: 1s, 2s, 4s, 8s, …, capped at 30s. Reset to 1s
-    // on the next successful handshake.
-    final seconds = min(30, 1 << min(_reconnectAttempt, 10));
-    _reconnectAttempt++;
-    _reconnectTimer = Timer(Duration(seconds: seconds), () {
-      if (_disposed) return;
-      unawaited(connect());
+    if (_disposed || !_connectRequested || _connected || _connecting) return;
+    if (_subscriptions.isEmpty) return;
+    if (_reconnectTimer?.isActive ?? false) return;
+
+    final gapSeconds = min(30, 1 << min(_reconnectAttempts, 5));
+    _reconnectAttempts += 1;
+    _reconnectTimer = Timer(Duration(seconds: gapSeconds), () {
+      unawaited(_reconnect());
     });
   }
 
-  void _setConnected(bool value) {
-    if (_isConnected == value) return;
-    _isConnected = value;
-    onConnectionChanged?.call(connected: value);
-  }
-
-  void _send(Map<String, dynamic> event) {
-    _channel?.sink.add(jsonEncode(event));
-  }
-
-  /// Pusher frames (and the auth response) may carry JSON as an already
-  /// decoded map or as a string — accept both, drop anything malformed.
-  Map<String, dynamic>? _decodeJson(Object? raw) {
+  Future<void> _reconnect() async {
+    if (_disposed || _connected || _connecting || _subscriptions.isEmpty) {
+      return;
+    }
+    _connecting = true;
     try {
-      if (raw is Map<String, dynamic>) return raw;
-      if (raw is String) {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map<String, dynamic>) return decoded;
+      await _pusher.connect();
+    } on Object catch (e, s) {
+      _connecting = false;
+      _logger.w('Pusher reconnect failed', error: e, stackTrace: s);
+      _scheduleReconnect();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Event payloads
+  // -------------------------------------------------------------------------
+
+  /// Event data arrives as a JSON [String] from the iOS SDK and as a [Map]
+  /// from Android — normalize to a string-keyed map.
+  Map<String, dynamic>? _decodeData(dynamic raw) {
+    dynamic decoded = raw;
+    if (decoded is String) {
+      try {
+        decoded = jsonDecode(decoded);
+      } on Object catch (_) {
+        return null;
       }
-    } on Object catch (_) {
-      // Malformed frame — never crash the socket loop.
+    }
+    if (decoded is Map) {
+      return decoded.map((key, value) => MapEntry(key.toString(), value));
     }
     return null;
   }
-}
-
-typedef _ChatHandler = void Function(Map<String, dynamic> data);
-
-class _ChatSubscription {
-  const _ChatSubscription(this.onNewMessage, this.onReadReceipt);
-
-  final _ChatHandler onNewMessage;
-  final _ChatHandler onReadReceipt;
 }

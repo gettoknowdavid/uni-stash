@@ -5,6 +5,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/core/config/config.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/env_dev.dart';
+import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/router/us_router.dart';
 import 'package:uni_stash_mobile/shared/widgets/back_button.dart';
@@ -18,9 +19,11 @@ void main() async {
     env: DevEnv.env,
     pusherKey: DevEnv.pusherKey,
     pusherCluster: DevEnv.pusherCluster,
+    beamsInstanceId: DevEnv.beamsInstanceId,
   );
   configureDependencies(config);
   await GetIt.I.allReady();
+  await GetIt.I<PushNotifications>().bootstrap();
   await GetIt.I<AuthViewModel>().bootstrap();
   runApp(const UniStashApp());
 }

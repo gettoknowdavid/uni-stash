@@ -1,165 +1,288 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/features/chats/data/realtime_client.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 class MockDio extends Mock implements Dio {}
 
-/// Records frames pushed to the socket.
-class FakeWebSocketSink extends Fake implements WebSocketSink {
-  final List<String> sent = [];
+const MethodChannel _channel = MethodChannel('pusher_channels_flutter');
+const StandardMethodCodec _codec = StandardMethodCodec();
 
-  @override
-  void add(dynamic data) => sent.add(data as String);
+final List<MethodCall> _outbound = <MethodCall>[];
 
-  @override
-  Future<void> close([int? closeCode, String? closeReason]) async {}
-}
-
-/// A WebSocketChannel whose frames the test both records (outgoing) and
-/// feeds (incoming) without touching the network.
-class FakeWebSocketChannel extends Fake implements WebSocketChannel {
-  final controller = StreamController<dynamic>();
-  final fakeSink = FakeWebSocketSink();
-
-  @override
-  Stream<dynamic> get stream => controller.stream;
-
-  @override
-  WebSocketSink get sink => fakeSink;
+/// Simulates a message arriving *from* the platform (native → Dart), which
+/// is how the plugin delivers connection states, events and auth requests.
+Future<ByteData?> _inject(String method, Map<String, dynamic> args) {
+  return TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .handlePlatformMessage(
+        _channel.name,
+        _codec.encodeMethodCall(MethodCall(method, args)),
+        (_) {},
+      );
 }
 
 void main() {
-  late MockDio dio;
-  late FakeWebSocketChannel channel;
-  late RealtimeClient client;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() {
-    registerFallbackValue('');
-  });
+  late MockDio dio;
 
   setUp(() {
     dio = MockDio();
-    channel = FakeWebSocketChannel();
-    when(
-      () => dio.post<dynamic>(any(), data: any(named: 'data')),
-    ).thenAnswer(
-      (_) async => Response<dynamic>(
-        data: '{"auth":"app-key:signature"}',
-        requestOptions: RequestOptions(path: '/api/v1/realtime/auth'),
-      ),
-    );
-    client = RealtimeClient(
-      dio: dio,
-      logger: Logger(),
-      pusherKey: 'app-key',
-      pusherCluster: 'eu',
-      authEndpoint: 'https://api.test/api/v1/realtime/auth',
-      connector: (_) => channel,
-    );
+    _outbound.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_channel, (call) async {
+          _outbound.add(call);
+          return null;
+        });
   });
 
-  tearDown(() async {
-    client.disconnect();
-    await channel.controller.close();
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_channel, null);
+  });
+
+  RealtimeClient buildClient({String key = 'test-key'}) => RealtimeClient(
+    dio: dio,
+    logger: Logger(level: Level.off),
+    pusherKey: key,
+    pusherCluster: 'mt1',
+    authEndpoint: 'https://api.test/api/v1/realtime/auth',
+  );
+
+  List<String> methods() =>
+      _outbound.map((call) => call.method).toList(growable: false);
+
+  MethodCall callNamed(String method) =>
+      _outbound.firstWhere((call) => call.method == method);
+
+  void stubAuthOk() {
+    when(
+      () => dio.post<Map<String, dynamic>>(
+        any(),
+        data: any(named: 'data'),
+      ),
+    ).thenAnswer(
+      (_) async => Response<Map<String, dynamic>>(
+        requestOptions: RequestOptions(path: '/api/v1/realtime/auth'),
+        data: <String, dynamic>{'auth': 'test-key:signature'},
+      ),
+    );
+  }
+
+  test('subscribeToChat inits the SDK with the app key and subscribes '
+      'private-chat-{id} (7.4)', () async {
+    final client = buildClient();
+    await client.subscribeToChat(
+      'c1',
+      onNewMessage: (_) {},
+      onReadReceipt: (_) {},
+    );
+
+    expect(methods(), containsAllInOrder(<String>['init', 'connect']));
+    expect(methods(), contains('subscribe'));
+
+    final init = callNamed('init').arguments as Map;
+    expect(init['apiKey'], 'test-key');
+    expect(init['cluster'], 'mt1');
+    expect(init['authorizer'], isTrue);
+    expect(init['authEndpoint'], 'https://api.test/api/v1/realtime/auth');
+
+    final subscribe = callNamed('subscribe').arguments as Map;
+    expect(subscribe['channelName'], 'private-chat-c1');
+
+    await client.disconnect();
+  });
+
+  test('subscribing twice for the same chat subscribes only once', () async {
+    final client = buildClient();
+    Future<void> subscribe() => client.subscribeToChat(
+      'c1',
+      onNewMessage: (_) {},
+      onReadReceipt: (_) {},
+    );
+
+    await subscribe();
+    await subscribe();
+
+    expect(
+      _outbound.where((call) => call.method == 'subscribe'),
+      hasLength(1),
+    );
+
+    await client.disconnect();
   });
 
   test(
-    'connects, authenticates and subscribes to private-chat-{id} (7.4)',
+    'private-channel auth posts socket id and channel, returns auth',
     () async {
-      final connectionStates = <bool>[];
-      client.onConnectionChanged = ({required connected}) =>
-          connectionStates.add(connected);
-
-      Map<String, dynamic>? received;
+      stubAuthOk();
+      final client = buildClient();
       await client.subscribeToChat(
         'c1',
-        onNewMessage: (data) => received = data,
+        onNewMessage: (_) {},
         onReadReceipt: (_) {},
       );
 
-      // Socket opened, but without the Pusher handshake no subscribe frame
-      // may have been sent yet.
-      expect(client.isConnected, isFalse);
-      expect(channel.fakeSink.sent, isEmpty);
+      final reply = await _inject('onAuthorizer', <String, dynamic>{
+        'channelName': 'private-chat-c1',
+        'socketId': '123.456',
+      });
 
-      // Pusher handshake.
-      channel.controller.add(
-        jsonEncode({
-          'event': 'pusher:connection_established',
-          'data': jsonEncode({'socket_id': '100.1', 'activity_timeout': 30}),
-        }),
-      );
-      await pumpEventQueue();
+      final decoded = reply == null ? null : _codec.decodeEnvelope(reply);
+      expect(decoded, <String, dynamic>{'auth': 'test-key:signature'});
 
-      expect(client.isConnected, isTrue);
-      expect(connectionStates, [true]);
-
-      // The channel auth was requested from the backend...
-      verify(
-        () => dio.post<dynamic>(
+      final captured = verify(
+        () => dio.post<Map<String, dynamic>>(
           'https://api.test/api/v1/realtime/auth',
-          data: any(named: 'data'),
+          data: captureAny(named: 'data'),
         ),
-      ).called(1);
+      ).captured.single;
+      expect(captured, <String, dynamic>{
+        'socket_id': '123.456',
+        'channel_name': 'private-chat-c1',
+      });
 
-      // ...and the subscribe frame targets the private chat channel with
-      // the returned signature.
-      final frames = channel.fakeSink.sent
-          .map((f) => jsonDecode(f) as Map<String, dynamic>)
-          .toList();
-      final subscribe = frames.firstWhere(
-        (f) => f['event'] == 'pusher:subscribe',
-      );
-      final data = subscribe['data'] as Map<String, dynamic>;
-      expect(data['channel'], 'private-chat-c1');
-      expect(data['auth'], 'app-key:signature');
-
-      // A message.new frame for the channel reaches the callback with the
-      // decoded payload.
-      channel.controller.add(
-        jsonEncode({
-          'event': 'message.new',
-          'channel': 'private-chat-c1',
-          'data': jsonEncode({'type': 'message_new', 'chat_id': 'c1'}),
-        }),
-      );
-      await pumpEventQueue();
-
-      expect(received, {'type': 'message_new', 'chat_id': 'c1'});
+      await client.disconnect();
     },
   );
 
-  test('frames for unknown channels are ignored', () async {
+  test(
+    'failed private-channel auth returns null instead of throwing',
+    () async {
+      when(
+        () => dio.post<Map<String, dynamic>>(
+          any(),
+          data: any(named: 'data'),
+        ),
+      ).thenThrow(Exception('boom'));
+
+      final client = buildClient();
+      await client.subscribeToChat(
+        'c1',
+        onNewMessage: (_) {},
+        onReadReceipt: (_) {},
+      );
+
+      final reply = await _inject('onAuthorizer', <String, dynamic>{
+        'channelName': 'private-chat-c1',
+        'socketId': '123.456',
+      });
+
+      expect(reply, isNotNull);
+      expect(_codec.decodeEnvelope(reply!), isNull);
+
+      await client.disconnect();
+    },
+  );
+
+  test('message events reach the subscription handlers; JSON and map data '
+      'both decode (7.4/7.6)', () async {
+    final client = buildClient();
+    final received = <Map<String, dynamic>>[];
+    final receipts = <Map<String, dynamic>>[];
+
     await client.subscribeToChat(
       'c1',
-      onNewMessage: (_) => fail('must not be called'),
+      onNewMessage: received.add,
+      onReadReceipt: receipts.add,
+    );
+
+    // iOS hands event data over as a JSON string.
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-chat-c1',
+      'eventName': 'message.new',
+      'data': jsonEncode(<String, dynamic>{'id': 'm9', 'body': 'hi'}),
+    });
+    // Android hands it over as a map.
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-chat-c1',
+      'eventName': 'message.read',
+      'data': <String, dynamic>{'last_read_message_id': 'm9'},
+    });
+    // An unrelated event name is ignored.
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-chat-c1',
+      'eventName': 'pusher:ping',
+      'data': <String, dynamic>{},
+    });
+
+    expect(received, hasLength(1));
+    expect(received.single['id'], 'm9');
+    expect(receipts, hasLength(1));
+    expect(receipts.single['last_read_message_id'], 'm9');
+
+    await client.disconnect();
+  });
+
+  test('events for channels we never subscribed are not delivered', () async {
+    final client = buildClient();
+    final received = <Map<String, dynamic>>[];
+
+    await client.subscribeToChat(
+      'c1',
+      onNewMessage: received.add,
       onReadReceipt: (_) {},
     );
-    channel.controller.add(
-      jsonEncode({
-        'event': 'pusher:connection_established',
-        'data': jsonEncode({'socket_id': '100.1', 'activity_timeout': 30}),
-      }),
-    );
-    await pumpEventQueue();
 
-    channel.controller.add(
-      jsonEncode({
-        'event': 'message.new',
-        'channel': 'private-chat-other',
-        'data': jsonEncode({'type': 'message_new', 'chat_id': 'other'}),
-      }),
-    );
-    await pumpEventQueue();
+    await _inject('onEvent', <String, dynamic>{
+      'channelName': 'private-chat-c99',
+      'eventName': 'message.new',
+      'data': jsonEncode(<String, dynamic>{'id': 'm1'}),
+    });
 
-    // Reaching this point without the callback firing is the assertion;
-    // add a cheap explicit one too.
-    expect(client.isConnected, isTrue);
+    expect(received, isEmpty);
+
+    await client.disconnect();
+  });
+
+  test(
+    'connection state changes drive isConnected and the banner callback',
+    () async {
+      final client = buildClient();
+      final banner = <bool>[];
+      client.onConnectionChanged = ({required connected}) {
+        banner.add(connected);
+      };
+
+      await client.subscribeToChat(
+        'c1',
+        onNewMessage: (_) {},
+        onReadReceipt: (_) {},
+      );
+      expect(client.isConnected, isFalse);
+
+      await _inject('onConnectionStateChange', <String, dynamic>{
+        'currentState': 'connected',
+        'previousState': 'connecting',
+      });
+      expect(client.isConnected, isTrue);
+      expect(banner, <bool>[true]);
+
+      await _inject('onConnectionStateChange', <String, dynamic>{
+        'currentState': 'disconnected',
+        'previousState': 'connected',
+      });
+      expect(client.isConnected, isFalse);
+      expect(banner, <bool>[true, false]);
+
+      // Cancels the scheduled reconnect so no timer outlives the test.
+      await client.disconnect();
+    },
+  );
+
+  test('an empty pusher key keeps the client inert (REST-only mode)', () async {
+    final client = buildClient(key: '');
+    await client.subscribeToChat(
+      'c1',
+      onNewMessage: (_) {},
+      onReadReceipt: (_) {},
+    );
+
+    expect(_outbound, isEmpty);
+    expect(client.isConnected, isFalse);
   });
 }

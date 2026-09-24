@@ -1,4 +1,4 @@
-package com.gettoknowdavid.uni_stash.uni_stash_mobile
+package com.gettoknowdavid.uni_stash
 
 import io.flutter.embedding.android.FlutterActivity
 

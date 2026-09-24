@@ -1,5 +1,5 @@
 $kind: collection
-name: Uni-Stash API
+description: ""
 auth:
   type: bearer
   credentials:
@@ -8,30 +8,48 @@ variables:
   - key: baseUrl
     value: http://localhost:8080
     disabled: false
+    secret: false
   - key: accessToken
     secret: true
     disabled: false
   - key: refreshToken
     value: ""
     disabled: false
+    secret: false
   - key: listingId
     value: ""
     disabled: false
+    secret: false
   - key: imageId
     value: ""
     disabled: false
+    secret: false
   - key: objectKey
     value: ""
     disabled: false
+    secret: false
   - key: verificationToken
     value: ""
     disabled: false
+    secret: false
   - key: schoolId
     value: ""
     disabled: false
+    secret: false
   - key: adminAccessToken
     secret: true
     disabled: false
   - key: adminRefreshToken
+    value: ""
+    disabled: false
+    secret: false
+  - key: pusherSocketId
+    value: ""
+    disabled: false
+    secret: false
+  - key: chatId
+    value: ""
+    disabled: false
+  - key: pusherChannelAuth
     value: ""
     disabled: false

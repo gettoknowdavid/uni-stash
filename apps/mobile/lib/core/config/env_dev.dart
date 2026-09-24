@@ -16,6 +16,9 @@ abstract class DevEnv {
   @EnviedField(varName: 'PUSHER_CLUSTER')
   static final String pusherCluster = _DevEnv.pusherCluster;
 
+  @EnviedField(varName: 'BEAMS_INSTANCE_ID')
+  static final String beamsInstanceId = _DevEnv.beamsInstanceId;
+
   @EnviedField(varName: 'ENV')
   static final String env = _DevEnv.env;
 }

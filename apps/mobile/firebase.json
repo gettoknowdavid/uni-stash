@@ -1,0 +1,23 @@
+{
+  "auth": { "providers": {} },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "uni-stash",
+          "appId": "1:42650859219:android:8e5bc42a8f559769178626",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "uni-stash",
+          "configurations": {
+            "android": "1:42650859219:android:8e5bc42a8f559769178626",
+            "ios": "1:854473836851:ios:1d0c669448e66f5bec9646"
+          }
+        }
+      }
+    }
+  }
+}
