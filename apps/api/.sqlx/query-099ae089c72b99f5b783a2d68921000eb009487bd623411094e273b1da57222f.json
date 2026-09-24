@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO saved_items (user_id, listing_id) VALUES ($1, $2)\n             ON CONFLICT (user_id, listing_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "099ae089c72b99f5b783a2d68921000eb009487bd623411094e273b1da57222f"
+}

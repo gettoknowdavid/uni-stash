@@ -7,4 +7,5 @@ pub mod images;
 pub mod listings;
 pub mod notifications;
 pub mod sales;
+pub mod saved_items;
 pub mod schools;

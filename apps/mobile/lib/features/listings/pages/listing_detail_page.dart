@@ -10,6 +10,7 @@ import 'package:signals_hooks/signals_hooks.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
@@ -320,7 +321,11 @@ class _ListingDetailView extends SignalWidget {
                 spacing: 16,
                 children: [
                   if (!isMe)
-                    _BookmarkButton(sellerId: detail.seller.id, size: 30),
+                    _BookmarkButton(
+                      sellerId: detail.seller.id,
+                      listingId: id,
+                      size: 30,
+                    ),
                   if (isMe) ...[
                     _EditButton(
                       id: id,
@@ -794,19 +799,82 @@ class _DeleteButton extends StatelessWidget {
   }
 }
 
-class _BookmarkButton extends StatelessWidget {
-  const _BookmarkButton({required this.sellerId, this.size = 40});
+class _BookmarkButton extends StatefulWidget {
+  const _BookmarkButton({
+    required this.sellerId,
+    required this.listingId,
+    this.size = 40,
+  });
   final String sellerId;
+  final String listingId;
   final double size;
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool? _saved;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSavedState());
+  }
+
+  Future<void> _loadSavedState() async {
+    final result = await di<SavedItemsRepository>().isSaved(widget.listingId);
+    if (!mounted) return;
+    switch (result) {
+      case Success(:final value):
+        setState(() => _saved = value);
+      case Failure():
+        // Leave unknown: the button stays untoggled but still tappable.
+        break;
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final result = await di<SavedItemsRepository>().toggle(widget.listingId);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    switch (result) {
+      case Success(:final value):
+        setState(() => _saved = value);
+        ShadToaster.of(context).show(
+          ShadToast(
+            title: Text(value ? 'Saved' : 'Removed'),
+            description: Text(
+              value
+                  ? 'Added to your saved items.'
+                  : 'Removed from saved items.',
+            ),
+          ),
+        );
+      case Failure(:final message):
+        ShadToaster.of(context).show(
+          ShadToast.destructive(
+            title: const Text('Something went wrong'),
+            description: Text(message),
+          ),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final saved = _saved ?? false;
     return SizedBox.square(
-      dimension: size,
+      dimension: widget.size,
       child: ShadIconButton(
         backgroundColor: theme.colorScheme.accent,
-        foregroundColor: theme.colorScheme.foreground,
+        foregroundColor: saved
+            ? theme.colorScheme.primary
+            : theme.colorScheme.foreground,
         hoverBackgroundColor: theme.colorScheme.muted,
         pressedBackgroundColor: theme.colorScheme.foreground,
         pressedForegroundColor: theme.colorScheme.accent,
@@ -817,8 +885,17 @@ class _BookmarkButton extends StatelessWidget {
             radius: .zero,
           ),
         ),
-        onPressed: () {},
-        icon: Icon(LucideIcons.bookmark, size: size * 0.6),
+        onPressed: _busy ? null : _toggle,
+        icon: _busy
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                saved ? LucideIcons.bookmarkCheck : LucideIcons.bookmark,
+                size: widget.size * 0.6,
+              ),
       ),
     );
   }

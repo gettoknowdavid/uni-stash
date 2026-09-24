@@ -54,6 +54,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::chats::configure)
             .configure(features::notifications::configure)
             .configure(features::sales::configure)
+            .configure(features::saved_items::configure)
             .configure(features::images::configure)
             .configure(features::categories::configure)
             .configure(features::schools::configure)

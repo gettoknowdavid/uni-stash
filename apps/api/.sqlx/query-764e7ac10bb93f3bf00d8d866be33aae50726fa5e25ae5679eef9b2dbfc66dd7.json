@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM saved_items WHERE user_id = $1 AND listing_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "764e7ac10bb93f3bf00d8d866be33aae50726fa5e25ae5679eef9b2dbfc66dd7"
+}

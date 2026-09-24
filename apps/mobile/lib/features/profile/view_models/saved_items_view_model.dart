@@ -9,12 +9,10 @@ import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 /// Page-scoped ViewModel driving SAVED ITEMS (profile menu).
 ///
-/// Loads the locally bookmarked listing ids, then resolves each id with a
-/// listings detail fetch (best-effort, sequential — the list is usually
-/// small). Listings that no longer resolve (deleted/hidden) are dropped
-/// from the in-memory list but stay in storage; stale ids only disappear
-/// from the UI, never from the bookmark store, so nothing is lost if a
-/// fetch fails transiently.
+/// Loads the user's bookmarked listing ids from the server, then resolves
+/// each id with a listings detail fetch (best-effort, sequential — the
+/// list is usually small). Listings that no longer resolve (deleted /
+/// hidden by their owner) drop off the list automatically.
 class SavedItemsViewModel implements Disposable {
   SavedItemsViewModel(this._repository, this._savedItems);
 
@@ -27,16 +25,22 @@ class SavedItemsViewModel implements Disposable {
 
   bool _disposed = false;
 
-  /// Fetches the saved listings, replacing any existing data.
-  void fetch() {
-    unawaited(_fetch());
-  }
-
   Future<void> _fetch() async {
     isLoading.value = true;
     error.value = null;
 
-    final ids = await _savedItems.load();
+    final idsResult = await _savedItems.load();
+    if (_disposed) return;
+
+    final List<String> ids;
+    switch (idsResult) {
+      case Success(value: final idsLoaded):
+        ids = idsLoaded;
+      case Failure(:final message):
+        error.value = message;
+        isLoading.value = false;
+        return;
+    }
 
     final resolved = <ListingSummary>[];
     String? failure;
@@ -69,6 +73,11 @@ class SavedItemsViewModel implements Disposable {
     listings.value = resolved;
     if (resolved.isEmpty && failure != null) error.value = failure;
     isLoading.value = false;
+  }
+
+  /// Fetches the saved listings, replacing any existing data.
+  void fetch() {
+    unawaited(_fetch());
   }
 
   void dispose() {

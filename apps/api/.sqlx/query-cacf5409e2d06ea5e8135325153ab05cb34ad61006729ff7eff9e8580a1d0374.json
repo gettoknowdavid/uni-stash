@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(SELECT 1 FROM saved_items WHERE user_id = $1 AND listing_id = $2) AS saved",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "saved",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "cacf5409e2d06ea5e8135325153ab05cb34ad61006729ff7eff9e8580a1d0374"
+}
