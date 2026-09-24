@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
 import 'package:uni_stash_mobile/features/profile/pages/logout_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
@@ -75,15 +78,24 @@ class _SettingsBody extends SignalWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionCard(
+          _SectionCard(
             headerLabel: 'NOTIFICATIONS',
             children: [
               _SettingsRow(
                 label: 'Push Notifications',
                 subtitle: 'Alerts for new messages and offers',
-                trailing: UsSwitch(value: true),
+                trailing: SignalBuilder(
+                  builder: (context) {
+                    final push = di<PushNotifications>();
+                    return UsSwitch(
+                      value: push.enabled.value,
+                      onChanged: (value) =>
+                          unawaited(_setPushEnabled(context, value)),
+                    );
+                  },
+                ),
               ),
-              _SettingsRow(
+              const _SettingsRow(
                 label: 'Email Notifications',
                 subtitle: 'Weekly digests and major updates',
                 trailing: UsSwitch(value: false),
@@ -122,6 +134,25 @@ class _SettingsBody extends SignalWidget {
           ),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+}
+
+/// Applies the push toggle and surfaces a failure without flipping the
+/// switch back — the Beams SDK call is best-effort and the preference is
+/// already persisted by the time this runs.
+Future<void> _setPushEnabled(BuildContext context, bool value) async {
+  final push = di<PushNotifications>();
+  await push.setEnabled(value);
+  if (!context.mounted) return;
+  if (value && !push.isStarted) {
+    ShadToaster.of(context).show(
+      const ShadToast(
+        title: Text('Push unavailable'),
+        description: Text(
+          'Notifications could not be enabled on this device.',
+        ),
       ),
     );
   }
