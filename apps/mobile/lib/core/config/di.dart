@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
@@ -19,7 +21,9 @@ import 'package:uni_stash_mobile/features/listings/data/categories_repository.da
 import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
+import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
 import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
@@ -127,6 +131,9 @@ void _registerListings() {
   di.registerLazySingleton<ListingDraftRepository>(
     () => ListingDraftRepository(di<FlutterSecureStorage>()),
   );
+  di.registerLazySingleton<SearchHistoryRepository>(
+    () => SearchHistoryRepository(di<FlutterSecureStorage>()),
+  );
   di.registerLazySingleton<ListingsViewModel>(
     () => ListingsViewModel(
       di<ListingsRepository>(),
@@ -136,6 +143,22 @@ void _registerListings() {
       instance.fetch();
       instance.loadCategories();
     },
+  );
+
+  // SEARCH tab: session-lived like ListingsViewModel — the shell branch
+  // stays mounted, so the query/filters/results survive tab switches.
+  // Categories + saved searches are warmed on first access.
+  di.registerLazySingleton<SearchViewModel>(
+    () => SearchViewModel(
+      di<ListingsRepository>(),
+      di<CategoriesRepository>(),
+      di<SearchHistoryRepository>(),
+    ),
+    onCreated: (instance) {
+      instance.loadCategories();
+      unawaited(instance.loadRecentSearches());
+    },
+    dispose: (instance) => instance.dispose(),
   );
 }
 

@@ -342,12 +342,24 @@ class _ChatInputBar extends StatelessWidget {
         child: Padding(
           padding: const .symmetric(horizontal: 12, vertical: 8),
           child: Row(
+            // Keep the send button pinned to the last line as the field
+            // grows to multiple lines.
+            crossAxisAlignment: .end,
             children: [
               Expanded(
                 child: ShadInputFormField(
                   id: 'chat-message',
                   controller: controller,
                   autocorrect: false,
+                  // Grows like a normal chat bar: one line while short,
+                  // up to five lines for longer drafts; past that the
+                  // field scrolls *vertically* (a single-line input
+                  // scrolls horizontally instead, which feels wrong).
+                  minLines: 1,
+                  maxLines: 5,
+                  keyboardType: .multiline,
+                  // Keeps the IME's Send key wired to onSubmitted even
+                  // though the field is multiline.
                   textInputAction: .send,
                   onSubmitted: (_) => onSend(),
                   placeholder: const Text('Type a message...'),
