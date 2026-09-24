@@ -8,7 +8,7 @@ use crate::core::{
     cursor::{Cursor, decode_cursor, encode_cursor},
     error::AppError,
     json::ValidatedJson,
-    realtime::{RealtimeEvent, private_channel},
+    realtime::{RealtimeEvent, chat_channel, private_user_channel},
     response::{ApiResponse, ErrorBody},
     state::AppState,
 };
@@ -189,14 +189,29 @@ pub async fn send_message(
         .send_message(chat_id, user.id, body.body.trim())
         .await?;
 
+    // Participants — shared by the per-user realtime event and the push.
+    let counterpart =
+        if let Ok(Some((buyer_id, seller_id))) = state.chats_repo.participants(chat_id).await {
+            Some(if user.id == buyer_id {
+                seller_id
+            } else {
+                buyer_id
+            })
+        } else {
+            None
+        };
+
     // Best-effort realtime push — never fails the request; the DB row is
     // the source of truth and clients catch up on reconnect.
     if let Err(err) = state
         .realtime
         .0
         .publish(
-            &private_channel(&chat_id.to_string()),
-            &RealtimeEvent::MessageNew { chat_id },
+            &chat_channel(&chat_id),
+            &RealtimeEvent::MessageNew {
+                chat_id,
+                sender_id: user.id,
+            },
         )
         .await
     {
@@ -207,13 +222,32 @@ pub async fn send_message(
         );
     }
 
+    // The recipient also hears the event on their *user* channel — that is
+    // what reaches them on screens where they are not viewing this chat
+    // (in-app notification + live thread-list/badge update), without
+    // subscribing to every conversation's channel.
+    if let Some(counterpart) = counterpart
+        && let Err(err) = state
+            .realtime
+            .0
+            .publish(
+                &private_user_channel(&counterpart),
+                &RealtimeEvent::MessageNew {
+                    chat_id,
+                    sender_id: user.id,
+                },
+            )
+            .await
+    {
+        tracing::warn!(
+            chat_id = %chat_id,
+            error = %err,
+            "user-channel realtime publish failed"
+        );
+    }
+
     // Best-effort push notification to the other participant.
-    if let Ok(Some((buyer_id, seller_id))) = state.chats_repo.participants(chat_id).await {
-        let recipient = if user.id == buyer_id {
-            seller_id
-        } else {
-            buyer_id
-        };
+    if let Some(recipient) = counterpart {
         let sender_name = &user.display_name;
         let preview = if body.body.len() > 80 {
             &body.body[..80]
@@ -227,7 +261,10 @@ pub async fn send_message(
                 recipient,
                 sender_name,
                 preview,
-                Some(&[("chat_id", &chat_id.to_string())]),
+                Some(&[
+                    ("chat_id", &chat_id.to_string()),
+                    ("sender_name", sender_name),
+                ]),
             )
             .await
         {
@@ -260,7 +297,7 @@ pub async fn mark_read(
             .realtime
             .0
             .publish(
-                &private_channel(&chat_id.to_string()),
+                &chat_channel(&chat_id),
                 &RealtimeEvent::MessageRead {
                     chat_id,
                     last_read_message_id: last_read_id,
@@ -284,19 +321,51 @@ pub struct RealtimeAuthRequest {
     pub channel_name: String,
 }
 
+/// What a `realtime/auth` request wants signed.
+#[derive(Debug, PartialEq, Eq)]
+enum ChannelScope {
+    /// `private-chat-{uuid}` — requires participant status (checked async).
+    Chat(Uuid),
+    /// `private-user-{uuid}` — always the requester's own id.
+    User,
+}
+
+/// Parses and authorizes a channel name against the requesting user.
+///
+/// * `private-chat-{uuid}` → chat scope; the caller still verifies the
+///   user participates in that chat.
+/// * `private-user-{uuid}` → only the account owner may sign it (it
+///   carries every message addressed to them), so a mismatch is a hard
+///   403 rather than a participant question.
+/// * anything else → 400.
+fn parse_channel_scope(channel_name: &str, user_id: Uuid) -> Result<ChannelScope, AppError> {
+    if let Some(raw) = channel_name.strip_prefix("private-user-") {
+        let id =
+            Uuid::parse_str(raw).map_err(|_| AppError::BadRequest("invalid channel".into()))?;
+        if id != user_id {
+            return Err(AppError::Forbidden);
+        }
+        return Ok(ChannelScope::User);
+    }
+
+    let chat_id = channel_name
+        .strip_prefix("private-chat-")
+        .and_then(|raw| Uuid::parse_str(raw).ok())
+        .ok_or_else(|| AppError::BadRequest("invalid channel".into()))?;
+    Ok(ChannelScope::Chat(chat_id))
+}
+
 pub async fn realtime_auth(
     state: web::Data<AppState>,
     user: AuthUser,
     body: web::Json<RealtimeAuthRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // Only private-chat-{uuid} channels are signable, and only by
-    // participants of that chat.
-    let chat_id = body
-        .channel_name
-        .strip_prefix("private-chat-")
-        .and_then(|raw| Uuid::parse_str(raw).ok())
-        .ok_or_else(|| AppError::BadRequest("invalid channel".into()))?;
-    ensure_participant(&state, chat_id, user.id).await?;
+    // Signable channels: private-chat-{uuid} (participants only) and
+    // private-user-{uuid} (own account only).
+    match parse_channel_scope(&body.channel_name, user.id)? {
+        ChannelScope::Chat(chat_id) => ensure_participant(&state, chat_id, user.id).await?,
+        ChannelScope::User => {}
+    }
 
     let socket_id = body.socket_id.trim();
     if socket_id.is_empty() || socket_id.contains(':') {
@@ -310,4 +379,62 @@ pub async fn realtime_auth(
         .ok_or_else(|| AppError::BadRequest("realtime channel auth is not configured".into()))?;
 
     Ok(HttpResponse::Ok().body(auth))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn me() -> Uuid {
+        Uuid::parse_str("67d3e10c-4a2f-4d5b-9c1e-2f4b5a697c88").unwrap()
+    }
+
+    #[test]
+    fn own_user_channel_is_signable() {
+        let name = private_user_channel(&me());
+        assert_eq!(
+            parse_channel_scope(&name, me()).unwrap(),
+            ChannelScope::User
+        );
+    }
+
+    #[test]
+    fn someone_elses_user_channel_is_forbidden() {
+        let other = Uuid::new_v4();
+        let name = private_user_channel(&other);
+        assert!(matches!(
+            parse_channel_scope(&name, me()),
+            Err(AppError::Forbidden)
+        ));
+    }
+
+    #[test]
+    fn chat_channel_parses_to_its_uuid() {
+        let chat_id = Uuid::new_v4();
+        let name = chat_channel(&chat_id);
+        assert_eq!(
+            parse_channel_scope(&name, me()).unwrap(),
+            ChannelScope::Chat(chat_id)
+        );
+    }
+
+    #[test]
+    fn unknown_or_malformed_channels_are_bad_requests() {
+        for name in [
+            "private-chat-not-a-uuid",
+            "private-",
+            "public-lobby",
+            "private-user-",
+            "private-user-not-a-uuid",
+            "",
+        ] {
+            assert!(
+                matches!(
+                    parse_channel_scope(name, me()),
+                    Err(AppError::BadRequest(_))
+                ),
+                "{name} must be rejected"
+            );
+        }
+    }
 }
