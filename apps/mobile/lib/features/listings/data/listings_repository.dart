@@ -12,6 +12,14 @@ abstract interface class ListingsRepository {
   Future<Result<void>> delete(String id);
   Future<Result<ListingDetailResponse?>> getListing(String id);
   Future<Result<ListListingsResponse>> list(ListListingsQuery query);
+
+  /// Lists a specific seller's listings (any status mix the API default
+  /// returns), cursor-paginated. Used by the MY LISTINGS profile page.
+  Future<Result<ListListingsResponse>> listBySeller(
+    String sellerId, {
+    String? cursor,
+    int limit,
+  });
   Future<Result<Listing>> reserve(String id);
   Future<Result<Listing>> unreserve(String id);
   Future<Result<Listing>> markAsSold(String id);
@@ -111,6 +119,31 @@ class ListingsRepositoryImpl implements ListingsRepository {
       return dioFailure(e);
     } on Object catch (e) {
       _logger.e('[ListingsRepository] list unexpected error', error: e);
+      return const Result.failure('An unexpected error occurred.');
+    }
+  }
+
+  @override
+  Future<Result<ListListingsResponse>> listBySeller(
+    String sellerId, {
+    String? cursor,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await _client.getList(
+        sellerId: sellerId,
+        cursor: cursor,
+        limit: limit,
+      );
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
+      return Result.success(data);
+    } on DioException catch (e) {
+      _logger.e('[ListingsRepository] listBySeller failed', error: e);
+      return dioFailure(e);
+    } on Object catch (e) {
+      _logger.e('[ListingsRepository] listBySeller unexpected error', error: e);
       return const Result.failure('An unexpected error occurred.');
     }
   }

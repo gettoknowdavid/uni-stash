@@ -43,7 +43,9 @@ final class UsRoutes {
 
   /// Sale-history screens (guide 6.9/6.10).
   static const String myPurchases = '/sales/purchases';
-  static const String mySales = '/sales/mine';
+  static const String mySales = '/sales/mine';  /// Profile listing management + bookmarks.
+  static const String myListings = '/profile/listings';
+  static const String savedItems = '/profile/saved';
 
   static String listingDetailsRoute(String id) => '/listings/$id';
   static String listingEditRoute(String id) => '/listings/$id/edit';

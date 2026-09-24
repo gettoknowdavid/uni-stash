@@ -22,6 +22,7 @@ import 'package:uni_stash_mobile/features/listings/data/categories_repository.da
 import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/saved_items_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
@@ -142,6 +143,9 @@ void _registerListings() {
   );
   di.registerLazySingleton<SearchHistoryRepository>(
     () => SearchHistoryRepository(di<FlutterSecureStorage>()),
+  );
+  di.registerLazySingleton<SavedItemsRepository>(
+    () => SavedItemsRepository(di<FlutterSecureStorage>()),
   );
   di.registerLazySingleton<ListingsViewModel>(
     () => ListingsViewModel(

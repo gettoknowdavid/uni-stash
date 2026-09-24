@@ -345,9 +345,20 @@ class _ProfileMenu extends StatelessWidget {
       children: [
         Text('PROFILE MENU', style: theme.textTheme.labelSm),
         const SizedBox(height: 8),
-        const _MenuRow(icon: LucideIcons.tag, label: 'MY LISTINGS'),
-        const _MenuRow(icon: LucideIcons.bookmark, label: 'SAVED ITEMS'),
-        const _MenuRow(icon: LucideIcons.history, label: 'TRANSACTION HISTORY'),
+        GestureDetector(
+          child: const _MenuRow(
+            icon: LucideIcons.tag,
+            label: 'MY LISTINGS',
+          ),
+          onTap: () => context.push(UsRoutes.myListings),
+        ),
+        GestureDetector(
+          child: const _MenuRow(
+            icon: LucideIcons.bookmark,
+            label: 'SAVED ITEMS',
+          ),
+          onTap: () => context.push(UsRoutes.savedItems),
+        ),
         const _MenuRow(
           icon: LucideIcons.headset,
           label: 'SUPPORT',
@@ -407,8 +418,8 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
-/// Destination routes (edit profile, my listings, …) don't exist yet —
-/// every actionable row reports itself as coming soon.
+/// Destination routes that don't exist yet (e.g. SUPPORT) report
+/// themselves as coming soon.
 void _showComingSoon(BuildContext context, String feature) {
   ShadToaster.of(context).show(
     ShadToast(

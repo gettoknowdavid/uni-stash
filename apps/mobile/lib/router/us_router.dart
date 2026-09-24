@@ -73,6 +73,14 @@ final GoRouter routerConfig = GoRouter(
       path: UsRoutes.mySales,
       builder: (context, state) => const MySalesPage(),
     ),
+    GoRoute(
+      path: UsRoutes.myListings,
+      builder: (context, state) => const MyListingsPage(),
+    ),
+    GoRoute(
+      path: UsRoutes.savedItems,
+      builder: (context, state) => const SavedItemsPage(),
+    ),
     // Full-screen chat conversation (guide 7.8). Deep links and push
     // notifications (guide 7.10) may arrive without `extra`, so the
     // display names fall back to neutral labels rather than crashing.
