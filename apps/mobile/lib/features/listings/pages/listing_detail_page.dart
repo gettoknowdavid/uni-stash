@@ -185,6 +185,32 @@ class _ListingDetailView extends SignalWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  if (!isMe && detail.status != .sold)
+                    const UsNoticeCard(
+                      variant: .warning,
+                      title: 'BUYER SAFETY',
+                      description:
+                          'Chat with the seller and arrange a meetup before '
+                          'paying. UniStash never handles payments.',
+                      items: [
+                        'Inspect the item properly before buying',
+                        'Pick a public campus location for the meetup',
+                        'Test electronics and check condition on the spot',
+                      ],
+                    ),
+                  if (isMe && detail.status == .reserved)
+                    const UsNoticeCard(
+                      variant: .info,
+                      title: 'BEFORE YOU MARK AS SOLD',
+                      description:
+                          'Keep your transactions on campus and in public:',
+                      items: [
+                        'Accept public, busy meeting spots only',
+                        'Confirm payment in full before handing over',
+                        'Never share your bank details in chat',
+                      ],
+                    ),
+                  const SizedBox(height: 24),
                   Padding(
                     padding: const .symmetric(horizontal: 16),
                     child: Text(
@@ -320,7 +346,7 @@ class _ListingDetailView extends SignalWidget {
               child: Column(
                 spacing: 16,
                 children: [
-                  if (!isMe)
+                  if (!isMe && detail.status != ListingStatus.sold)
                     _BookmarkButton(
                       sellerId: detail.seller.id,
                       listingId: id,

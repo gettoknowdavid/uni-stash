@@ -31,6 +31,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Returning to the HOME tab (from SEARCH/CHAT/PROFILE or from a pushed
+    // detail/editor page) re-syncs the grid so delete/mark-sold changes
+    // are reflected without waiting for a pull-to-refresh. The flag keeps
+    // this from refetching on the very first build (initState already
+    // triggered the initial fetch elsewhere).
+    if (_hasBuiltOnce) {
+      di<ListingsViewModel>().refresh();
+    }
+    _hasBuiltOnce = true;
+  }
+
+  bool _hasBuiltOnce = false;
+
+  @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();

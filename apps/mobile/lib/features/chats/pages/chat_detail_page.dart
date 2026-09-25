@@ -10,6 +10,7 @@ import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/chats/models/models.dart';
 import 'package:uni_stash_mobile/features/chats/open_chat.dart';
 import 'package:uni_stash_mobile/features/chats/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/chats/widgets/chat_scroll_coordinator.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
@@ -40,6 +41,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   String? _scopeName;
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
+  final _scrollCoordinator = ChatScrollCoordinator();
 
   @override
   void initState() {
@@ -66,19 +68,28 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       },
     );
 
-    // Reaching the top of the list loads older messages (infinite scroll).
+    // Reaching the top of the list loads older messages (infinite scroll);
+    // the coordinator also tracks "at bottom" for the new-messages pill.
     _scrollController.addListener(_onScroll);
+    // Jump to the newest message as soon as the view model is ready.
+    unawaited(
+      di.isReady<ChatViewModel>().then(
+        (_) => _scrollCoordinator.jumpToBottom(_scrollController),
+      ),
+    );
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels == 0) {
       unawaited(di<ChatViewModel>().loadMore());
     }
+    _scrollCoordinator.onScroll(_scrollController);
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
+    _scrollCoordinator.dispose();
     _scrollController.dispose();
     _inputController.dispose();
     OpenChat.close(widget.chatId);
@@ -132,6 +143,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 child: _ChatBody(
                   currentUserId: currentUserId,
                   scrollController: _scrollController,
+                  coordinator: _scrollCoordinator,
                 ),
               ),
             ],
@@ -143,7 +155,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         onSend: () {
           final text = _inputController.text.trim();
           if (text.isEmpty) return;
-          unawaited(di<ChatViewModel>().sendMessage(text));
+          unawaited(
+            di<ChatViewModel>().sendMessage(text).then(
+              (_) => _scrollCoordinator.onMessageSent(_scrollController),
+            ),
+          );
           _inputController.clear();
         },
       ),
@@ -199,10 +215,12 @@ class _ChatBody extends StatelessWidget {
   const _ChatBody({
     required this.currentUserId,
     required this.scrollController,
+    required this.coordinator,
   });
 
   final String currentUserId;
   final ScrollController scrollController;
+  final ChatScrollCoordinator coordinator;
 
   @override
   Widget build(BuildContext context) {
@@ -227,17 +245,27 @@ class _ChatBody extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          controller: scrollController,
-          padding: const .symmetric(vertical: 16),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final message = messages[index];
-            return _MessageBubble(
-              message: message,
-              isMe: message.senderId == currentUserId,
-            );
-          },
+        coordinator.onMessagesChanged(messages, currentUserId);
+
+        return Stack(
+          alignment: .bottomCenter,
+          children: [
+            ListView.builder(
+              controller: scrollController,
+              padding: const .symmetric(vertical: 16),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final message = messages[index];
+                return _MessageBubble(
+                  message: message,
+                  isMe: message.senderId == currentUserId,
+                );
+              },
+            ),
+            coordinator.newMessagesPill(
+              onTap: () => coordinator.jumpToBottom(scrollController),
+            ),
+          ],
         );
       },
     );

@@ -118,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                 bodyFooterSpacing: 12,
               ),
               const SizedBox(height: 24),
-              const GreenNoticeCard(
+              const UsNoticeCard(
                 title: 'RESTRICTED ACCESS',
                 description:
                     'UniStash is a closed ecosystem. We '

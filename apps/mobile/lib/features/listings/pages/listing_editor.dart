@@ -253,6 +253,18 @@ class _ListingEditorState extends State<ListingEditor> {
                   padding: .all(16),
                   child: Column(
                     children: [
+                      UsNoticeCard(
+                        variant: .info,
+                        title: 'SELLER TIPS',
+                        description:
+                            'Honest listings sell faster and keep buyers safe:',
+                        items: [
+                          'Use real photos of the actual item',
+                          'Describe defects clearly — it builds trust',
+                          'Arrange handovers in public campus spots',
+                        ],
+                      ),
+                      SizedBox(height: 24),
                       _PhotosField(),
                       SizedBox(height: 24),
                       _TitleField(),

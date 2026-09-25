@@ -14,6 +14,7 @@ import 'package:uni_stash_mobile/features/sales/models/models.dart';
 import 'package:uni_stash_mobile/features/sales/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
+import 'package:uni_stash_mobile/theme/_theme.dart';
 
 /// Items the current user bought (guide 6.9).
 class MyPurchasesPage extends StatelessWidget {
@@ -100,7 +101,26 @@ class _SalesHistoryPageState extends State<_SalesHistoryPage> {
     return UsPage(
       gutters: const .all(16),
       header: UsPageHeader(title: Text(widget.title)),
-      body: _SalesBody(emptyMessage: widget.emptyMessage),
+      body: Column(
+        children: [
+          const SizedBox(height: UsSpacing.md),
+          UsNoticeCard(
+            variant: widget.kind == SalesKind.purchases
+                ? UsNoticeVariant.warning
+                : UsNoticeVariant.info,
+            title: widget.kind == SalesKind.purchases
+                ? 'BUYER REMINDER'
+                : 'SELLER REMINDER',
+            description: widget.kind == SalesKind.purchases
+                ? 'If a purchase goes wrong, report the listing and contact '
+                    'support. Always confirm items before payment.'
+                : 'Hand over items only after payment is confirmed. Meet in '
+                    'public campus locations.',
+          ),
+          const SizedBox(height: UsSpacing.md),
+          Expanded(child: _SalesBody(emptyMessage: widget.emptyMessage)),
+        ],
+      ),
     );
   }
 }

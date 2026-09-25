@@ -45,6 +45,21 @@ class _ProfilePageState extends State<ProfilePage> {
     _model.fetch();
   }
 
+  bool _hasFetchedOnce = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Returning to the PROFILE tab (e.g. after saving/un-saving an item on
+    // a listing detail page) re-fetches the stats strip so the SAVED count
+    // stays in sync without a full app restart. The flag skips the very
+    // first build, which already fetched in initState.
+    if (_hasFetchedOnce) {
+      _model.fetch();
+    }
+    _hasFetchedOnce = true;
+  }
+
   @override
   void dispose() {
     // popScope() is async but dispose() is sync, so the pop is fired,

@@ -127,7 +127,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              const GreenNoticeCard(
+              const UsNoticeCard(
                 title: 'CAMPUS VERIFICATION',
                 description:
                     'We verify all new members against active recognized '
