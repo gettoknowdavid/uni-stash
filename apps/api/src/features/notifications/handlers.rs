@@ -109,16 +109,16 @@ pub async fn list_notifications(
 
     let unread_count = state.notifications_repo.unread_count(user.id).await?;
 
-    Ok(HttpResponse::Ok().json(
-        ApiResponse::<InboxResponse, ErrorBody>::success(
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<InboxResponse, ErrorBody>::success(
             InboxResponse {
                 notifications: rows,
                 next_cursor,
                 unread_count,
             },
             "ok",
-        ),
-    ))
+        )),
+    )
 }
 
 /// GET /api/v1/notifications/unread-count — lightweight badge poll.
@@ -127,12 +127,7 @@ pub async fn unread_count(
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
     let count = state.notifications_repo.unread_count(user.id).await?;
-    Ok(
-        HttpResponse::Ok().json(ApiResponse::<i64, ErrorBody>::success(
-            count,
-            "ok",
-        )),
-    )
+    Ok(HttpResponse::Ok().json(ApiResponse::<i64, ErrorBody>::success(count, "ok")))
 }
 
 /// POST /api/v1/notifications/{id}/read — mark one notification read.
@@ -162,9 +157,12 @@ pub async fn mark_all_read(
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
     let updated = state.notifications_repo.mark_all_read(user.id).await?;
-    Ok(HttpResponse::Ok().json(
-        ApiResponse::<u64, ErrorBody>::success(updated, "all notifications marked read"),
-    ))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<u64, ErrorBody>::success(
+            updated,
+            "all notifications marked read",
+        )),
+    )
 }
 
 /// DELETE /api/v1/notifications/{id} — remove one notification.

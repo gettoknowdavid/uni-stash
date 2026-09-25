@@ -168,13 +168,11 @@ impl NotificationsRepo {
     /// Deletes one notification (owned by [user_id]). Same 404 semantics
     /// as [mark_read].
     pub async fn delete(&self, user_id: Uuid, notification_id: Uuid) -> Result<bool, AppError> {
-        let result = sqlx::query(
-            "DELETE FROM notifications WHERE id = $1 AND recipient_id = $2",
-        )
-        .bind(notification_id)
-        .bind(user_id)
-        .execute(&self.db)
-        .await?;
+        let result = sqlx::query("DELETE FROM notifications WHERE id = $1 AND recipient_id = $2")
+            .bind(notification_id)
+            .bind(user_id)
+            .execute(&self.db)
+            .await?;
         Ok(result.rows_affected() > 0)
     }
 }

@@ -11,10 +11,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         |scope| {
             scope
                 .route("/{sale_id}", web::post().to(handlers::create_review))
-                .route(
-                    "/users/{user_id}",
-                    web::get().to(handlers::user_reviews),
-                )
+                .route("/users/{user_id}", web::get().to(handlers::user_reviews))
                 .route(
                     "/sales/{sale_id}/mine",
                     web::get().to(handlers::my_review_for_sale),

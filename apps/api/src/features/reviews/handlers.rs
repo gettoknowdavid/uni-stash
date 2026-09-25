@@ -49,7 +49,12 @@ pub async fn create_review(
         .await?
         .ok_or(AppError::Forbidden)?;
 
-    if state.reviews_repo.find_for_sale(sale_id, user.id).await?.is_some() {
+    if state
+        .reviews_repo
+        .find_for_sale(sale_id, user.id)
+        .await?
+        .is_some()
+    {
         return Err(AppError::Conflict(
             "you have already reviewed this sale".into(),
         ));
@@ -57,7 +62,13 @@ pub async fn create_review(
 
     let review = state
         .reviews_repo
-        .create(sale_id, user.id, reviewee, body.rating, body.comment.clone())
+        .create(
+            sale_id,
+            user.id,
+            reviewee,
+            body.rating,
+            body.comment.clone(),
+        )
         .await?;
 
     // Best-effort inbox notification so the reviewee knows.
@@ -98,14 +109,16 @@ pub async fn user_reviews(
         review_count,
     } = state.reviews_repo.summary_for_user(user_id).await?;
 
-    Ok(HttpResponse::Ok().json(ApiResponse::<UserReviewsResponse, ErrorBody>::success(
-        UserReviewsResponse {
-            reviews,
-            average_rating,
-            review_count,
-        },
-        "ok",
-    )))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<UserReviewsResponse, ErrorBody>::success(
+            UserReviewsResponse {
+                reviews,
+                average_rating,
+                review_count,
+            },
+            "ok",
+        )),
+    )
 }
 
 /// GET /api/v1/reviews/sales/{sale_id}/mine — has the caller already
@@ -119,7 +132,9 @@ pub async fn my_review_for_sale(
         .reviews_repo
         .find_for_sale(path.into_inner(), user.id)
         .await?;
-    Ok(HttpResponse::Ok().json(
-        ApiResponse::<Option<ReviewResponse>, ErrorBody>::success(review, "ok"),
-    ))
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<Option<ReviewResponse>, ErrorBody>::success(
+            review, "ok",
+        )),
+    )
 }

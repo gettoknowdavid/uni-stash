@@ -44,6 +44,7 @@ impl ReviewsRepo {
     /// - author is buyer or seller of the sale,
     /// - reviewee is the counterpart,
     /// - author hasn't already reviewed this sale.
+    ///
     /// Returns the created row.
     pub async fn create(
         &self,
@@ -71,7 +72,11 @@ impl ReviewsRepo {
     }
 
     /// All reviews ABOUT a user (their rating wall), newest first.
-    pub async fn for_user(&self, user_id: Uuid, limit: i64) -> Result<Vec<ReviewResponse>, AppError> {
+    pub async fn for_user(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<ReviewResponse>, AppError> {
         let rows = sqlx::query_as::<_, ReviewResponse>(
             "SELECT r.id, r.sale_id, r.author_id, r.reviewee_id, r.rating, r.comment,
                     a.display_name AS author_name, b.display_name AS reviewee_name,

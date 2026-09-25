@@ -157,7 +157,10 @@ pub async fn get_listing_detail(
 
     // Stamp the seller's rating summary (average + count) onto the detail.
     let mut detail = detail;
-    let summary = state.reviews_repo.summary_for_user(detail.seller.id).await?;
+    let summary = state
+        .reviews_repo
+        .summary_for_user(detail.seller.id)
+        .await?;
     detail.seller.average_rating = summary.average_rating;
     detail.seller.review_count = summary.review_count;
 

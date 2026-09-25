@@ -39,9 +39,7 @@ pub async fn create_user_report(
 ) -> Result<HttpResponse, AppError> {
     let reported_user_id = path.into_inner();
     if reported_user_id == user.id {
-        return Err(AppError::BadRequest(
-            "you cannot report yourself".into(),
-        ));
+        return Err(AppError::BadRequest("you cannot report yourself".into()));
     }
 
     // The reported user must exist (and not be soft-deleted).
