@@ -40,6 +40,16 @@ pub fn chat_channel(chat_id: &uuid::Uuid) -> String {
     private_channel(&format!("chat-{chat_id}"))
 }
 
+/// Per-listing status channel: `private-listing-{uuid}`.
+///
+/// Any device currently viewing the listing's detail page subscribes here
+/// so reserve/unreserve/mark-sold/deleted changes made by *someone else*
+/// arrive live without a refetch (the REST row stays the source of truth;
+/// the event is only a nudge to refetch the detail).
+pub fn listing_channel(listing_id: &uuid::Uuid) -> String {
+    private_channel(&format!("listing-{listing_id}"))
+}
+
 /// Per-user notification channel: `private-user-{uuid}`.
 ///
 /// `send_message` publishes `message.new` here for the *recipient*, so a
@@ -66,6 +76,13 @@ pub enum RealtimeEvent {
     MessageRead {
         chat_id: uuid::Uuid,
         last_read_message_id: uuid::Uuid,
+    },
+    /// A listing's mutable state changed (status, reserved_by). Payload is
+    /// only an id + new status — clients refetch the detail for everything
+    /// else, so no seller/buyer PII leaks onto the channel.
+    ListingUpdated {
+        listing_id: uuid::Uuid,
+        status: String,
     },
 }
 
@@ -151,6 +168,27 @@ mod tests {
             private_user_channel(&chat_id),
             "private-user-67d3e10c-4a2f-4d5b-9c1e-2f4b5a697c88"
         );
+    }
+
+    #[test]
+    #[test]
+    fn listing_channel_matches_the_name_mobile_clients_subscribe_to() {
+        let id = uuid::Uuid::new_v4();
+        assert_eq!(listing_channel(&id), format!("private-listing-{id}"));
+    }
+
+    #[test]
+    fn listing_updated_serializes_with_type_tag_status_and_id() {
+        let listing_id = uuid::Uuid::new_v4();
+        let json = serde_json::to_string(&RealtimeEvent::ListingUpdated {
+            listing_id,
+            status: "reserved".into(),
+        })
+        .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["type"], "listing_updated");
+        assert_eq!(parsed["listing_id"], listing_id.to_string());
+        assert_eq!(parsed["status"], "reserved");
     }
 
     #[test]

@@ -128,8 +128,8 @@ impl ListingsRepo {
 
         // Cursor pagination: only for non-search browse.
         // Search results are rank-ordered, so a (created_at, id) cursor
-        // would produce incorrect pages. For MVP, search results use simple
-        // limit-only pagination (no cursor, no next_cursor).
+        // would produce incorrect pages; search uses OFFSET pagination
+        // instead (see `search_offset` in `ListingFilters`).
         if !is_search && let Some(ref cursor) = filters.cursor {
             query
                 .push(" AND (created_at, id) < (")
@@ -156,6 +156,12 @@ impl ListingsRepo {
         query.push(" LIMIT ");
         query.push_bind(limit + 1);
 
+        // Ranked search pages by offset; browse pages by cursor.
+        if is_search && let Some(offset) = filters.search_offset {
+            query.push(" OFFSET ");
+            query.push_bind(offset);
+        }
+
         let rows: Vec<ListingSummaryRow> = query.build_query_as().fetch_all(&self.db).await?;
 
         let has_more = rows.len() as i64 > limit;
@@ -172,7 +178,8 @@ impl ListingsRepo {
         // by listing id — never per-listing queries (N+1).
         self.attach_images(&mut listings).await?;
 
-        // Search results don't use cursor pagination.
+        // Search results don't use cursor pagination — they report an
+        // offset cursor instead, handled by the caller (handlers.rs).
         let next_cursor = if is_search {
             None
         } else if has_more {

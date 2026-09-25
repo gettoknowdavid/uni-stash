@@ -183,10 +183,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       baseName: 'savedItems',
       init: (getIt) {
         getIt.registerLazySingleton<SavedItemsViewModel>(
-          () => SavedItemsViewModel(
-            di<ListingsRepository>(),
-            di<SavedItemsRepository>(),
-          ),
+          () => SavedItemsViewModel(di<SavedItemsRepository>()),
           dispose: (model) => model.dispose(),
         );
       },

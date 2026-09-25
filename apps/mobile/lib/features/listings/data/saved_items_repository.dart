@@ -3,6 +3,7 @@ import 'package:logger/logger.dart';
 import 'package:uni_stash_mobile/core/api/dio_error.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_api.dart';
+import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 /// Server-backed saved (bookmarked) listings — persisted per user account
 /// so bookmarks sync across devices and survive reinstalls.
@@ -10,9 +11,11 @@ import 'package:uni_stash_mobile/features/listings/data/saved_items_api.dart';
 /// Save/unsave are idempotent on the backend, so retries and double-taps
 /// are safe.
 abstract interface class SavedItemsRepository {
-  /// Listing ids the user saved, newest first. Cursor pagination is
-  /// available for future scaling; the profile page fetches one page.
-  Future<Result<List<String>>> load({String? cursor, int limit});
+  /// The user's saved listings, newest first, hydrated with listing
+  /// summaries so the grid renders from this single response. Cursor
+  /// pagination is available for scaling; the saved-items page fetches
+  /// one page.
+  Future<Result<List<ListingSummary>>> load({String? cursor, int limit});
 
   /// Saves [listingId]. Idempotent.
   Future<Result<void>> save(String listingId);
@@ -34,15 +37,16 @@ class SavedItemsRepositoryImpl implements SavedItemsRepository {
   final Logger _logger;
 
   @override
-  Future<Result<List<String>>> load({String? cursor, int limit = 100}) async {
+  Future<Result<List<ListingSummary>>> load({
+    String? cursor,
+    int limit = 100,
+  }) async {
     try {
       final response = await _client.list(cursor: cursor, limit: limit);
       if (!response.status) return Result.failure(response.message);
       final data = response.data;
       if (data == null) return const Result.failure('No data');
-      return Result.success(
-        data.items.map((item) => item.listingId).toList(growable: false),
-      );
+      return Result.success(data.listings);
     } on DioException catch (e) {
       _logger.e('[SavedItemsRepository] load failed', error: e);
       return dioFailure(e);

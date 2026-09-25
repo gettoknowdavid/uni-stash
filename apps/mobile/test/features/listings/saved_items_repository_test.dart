@@ -8,6 +8,7 @@ import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_dto.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_repository.dart';
+import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 class _MockClient extends Mock implements SavedItemsApiClient {}
 
@@ -25,16 +26,19 @@ void main() {
     repo = SavedItemsRepositoryImpl(client, Logger(level: Level.off));
   });
 
-  SavedItem item(String id) => SavedItem(
-        listingId: id,
-        savedAt: DateTime.parse('2026-01-01T00:00:00Z'),
+  ListingSummary summary(String id) => ListingSummary(
+        id: id,
+        title: 'Item $id',
+        condition: Condition.isNew,
+        status: ListingStatus.active,
+        createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
       );
 
-  ApiResponse<SavedItemsListResponse> okList(List<SavedItem> items) =>
+  ApiResponse<SavedItemsListResponse> okList(List<ListingSummary> listings) =>
       ApiResponse(
         status: true,
         message: 'ok',
-        data: SavedItemsListResponse(items: items),
+        data: SavedItemsListResponse(listings: listings),
       );
 
   ApiResponse<SavedItemStatusResponse> status({required bool saved}) =>
@@ -52,25 +56,33 @@ void main() {
         ),
       );
 
-  test('load maps listing ids, newest first', () async {
-    when(() => client.list(cursor: any(named: 'cursor'),
-            limit: any(named: 'limit')))
-        .thenAnswer((_) async => okList([item('b'), item('a')]));
+  test('load returns hydrated listing summaries, newest first', () async {
+    when(
+      () => client.list(
+        cursor: any(named: 'cursor'),
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer((_) async => okList([summary('b'), summary('a')]));
 
     final result = await repo.load();
-    expect(result, isA<Success<List<String>>>());
-    expect((result as Success<List<String>>).value, ['b', 'a']);
+    expect(result, isA<Success<List<ListingSummary>>>());
+    final value = (result as Success<List<ListingSummary>>).value;
+    expect(value.map((l) => l.id), ['b', 'a']);
+    expect(value.first.title, 'Item b');
   });
 
   test('load failure surfaces message', () async {
-    when(() => client.list(cursor: any(named: 'cursor'),
-            limit: any(named: 'limit')))
-        .thenAnswer(
+    when(
+      () => client.list(
+        cursor: any(named: 'cursor'),
+        limit: any(named: 'limit'),
+      ),
+    ).thenAnswer(
       (_) async => const ApiResponse(status: false, message: 'boom'),
     );
     final result = await repo.load();
-    expect(result, isA<Failure<List<String>>>());
-    expect((result as Failure<List<String>>).message, 'boom');
+    expect(result, isA<Failure<List<ListingSummary>>>());
+    expect((result as Failure<List<ListingSummary>>).message, 'boom');
   });
 
   test('save maps success', () async {

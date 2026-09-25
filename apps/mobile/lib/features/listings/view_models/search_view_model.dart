@@ -170,9 +170,8 @@ class SearchViewModel implements Disposable {
   /// request is in flight (pull-to-refresh shouldn't blank the grid).
   Future<void> refresh() => _run(showLoading: false);
 
-  /// Appends the next cursor page. No-op while a page is loading, when
-  /// there is no more (ranked search results never paginate), or when the
-  /// user has no criteria set.
+  /// Appends the next page. No-op while a page is loading, when there is
+  /// no more, or when the user has no criteria set.
   Future<void> loadMore() async {
     if (isLoadingMore.value ||
         isLoading.value ||
@@ -196,13 +195,17 @@ class SearchViewModel implements Disposable {
     error.value = null;
 
     final trimmed = query.value.trim();
+    final isSearch = trimmed.isNotEmpty;
     final result = await _repository.list(
       ListListingsQuery(
         q: trimmed.isEmpty ? null : trimmed,
         categoryId: categoryId.value,
         minPrice: minPrice.value,
         maxPrice: maxPrice.value,
-        cursor: append ? _cursor : null,
+        // Browse pages by cursor; ranked search pages by offset (the
+        // search response's `next_cursor` is the next offset).
+        cursor: !isSearch && append ? _cursor : null,
+        offset: isSearch && append ? int.tryParse(_cursor ?? '') : null,
       ),
     );
 

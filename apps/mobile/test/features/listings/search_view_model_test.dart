@@ -165,15 +165,16 @@ void main() {
   });
 
   group('pagination', () {
-    test('appends the cursor page until nextCursor runs out', () async {
+    test('appends the offset page until nextCursor runs out', () async {
       when(() => listings.list(any())).thenAnswer((invocation) async {
         queries.add(
           invocation.positionalArguments.first as ListListingsQuery,
         );
-        // First page has a cursor; the second does not.
+        // Ranked search pages by offset: the first page's next_cursor is
+        // the next offset ('50'); the second page has none.
         return queries.length == 1
             ? Result.success(
-                page([buildSummary('l1')], nextCursor: 'cur1'),
+                page([buildSummary('l1')], nextCursor: '50'),
               )
             : Result.success(page([buildSummary('l2')]));
       });
@@ -186,7 +187,8 @@ void main() {
       await model.loadMore();
       expect(model.results.value.map((r) => r.id), ['l1', 'l2']);
       expect(queries, hasLength(2));
-      expect(queries.last.cursor, 'cur1');
+      expect(queries.last.offset, 50);
+      expect(queries.last.cursor, isNull);
 
       // No cursor now — further loadMore calls are no-ops.
       await model.loadMore();

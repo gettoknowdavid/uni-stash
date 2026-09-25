@@ -8,6 +8,7 @@ use crate::{
         cursor::decode_cursor,
         error::AppError,
         json,
+        realtime::{RealtimeEvent, listing_channel},
         response::{ApiResponse, ErrorBody},
         state::AppState,
     },
@@ -92,26 +93,46 @@ pub async fn list_listings(
         }
     });
 
-    // Cursor pagination is only valid for non-search browse (recency-ordered).
-    // When searching by rank, cursor is ignored — results are page-limited only.
+    // Browse pages by (created_at, id) cursor; ranked search pages by
+    // offset — the search `next_cursor` encodes the next offset directly.
     let cursor = if search_query.is_none() {
         query.cursor.as_deref().map(decode_cursor).transpose()?
     } else {
         None
     };
+    let search_offset = if search_query.is_some() {
+        query.offset.map(|o| o.clamp(0, 10_000))
+    } else {
+        None
+    };
 
     let filters = ListingFilters {
-        search_query,
+        search_query: search_query.clone(),
         category: query.category,
         min_price: query.min_price,
         max_price: query.max_price,
         statuses,
         seller: query.seller,
         cursor,
+        search_offset,
         limit,
     };
 
     let (listings, next_cursor) = state.listings_repo.list(&filters).await?;
+
+    // Ranked-search pagination: the repo always reports no cursor for
+    // search, so the handler encodes the *next offset* instead — a plain
+    // number, opaque to the client. A full page means there may be more;
+    // a short page is the last one.
+    let next_cursor = if search_query.is_some() {
+        if listings.len() as i64 >= limit {
+            Some(search_offset.unwrap_or(0).saturating_add(limit).to_string())
+        } else {
+            None
+        }
+    } else {
+        next_cursor
+    };
 
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ListListingsResponse, ErrorBody>::success(
@@ -181,12 +202,41 @@ pub async fn delete_listing(
     path: web::Path<uuid::Uuid>,
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
-    state
-        .listings_repo
-        .soft_delete(path.into_inner(), user.id)
-        .await?;
+    let listing_id = path.into_inner();
+    state.listings_repo.soft_delete(listing_id, user.id).await?;
+
+    // Best-effort realtime nudge: any device with the detail page open
+    // refetches and renders the owner-only "deleted" state.
+    publish_listing_updated(&state, listing_id, "deleted").await;
 
     Ok(HttpResponse::NoContent().finish())
+}
+
+/// Publishes `listing.updated` on the listing's channel. Best-effort: the
+/// REST row is the source of truth and clients refetch on any event.
+async fn publish_listing_updated(
+    state: &web::Data<AppState>,
+    listing_id: uuid::Uuid,
+    status: &str,
+) {
+    if let Err(err) = state
+        .realtime
+        .0
+        .publish(
+            &listing_channel(&listing_id),
+            &RealtimeEvent::ListingUpdated {
+                listing_id,
+                status: status.to_string(),
+            },
+        )
+        .await
+    {
+        tracing::warn!(
+            listing_id = %listing_id,
+            error = %err,
+            "listing realtime publish failed"
+        );
+    }
 }
 
 pub async fn reserve_listing(
@@ -202,6 +252,9 @@ pub async fn reserve_listing(
     // request body, consistent with the "never trust the body for
     // identity" pattern used in CM-4.1.
     let listing = state_machine::reserve_listing(&state.db, path.into_inner(), user.id).await?;
+
+    // Best-effort realtime nudge to anyone viewing the listing detail page.
+    publish_listing_updated(&state, listing.id, "reserved").await;
 
     // Best-effort push notification to the seller.
     if let Err(err) = state
@@ -233,6 +286,9 @@ pub async fn mark_sold(
 ) -> Result<HttpResponse, AppError> {
     let listing_id = path.into_inner();
     let listing = state_machine::mark_sold(&state.db, listing_id, user.id).await?;
+
+    // Best-effort realtime nudge to anyone viewing the listing detail page.
+    publish_listing_updated(&state, listing.id, "sold").await;
 
     // Best-effort push notification to the buyer (if any).
     // Query the sale_history for the buyer_id (set during mark_sold transaction).
@@ -271,6 +327,9 @@ pub async fn unreserve_listing(
     user: AuthUser,
 ) -> Result<HttpResponse, AppError> {
     let listing = state_machine::unreserve(&state.db, path.into_inner(), user.id).await?;
+
+    // Best-effort realtime nudge to anyone viewing the listing detail page.
+    publish_listing_updated(&state, listing.id, "active").await;
 
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ListingResponse, ErrorBody>::success(

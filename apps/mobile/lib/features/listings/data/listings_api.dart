@@ -34,6 +34,9 @@ abstract class ListingsApiClient {
     @Query('status') ListingStatus? status,
     @Query('seller') String? sellerId,
     @Query('cursor') String? cursor,
+    /// Page offset for ranked-search pagination (`q` present); the search
+    /// response's `next_cursor` is the next offset, passed back verbatim.
+    @Query('offset') int? offset,
     @Query('limit') int? limit,
   });
 

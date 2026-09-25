@@ -45,6 +45,10 @@ abstract class ListListingsQuery with _$ListListingsQuery {
     @JsonKey(name: 'max_price') int? maxPrice,
     ListingStatus? status,
     String? cursor,
+
+    /// Page offset for ranked-search pagination (`q` present). The search
+    /// response's `next_cursor` is the next offset, passed back verbatim.
+    int? offset,
     @Default(50) int limit,
   }) = _ListListingsQuery;
 

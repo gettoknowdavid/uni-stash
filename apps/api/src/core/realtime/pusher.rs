@@ -92,6 +92,7 @@ impl RealtimePublisher for PusherPublisher {
         let event_name = match event {
             RealtimeEvent::MessageNew { .. } => "message.new",
             RealtimeEvent::MessageRead { .. } => "message.read",
+            RealtimeEvent::ListingUpdated { .. } => "listing.updated",
         };
         let data = serde_json::to_string(event)?;
 

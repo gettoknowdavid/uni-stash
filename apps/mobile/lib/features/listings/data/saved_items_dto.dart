@@ -1,23 +1,17 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:uni_stash_mobile/features/listings/models/models.dart';
 
 part 'saved_items_dto.freezed.dart';
 part 'saved_items_dto.g.dart';
 
-@freezed
-abstract class SavedItem with _$SavedItem {
-  const factory SavedItem({
-    @JsonKey(name: 'listing_id') required String listingId,
-    @JsonKey(name: 'saved_at') required DateTime savedAt,
-  }) = _SavedItem;
-
-  factory SavedItem.fromJson(Map<String, dynamic> json) =>
-      _$SavedItemFromJson(json);
-}
-
+/// Saved-items list response. The backend hydrates each saved bookmark
+/// with the full listing summary (title, price, status, photos), so the
+/// client renders the grid from this single response — no per-id detail
+/// fetches.
 @freezed
 abstract class SavedItemsListResponse with _$SavedItemsListResponse {
   const factory SavedItemsListResponse({
-    required List<SavedItem> items,
+    required List<ListingSummary> listings,
     @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _SavedItemsListResponse;
 

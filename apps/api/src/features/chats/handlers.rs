@@ -328,6 +328,9 @@ enum ChannelScope {
     Chat(Uuid),
     /// `private-user-{uuid}` — always the requester's own id.
     User,
+    /// `private-listing-{uuid}` — carries only public listing status
+    /// (active/reserved/sold); any authenticated user may watch it.
+    Listing(Uuid),
 }
 
 /// Parses and authorizes a channel name against the requesting user.
@@ -337,6 +340,7 @@ enum ChannelScope {
 /// * `private-user-{uuid}` → only the account owner may sign it (it
 ///   carries every message addressed to them), so a mismatch is a hard
 ///   403 rather than a participant question.
+/// * `private-listing-{uuid}` → listing scope; status-only public data.
 /// * anything else → 400.
 fn parse_channel_scope(channel_name: &str, user_id: Uuid) -> Result<ChannelScope, AppError> {
     if let Some(raw) = channel_name.strip_prefix("private-user-") {
@@ -346,6 +350,12 @@ fn parse_channel_scope(channel_name: &str, user_id: Uuid) -> Result<ChannelScope
             return Err(AppError::Forbidden);
         }
         return Ok(ChannelScope::User);
+    }
+
+    if let Some(raw) = channel_name.strip_prefix("private-listing-") {
+        let id =
+            Uuid::parse_str(raw).map_err(|_| AppError::BadRequest("invalid channel".into()))?;
+        return Ok(ChannelScope::Listing(id));
     }
 
     let chat_id = channel_name
@@ -360,11 +370,13 @@ pub async fn realtime_auth(
     user: AuthUser,
     body: web::Json<RealtimeAuthRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // Signable channels: private-chat-{uuid} (participants only) and
-    // private-user-{uuid} (own account only).
+    // Signable channels: private-chat-{uuid} (participants only),
+    // private-user-{uuid} (own account only) and private-listing-{uuid}
+    // (status-only public data, any authenticated user).
     match parse_channel_scope(&body.channel_name, user.id)? {
         ChannelScope::Chat(chat_id) => ensure_participant(&state, chat_id, user.id).await?,
         ChannelScope::User => {}
+        ChannelScope::Listing(_) => {}
     }
 
     let socket_id = body.socket_id.trim();
@@ -415,6 +427,16 @@ mod tests {
         assert_eq!(
             parse_channel_scope(&name, me()).unwrap(),
             ChannelScope::Chat(chat_id)
+        );
+    }
+
+    #[test]
+    fn listing_channel_is_signable_for_any_authenticated_user() {
+        let listing_id = Uuid::new_v4();
+        let name = crate::core::realtime::listing_channel(&listing_id);
+        assert_eq!(
+            parse_channel_scope(&name, me()).unwrap(),
+            ChannelScope::Listing(listing_id)
         );
     }
 

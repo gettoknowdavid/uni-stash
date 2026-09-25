@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/chats/data/chats_repository.dart';
+import 'package:uni_stash_mobile/features/chats/data/realtime_client.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -112,6 +114,11 @@ class ListingDetailViewModel implements Disposable {
 
   bool _disposed = false;
 
+  /// Realtime subscription to the listing's status channel; set up on the
+  /// first successful fetch so changes made by someone else (reserve,
+  /// sold, delete) arrive live and trigger a refetch.
+  RealtimeSubscription? _realtimeSubscription;
+  String? _subscribedListingId;
   /// Core fetch logic, used for the initial load and the rare cases where
   /// local state is genuinely stale (e.g. a 409 reserve conflict).
   Future<void> _fetch(String id) async {
@@ -124,11 +131,34 @@ class ListingDetailViewModel implements Disposable {
     switch (result) {
       case Success(:final value):
         detail.value = value;
+        _subscribeToListing(id);
       case Failure(:final message):
         error.value = message;
     }
 
     isLoading.value = false;
+  }
+
+  /// Subscribes once per listing id to `private-listing-{id}`. Every
+  /// `listing.updated` event nudges a refetch — the REST row is the
+  /// source of truth, the event only says "something changed". Failure
+  /// is silent: the page still works REST-only.
+  void _subscribeToListing(String listingId) {
+    if (_subscribedListingId == listingId) return;
+    _subscribedListingId = listingId;
+    final realtime = di<RealtimeClient>();
+    unawaited(
+      realtime.subscribeToListing(listingId, onListingUpdated: (_) {
+        if (_disposed) return;
+        unawaited(_fetch(listingId));
+      }).then((subscription) {
+        if (_disposed) {
+          subscription.cancel();
+          return;
+        }
+        _realtimeSubscription = subscription;
+      }),
+    );
   }
 
   /// Folds the mutation endpoint's updated [Listing] into the cached
@@ -308,6 +338,8 @@ class ListingDetailViewModel implements Disposable {
 
   void dispose() {
     _disposed = true;
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = null;
     detail.dispose();
     isLoading.dispose();
     error.dispose();

@@ -9,6 +9,7 @@ use crate::core::{
     response::{ApiResponse, ErrorBody},
     state::AppState,
 };
+use crate::features::listings::dtos::ListingSummary;
 use crate::features::saved_items::repo::{SavedItemResponse, SavedItemsListResponse};
 
 #[derive(Deserialize)]
@@ -33,7 +34,9 @@ fn paginate(rows: Vec<SavedItemResponse>, limit: i64) -> (Vec<SavedItemResponse>
     (rows, next_cursor)
 }
 
-// GET /api/v1/saved-items — the signed-in user's saved listings, newest first.
+// GET /api/v1/saved-items — the signed-in user's saved listings, newest
+// first, hydrated with listing summaries + images so the client renders
+// the card grid from this single response (no per-item detail fetches).
 pub async fn list_saved(
     state: web::Data<AppState>,
     user: AuthUser,
@@ -56,9 +59,21 @@ pub async fn list_saved(
         .await?;
 
     let (items, next_cursor) = paginate(rows, limit);
+
+    // Convert the flat DB rows into wire summaries, then batch-attach each
+    // listing's photos with the same single query the browse endpoint uses.
+    let mut listings: Vec<ListingSummary> = items
+        .into_iter()
+        .map(|item| ListingSummary::from(item.listing))
+        .collect();
+    state.listings_repo.attach_images(&mut listings).await?;
+
     Ok(
         HttpResponse::Ok().json(ApiResponse::<SavedItemsListResponse, ErrorBody>::success(
-            SavedItemsListResponse { items, next_cursor },
+            SavedItemsListResponse {
+                listings,
+                next_cursor,
+            },
             "ok",
         )),
     )

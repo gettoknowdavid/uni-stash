@@ -2,20 +2,24 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::core::error::AppError;
+use crate::features::listings::dtos::ListingSummaryRow;
 
-/// Wire shape for a saved item: the listing id plus when it was saved.
-/// The client hydrates full listing data via the existing listings
-/// endpoints, so this stays deliberately minimal.
+/// Wire shape for a saved item: the id + when it was saved, plus the
+/// hydrated listing summary so the client can render the card without a
+/// per-item detail fetch. Rows whose listing was deleted (FK cascade) or
+/// hidden drop out of the JOIN naturally.
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct SavedItemResponse {
     pub listing_id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
     pub saved_at: time::OffsetDateTime,
+    #[sqlx(flatten)]
+    pub listing: ListingSummaryRow,
 }
 
 #[derive(Serialize)]
 pub struct SavedItemsListResponse {
-    pub items: Vec<SavedItemResponse>,
+    pub listings: Vec<crate::features::listings::dtos::ListingSummary>,
     pub next_cursor: Option<String>,
 }
 
@@ -68,8 +72,11 @@ impl SavedItemsRepo {
         Ok(row.saved.unwrap_or(false))
     }
 
-    /// All saved listing ids for a user, newest first, cursor-paginated on
-    /// (created_at, listing_id). Dynamic filter-free query, so static SQL.
+    /// The user's saved listings, newest first, cursor-paginated on
+    /// (created_at, listing_id), each hydrated with the listing summary
+    /// fields the client's card grid needs. Sold listings stay visible
+    /// (the client renders a SOLD badge); deleted listings drop out via
+    /// the INNER JOIN.
     pub async fn list_for_user(
         &self,
         user_id: Uuid,
@@ -78,10 +85,14 @@ impl SavedItemsRepo {
         limit: i64,
     ) -> Result<Vec<SavedItemResponse>, AppError> {
         let rows = sqlx::query_as::<_, SavedItemResponse>(
-            "SELECT listing_id, created_at AS saved_at FROM saved_items
-             WHERE user_id = $1
-               AND ($2::timestamptz IS NULL OR (created_at, listing_id) < ($2, $3::uuid))
-             ORDER BY created_at DESC, listing_id DESC
+            "SELECT si.listing_id, si.created_at AS saved_at,
+                    l.id, l.title, l.price, l.currency::TEXT AS currency,
+                    l.barter_request, l.condition, l.status, l.created_at
+             FROM saved_items si
+             JOIN listings l ON l.id = si.listing_id
+             WHERE si.user_id = $1
+               AND ($2::timestamptz IS NULL OR (si.created_at, si.listing_id) < ($2, $3::uuid))
+             ORDER BY si.created_at DESC, si.listing_id DESC
              LIMIT $4",
         )
         .bind(user_id)

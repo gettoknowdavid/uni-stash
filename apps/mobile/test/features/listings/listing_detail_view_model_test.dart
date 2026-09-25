@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/chats/data/chats_repository.dart';
+import 'package:uni_stash_mobile/features/chats/data/realtime_client.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -10,6 +12,8 @@ import 'package:uni_stash_mobile/features/listings/view_models/listing_detail_vi
 class MockListingsRepository extends Mock implements ListingsRepository {}
 
 class MockChatsRepository extends Mock implements ChatsRepository {}
+
+class MockRealtimeClient extends Mock implements RealtimeClient {}
 
 ListingDetailResponse buildDetail({ListingStatus? status}) {
   return ListingDetailResponse(
@@ -54,15 +58,30 @@ Listing buildListing({ListingStatus? status, String? reservedBy}) {
 void main() {
   late MockListingsRepository listings;
   late MockChatsRepository chats;
+  late MockRealtimeClient realtime;
   late ListingDetailViewModel model;
 
   setUp(() {
     listings = MockListingsRepository();
     chats = MockChatsRepository();
+    realtime = MockRealtimeClient();
+    // The VM subscribes to the listing channel after a successful fetch;
+    // tests run without the realtime stack, so stub a no-op subscription.
+    when(
+      () => realtime.subscribeToListing(
+        any(),
+        onListingUpdated: any(named: 'onListingUpdated'),
+      ),
+    ).thenAnswer((_) async => RealtimeSubscription.none());
+    di.pushNewScope();
+    di.registerLazySingleton<RealtimeClient>(() => realtime);
     model = ListingDetailViewModel(listings, chats);
   });
 
-  tearDown(() => model.dispose());
+  tearDown(() async {
+    model.dispose();
+    await di.popScope();
+  });
 
   /// Performs the initial load (the only getListing these tests allow).
   Future<void> loadDetail() async {

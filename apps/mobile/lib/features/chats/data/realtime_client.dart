@@ -168,6 +168,13 @@ class RealtimeClient {
   /// live thread-list updates possible for chats the user isn't viewing.
   String userChannelNameFor(String userId) => 'private-user-$userId';
 
+  /// The private channel carrying a listing's status changes
+  /// (`listing.updated` — active/reserved/sold/deleted). The listing
+  /// detail page subscribes while open so changes made by someone else
+  /// show up live without a manual refetch.
+  String listingChannelNameFor(String listingId) =>
+      'private-listing-$listingId';
+
   /// Initializes the plugin (once) and opens the socket. Idempotent.
   Future<void> connect() async {
     if (_disposed || pusherKey.isEmpty) return;
@@ -253,6 +260,18 @@ class RealtimeClient {
   }) => _subscribe(
     userChannelNameFor(userId),
     onNewMessage: onNewMessage,
+  );
+
+  /// Subscribes to `private-listing-{listingId}`, which carries
+  /// `listing.updated` events whenever the listing's status changes
+  /// (reserve/unreserve/sold/deleted). Used by the listing detail page to
+  /// reflect other people's actions live.
+  Future<RealtimeSubscription> subscribeToListing(
+    String listingId, {
+    required void Function(Map<String, dynamic> data) onListingUpdated,
+  }) => _subscribe(
+    listingChannelNameFor(listingId),
+    onNewMessage: onListingUpdated,
   );
 
   Future<RealtimeSubscription> _subscribe(
@@ -347,6 +366,10 @@ class RealtimeClient {
       case 'message.read':
         for (final handler in List<_Handler>.of(channel.handlers)) {
           handler.onReadReceipt?.call(data);
+        }
+      case 'listing.updated':
+        for (final handler in List<_Handler>.of(channel.handlers)) {
+          handler.onNewMessage(data);
         }
       default:
         break;

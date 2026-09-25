@@ -105,6 +105,9 @@ pub struct ListListingsQuery {
     pub status: Option<String>,
     pub seller: Option<uuid::Uuid>,
     pub cursor: Option<String>,
+    /// Page offset for ranked-search pagination (`q` + `cursor` from a
+    /// previous search response's `next_cursor`, which encodes the offset).
+    pub offset: Option<i64>,
     pub limit: Option<i64>,
 }
 
@@ -133,7 +136,9 @@ pub struct ListingSummary {
 }
 
 /// DB row shape for browse queries (flat price/currency pair).
-#[derive(sqlx::FromRow)]
+/// Also flattened into the hydrated saved-items response, so it derives
+/// Serialize + Debug (the wire `ListingSummary` is built from it).
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
 pub struct ListingSummaryRow {
     pub id: uuid::Uuid,
     pub title: String,
@@ -174,6 +179,9 @@ pub struct ListingFilters {
     pub statuses: Vec<models::ListingStatus>,
     pub seller: Option<uuid::Uuid>,
     pub cursor: Option<cursor::Cursor>,
+    /// OFFSET for ranked-search pages (ignored for browse, which pages by
+    /// cursor). `None` = first page.
+    pub search_offset: Option<i64>,
     pub limit: i64,
 }
 

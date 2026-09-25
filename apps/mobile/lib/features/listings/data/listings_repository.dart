@@ -108,6 +108,7 @@ class ListingsRepositoryImpl implements ListingsRepository {
         maxPrice: query.maxPrice,
         status: query.status,
         cursor: query.cursor,
+        offset: query.offset,
         limit: query.limit,
       );
       if (!response.status) return Result.failure(response.message);
