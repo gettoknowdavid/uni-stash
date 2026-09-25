@@ -82,7 +82,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
                   child: InteractiveViewer(
-                    maxScale: 5.0,
+                    maxScale: 5,
                     panEnabled: _zoomed,
                     child: Image.network(
                       widget.imageUrls[_index],

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_blocks (blocker_id, blocked_id)\n             VALUES ($1, $2)\n             ON CONFLICT (blocker_id, blocked_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4bde801c2da46b15d99f7fd178db2564327a46e20c65252da105cbfd4a6b09a7"
+}

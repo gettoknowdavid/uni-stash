@@ -39,7 +39,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         );
       },
     );
-    di<NotificationsViewModel>().fetch();
+    unawaited(di<NotificationsViewModel>().fetch());
   }
 
   @override
@@ -52,15 +52,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return UsPage(
-      gutters: const .all(16),
+    return const UsPage(
+      gutters: .all(16),
       header: UsPageHeader(
-        title: const Text('NOTIFICATIONS'),
+        title: Text('NOTIFICATIONS'),
         actions: [
-          const _MarkAllButton(),
+          _MarkAllButton(),
         ],
       ),
-      body: const _InboxBody(),
+      body: _InboxBody(),
     );
   }
 }
@@ -108,7 +108,10 @@ class _InboxBody extends SignalWidget {
           children: [
             Text(error, style: theme.textTheme.muted, textAlign: .center),
             const SizedBox(height: 16),
-            ShadButton.outline(onPressed: model.fetch, child: const Text('RETRY')),
+            ShadButton.outline(
+              onPressed: model.fetch,
+              child: const Text('RETRY'),
+            ),
           ],
         ),
       );
@@ -125,7 +128,7 @@ class _InboxBody extends SignalWidget {
               color: theme.colorScheme.mutedForeground,
             ),
             const SizedBox(height: 12),
-            Text('You\'re all caught up', style: theme.textTheme.muted),
+            Text("You're all caught up", style: theme.textTheme.muted),
           ],
         ),
       );
@@ -134,7 +137,7 @@ class _InboxBody extends SignalWidget {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification.metrics.extentAfter < 300) {
-          model.loadMore();
+          unawaited(model.loadMore());
         }
         return false;
       },

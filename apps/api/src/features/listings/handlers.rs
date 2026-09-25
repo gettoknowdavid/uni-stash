@@ -69,6 +69,7 @@ pub async fn create_listing(
 pub async fn list_listings(
     state: web::Data<AppState>,
     query: web::Query<ListListingsQuery>,
+    user: Option<AuthUser>,
 ) -> Result<HttpResponse, AppError> {
     // Default feed shows everything still on the market: active AND
     // reserved (the client renders a RESERVED badge on those cards).
@@ -118,6 +119,17 @@ pub async fn list_listings(
         max_price: query.max_price,
         statuses,
         seller: query.seller,
+        // Blocked users' listings are hidden from browse/search. Note the
+        // exception: when the caller explicitly filters by a seller
+        // (`?seller=`), the filter wins so users can still view a
+        // profile's page even if they blocked that seller.
+        exclude_sellers: if query.seller.is_some() {
+            Vec::new()
+        } else if let Some(ref u) = user {
+            state.blocks_repo.blocked_ids_by(u.id).await?
+        } else {
+            Vec::new()
+        },
         cursor,
         search_cursor,
         limit,
@@ -153,6 +165,18 @@ pub async fn get_listing_detail(
     let requester_id = user.as_ref().map(|u| u.id);
     if detail.status == ListingStatus::Deleted && requester_id != Some(detail.seller.id) {
         return Err(AppError::NotFound("listing not found".into()));
+    }
+
+    // Count the view (fire-and-forget) for non-owners. Best-effort: a
+    // failed increment never fails the request.
+    if (requester_id.is_none() || requester_id != Some(detail.seller.id))
+        && let Err(err) = state.listings_repo.increment_view_count(listing_id).await
+    {
+        tracing::warn!(
+            listing_id = %listing_id,
+            error = %err,
+            "view count increment failed"
+        );
     }
 
     // Stamp the seller's rating summary (average + count) onto the detail.

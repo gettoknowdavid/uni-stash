@@ -42,7 +42,7 @@ class _UserReviewsPageState extends State<UserReviewsPage> {
         );
       },
     );
-    di<UserReviewsViewModel>().fetch();
+    unawaited(di<UserReviewsViewModel>().fetch());
   }
 
   @override
@@ -55,15 +55,15 @@ class _UserReviewsPageState extends State<UserReviewsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return UsPage(
-      gutters: const .all(16),
+    return const UsPage(
+      gutters: .all(16),
       header: UsPageHeader(
         title: Text(
           'REVIEWS',
           overflow: .ellipsis,
         ),
       ),
-      body: const _ReviewsBody(),
+      body: _ReviewsBody(),
     );
   }
 }
@@ -75,9 +75,10 @@ class UserReviewsViewModel {
   final ReviewsRepository _repository;
   final String userId;
 
-  final summary = signal<UserReviewsResponse?>(null);
-  final isLoading = signal(false);
-  final error = signal<String?>(null);
+  final FlutterSignal<UserReviewsResponse?> summary =
+      signal<UserReviewsResponse?>(null);
+  final FlutterSignal<bool> isLoading = signal(false);
+  final FlutterSignal<String?> error = signal<String?>(null);
 
   Future<void> fetch() async {
     isLoading.value = true;
@@ -122,7 +123,10 @@ class _ReviewsBody extends SignalWidget {
           children: [
             Text(error, style: theme.textTheme.muted, textAlign: .center),
             const SizedBox(height: 16),
-            ShadButton.outline(onPressed: model.fetch, child: const Text('RETRY')),
+            ShadButton.outline(
+              onPressed: model.fetch,
+              child: const Text('RETRY'),
+            ),
           ],
         ),
       );
@@ -162,7 +166,8 @@ class _ReviewsBody extends SignalWidget {
               Text(
                 average == null
                     ? '${summary?.reviewCount ?? 0} reviews'
-                    : '${average.toStringAsFixed(1)} • ${summary!.reviewCount} reviews',
+                    : '${average.toStringAsFixed(1)} • '
+                        '${summary!.reviewCount} reviews',
                 style: theme.textTheme.muted,
               ),
             ],

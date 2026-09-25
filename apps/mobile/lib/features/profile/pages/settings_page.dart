@@ -83,6 +83,18 @@ class _SettingsBody extends SignalWidget {
           ),
           const SizedBox(height: 24),
           _SectionCard(
+            headerLabel: 'SAFETY',
+            children: [
+              _SettingsRow(
+                label: 'Blocked Users',
+                subtitle: 'Users you have blocked',
+                trailing: const _Chevron(),
+                onTap: () => context.push(UsRoutes.blockedUsers),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _SectionCard(
             headerLabel: 'NOTIFICATIONS',
             children: [
               _SettingsRow(
@@ -108,7 +120,9 @@ class _SettingsBody extends SignalWidget {
                     return UsSwitch(
                       value: user?.emailNotificationsEnabled ?? false,
                       onChanged: (value) =>
-                          unawaited(_setEmailNotifications(this, context, value)),
+                          unawaited(
+                            _setEmailNotifications(this, context, value),
+                          ),
                     );
                   },
                 ),
@@ -129,7 +143,9 @@ class _SettingsBody extends SignalWidget {
                     return UsSwitch(
                       value: isPublic,
                       onChanged: (value) =>
-                          unawaited(_setProfileVisibility(this, context, value)),
+                          unawaited(
+                            _setProfileVisibility(this, context, value),
+                          ),
                     );
                   },
                 ),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.reserved_by, l.reserved_at, l.created_at,\n                    u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,\n                    sc.domain AS seller_domain,\n                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label\n             FROM listings l\n             JOIN users u ON u.id = l.seller_id\n             JOIN schools sc ON sc.id = u.school_id\n             JOIN categories c ON c.id = l.category_id\n             WHERE l.id = $1",
+  "query": "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.reserved_by, l.reserved_at, l.created_at, l.view_count,\n                    u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,\n                    sc.domain AS seller_domain,\n                    c.id AS category_id, c.slug AS category_slug, c.label AS category_label\n             FROM listings l\n             JOIN users u ON u.id = l.seller_id\n             JOIN schools sc ON sc.id = u.school_id\n             JOIN categories c ON c.id = l.category_id\n             WHERE l.id = $1",
   "describe": {
     "columns": [
       {
@@ -126,6 +126,17 @@
       },
       {
         "ordinal": 11,
+        "name": "view_count",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "listings",
+            "name": "view_count"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
         "name": "seller_id",
         "type_info": "Uuid",
         "origin": {
@@ -136,7 +147,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "seller_display_name",
         "type_info": "Text",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "seller_email_verified",
         "type_info": "Bool",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "seller_photo_url",
         "type_info": "Text",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "seller_domain",
         "type_info": {
           "Custom": {
@@ -185,7 +196,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "category_id",
         "type_info": "Int2",
         "origin": {
@@ -196,7 +207,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "category_slug",
         "type_info": "Text",
         "origin": {
@@ -207,7 +218,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "category_label",
         "type_info": "Text",
         "origin": {
@@ -238,6 +249,7 @@
       false,
       false,
       false,
+      false,
       true,
       false,
       false,
@@ -245,5 +257,5 @@
       false
     ]
   },
-  "hash": "86c3adf069a9969b0014c57a4af27b1c19e23fcda2824d117e6d8883e557979c"
+  "hash": "ef573ca6a9ed10154d9d8f685f809aac02b3000ea7763cd43466f4de7ed3c67b"
 }

@@ -13,6 +13,8 @@ import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_api.dart';
 import 'package:uni_stash_mobile/features/auth/data/auth_repository.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/_view_models.dart';
+import 'package:uni_stash_mobile/features/blocks/data/blocks_api.dart';
+import 'package:uni_stash_mobile/features/blocks/data/blocks_repository.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/chats/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/images/data/images_api.dart';
@@ -26,14 +28,15 @@ import 'package:uni_stash_mobile/features/listings/data/reports_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/reports_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/saved_searches_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
-import 'package:uni_stash_mobile/features/reviews/data/reviews_api.dart';
-import 'package:uni_stash_mobile/features/reviews/data/reviews_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/sell_dashboard_view_model.dart';
 import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
+import 'package:uni_stash_mobile/features/reviews/data/reviews_api.dart';
+import 'package:uni_stash_mobile/features/reviews/data/reviews_repository.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_api.dart';
 import 'package:uni_stash_mobile/features/schools/data/schools_repository.dart';
@@ -150,6 +153,9 @@ void _registerListings() {
   di.registerLazySingleton<SearchHistoryRepository>(
     () => SearchHistoryRepository(di<FlutterSecureStorage>()),
   );
+  di.registerLazySingleton<SavedSearchesRepository>(
+    () => SavedSearchesRepository(di<FlutterSecureStorage>()),
+  );
   di.registerSingletonWithDependencies<SavedItemsApiClient>(
     () => SavedItemsApiClient(di<Dio>()),
     dependsOn: [Dio],
@@ -195,10 +201,12 @@ void _registerListings() {
       di<ListingsRepository>(),
       di<CategoriesRepository>(),
       di<SearchHistoryRepository>(),
+      di<SavedSearchesRepository>(),
     ),
     onCreated: (instance) {
       instance.loadCategories();
       unawaited(instance.loadRecentSearches());
+      unawaited(instance.loadSavedSearches());
     },
     dispose: (instance) => instance.dispose(),
   );
@@ -306,6 +314,19 @@ void _registerSales() {
   );
 }
 
+/// Blocks feature registrations.
+void _registerBlocks() {
+  di.registerSingletonWithDependencies<BlocksApiClient>(
+    () => BlocksApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<BlocksRepository>(
+    () => BlocksRepositoryImpl(di<BlocksApiClient>(), di<Logger>()),
+    dependsOn: [BlocksApiClient],
+  );
+}
+
 /// Reviews (ratings & reviews) feature registrations.
 void _registerReviews() {
   di.registerSingletonWithDependencies<ReviewsApiClient>(
@@ -332,6 +353,7 @@ void configureAuthenticatedScope() {
   _registerChats();
   _registerSales();
   _registerReviews();
+  _registerBlocks();
   _registerNotifications();
 }
 

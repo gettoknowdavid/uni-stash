@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
@@ -9,6 +8,7 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/result/_result.dart';
 import 'package:uni_stash_mobile/features/reviews/data/reviews_repository.dart';
 import 'package:uni_stash_mobile/features/reviews/models/reviews_models.dart';
+import 'package:uni_stash_mobile/shared/widgets/spinner.dart';
 
 /// RATE THIS SALE dialog: 1–5 star picker + optional comment. Submits
 /// `POST /reviews/{sale_id}`; the reviewee is always the sale counterpart.
@@ -71,6 +71,23 @@ class RateSaleDialog extends SignalHookWidget {
         ),
       ),
       descriptionTextAlign: .left,
+      actionsAxis: .horizontal,
+      expandActionsWhenTiny: false,
+      actions: [
+        ShadButton.outline(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          onPressed: isLoading.value ? null : () => context.pop(false),
+          child: const Text('CANCEL'),
+        ),
+        ShadButton(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          enabled: !isLoading.value,
+          onPressed: () => unawaited(submit()),
+          child: isLoading.value ? const Spinner() : const Text('SUBMIT'),
+        ),
+      ],
       child: Column(
         mainAxisSize: .min,
         crossAxisAlignment: .stretch,
@@ -117,23 +134,6 @@ class RateSaleDialog extends SignalHookWidget {
           const SizedBox(height: 20),
         ],
       ),
-      actionsAxis: .horizontal,
-      expandActionsWhenTiny: false,
-      actions: [
-        ShadButton.outline(
-          height: 30,
-          padding: const .symmetric(horizontal: 12),
-          onPressed: isLoading.value ? null : () => context.pop(false),
-          child: const Text('CANCEL'),
-        ),
-        ShadButton(
-          height: 30,
-          padding: const .symmetric(horizontal: 12),
-          enabled: !isLoading.value,
-          onPressed: () => unawaited(submit()),
-          child: isLoading.value ? const Spinner() : const Text('SUBMIT'),
-        ),
-      ],
     );
   }
 }

@@ -86,6 +86,23 @@ class ChangePasswordDialog extends SignalHookWidget {
         ),
       ),
       descriptionTextAlign: .left,
+      actionsAxis: .horizontal,
+      expandActionsWhenTiny: false,
+      actions: [
+        ShadButton.outline(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          onPressed: isLoading.value ? null : () => context.pop(false),
+          child: const Text('CANCEL'),
+        ),
+        ShadButton(
+          height: 30,
+          padding: const .symmetric(horizontal: 12),
+          enabled: !isLoading.value,
+          onPressed: () => unawaited(submit()),
+          child: isLoading.value ? const Spinner() : const Text('SAVE'),
+        ),
+      ],
       child: Column(
         mainAxisSize: .min,
         crossAxisAlignment: .stretch,
@@ -120,23 +137,6 @@ class ChangePasswordDialog extends SignalHookWidget {
           const SizedBox(height: 20),
         ],
       ),
-      actionsAxis: .horizontal,
-      expandActionsWhenTiny: false,
-      actions: [
-        ShadButton.outline(
-          height: 30,
-          padding: const .symmetric(horizontal: 12),
-          onPressed: isLoading.value ? null : () => context.pop(false),
-          child: const Text('CANCEL'),
-        ),
-        ShadButton(
-          height: 30,
-          padding: const .symmetric(horizontal: 12),
-          enabled: !isLoading.value,
-          onPressed: () => unawaited(submit()),
-          child: isLoading.value ? const Spinner() : const Text('SAVE'),
-        ),
-      ],
     );
   }
 }

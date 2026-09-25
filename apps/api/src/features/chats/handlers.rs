@@ -81,6 +81,16 @@ pub async fn create_chat(
         ));
     }
 
+    // A user who blocked the seller (or was blocked by them) cannot open
+    // new chats on their listings.
+    if state
+        .blocks_repo
+        .blocked_either_way(user.id, listing.seller.id)
+        .await?
+    {
+        return Err(AppError::Forbidden);
+    }
+
     let chat_id = state
         .chats_repo
         .create_for_listing(body.listing_id, user.id)
@@ -183,6 +193,24 @@ pub async fn send_message(
     body.validate()?;
     let chat_id = path.into_inner();
     ensure_participant(&state, chat_id, user.id).await?;
+
+    // Block enforcement: a blocked pair can no longer exchange messages,
+    // even inside an existing thread.
+    if let Some((buyer_id, seller_id)) = state.chats_repo.participants(chat_id).await?
+        && state
+            .blocks_repo
+            .blocked_either_way(
+                user.id,
+                if user.id == buyer_id {
+                    seller_id
+                } else {
+                    buyer_id
+                },
+            )
+            .await?
+    {
+        return Err(AppError::Forbidden);
+    }
 
     let message = state
         .chats_repo

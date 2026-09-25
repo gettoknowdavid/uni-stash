@@ -92,6 +92,7 @@ abstract class ListingDetailResponse with _$ListingDetailResponse {
     required Category category,
     @JsonKey(fromJson: listingImagesFromJson, toJson: listingImagesToJson)
     required List<ListingImage> images,
+    @JsonKey(name: 'view_count') @Default(0) int viewCount,
     @JsonKey(name: 'reserved_by') String? reservedBy,
     @JsonKey(name: 'reserved_at') DateTime? reservedAt,
     Money? price,

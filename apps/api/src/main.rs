@@ -51,6 +51,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::admin_auth::configure)
             .configure(features::admin_management::configure)
             .configure(features::listings::configure)
+            .configure(features::blocks::configure)
             .configure(features::chats::configure)
             .configure(features::notifications::configure)
             .configure(features::sales::configure)

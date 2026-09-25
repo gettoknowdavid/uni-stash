@@ -13,12 +13,13 @@ class NotificationsViewModel implements Disposable {
 
   final INotificationsRepository _repository;
 
-  final items = signal<List<AppNotification>>([]);
-  final isLoading = signal(false);
-  final isLoadingMore = signal(false);
-  final error = signal<String?>(null);
-  final unreadCount = signal(0);
-  final hasMore = signal(true);
+  final FlutterSignal<List<AppNotification>> items =
+      signal<List<AppNotification>>([]);
+  final FlutterSignal<bool> isLoading = signal(false);
+  final FlutterSignal<bool> isLoadingMore = signal(false);
+  final FlutterSignal<String?> error = signal<String?>(null);
+  final FlutterSignal<int> unreadCount = signal(0);
+  final FlutterSignal<bool> hasMore = signal(true);
 
   bool _disposed = false;
   String? _cursor;
@@ -84,7 +85,8 @@ class NotificationsViewModel implements Disposable {
   Future<void> markAllRead() async {
     final now = DateTime.now();
     items.value = [
-      for (final n in items.value) n.readAt != null ? n : n.copyWith(readAt: now),
+      for (final n in items.value)
+        if (n.readAt != null) n else n.copyWith(readAt: now),
     ];
     unreadCount.value = 0;
 

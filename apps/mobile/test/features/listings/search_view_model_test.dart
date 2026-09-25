@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/saved_searches_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -14,6 +15,9 @@ class MockCategoriesRepository extends Mock implements CategoriesRepository {}
 
 class MockSearchHistoryRepository extends Mock
     implements SearchHistoryRepository {}
+
+class MockSavedSearchesRepository extends Mock
+    implements SavedSearchesRepository {}
 
 ListingSummary buildSummary(String id, {String title = 'Item'}) {
   return ListingSummary(
@@ -34,6 +38,7 @@ void main() {
   late MockListingsRepository listings;
   late MockCategoriesRepository categories;
   late MockSearchHistoryRepository history;
+  late MockSavedSearchesRepository savedSearches;
   late SearchViewModel model;
 
   /// Recorded `ListListingsQuery` arguments, one per repository call.
@@ -41,19 +46,37 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const ListListingsQuery());
+    registerFallbackValue(
+      SavedSearch(
+        id: 'fallback',
+        name: 'fallback',
+        query: '',
+        createdAt: DateTime(2026),
+      ),
+    );
   });
 
   setUp(() {
     listings = MockListingsRepository();
     categories = MockCategoriesRepository();
     history = MockSearchHistoryRepository();
+    savedSearches = MockSavedSearchesRepository();
     queries.clear();
     when(history.load).thenAnswer((_) async => const <String>[]);
     when(() => history.add(any())).thenAnswer((_) async => const <String>[]);
+    when(() => savedSearches.load()).thenAnswer(
+      (_) async => const <SavedSearch>[],
+    );
+    when(() => savedSearches.add(any())).thenAnswer(
+      (invocation) async => <SavedSearch>[
+        invocation.positionalArguments.first as SavedSearch,
+      ],
+    );
     model = SearchViewModel(
       listings,
       categories,
       history,
+      savedSearches,
       debounce: const Duration(milliseconds: 10),
     );
   });

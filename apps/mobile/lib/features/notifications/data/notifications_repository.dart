@@ -45,7 +45,10 @@ class NotificationsRepository implements INotificationsRepository {
   }
 
   @override
-  Future<Result<InboxResponse>> listInbox({String? cursor, int limit = 20}) async {
+  Future<Result<InboxResponse>> listInbox({
+    String? cursor,
+    int limit = 20,
+  }) async {
     try {
       final response = await _client.listInbox(cursor: cursor, limit: limit);
       if (!response.status) return Result.failure(response.message);

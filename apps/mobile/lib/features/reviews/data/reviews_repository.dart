@@ -72,7 +72,10 @@ class ReviewsRepositoryImpl implements ReviewsRepository {
       _logger.e('[ReviewsRepository] myReviewForSale failed', error: e);
       return dioFailure(e);
     } on Object catch (e) {
-      _logger.e('[ReviewsRepository] myReviewForSale unexpected error', error: e);
+      _logger.e(
+        '[ReviewsRepository] myReviewForSale unexpected error',
+        error: e,
+      );
       return const Result.failure('An unexpected error occurred.');
     }
   }

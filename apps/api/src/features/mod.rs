@@ -1,6 +1,7 @@
 pub mod admin_auth;
 pub mod admin_management;
 pub mod auth;
+pub mod blocks;
 pub mod categories;
 pub mod chats;
 pub mod images;

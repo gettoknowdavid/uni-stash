@@ -12,11 +12,12 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
+import 'package:uni_stash_mobile/features/blocks/pages/block_user_dialog.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
-import 'package:uni_stash_mobile/features/listings/pages/report_user_dialog.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
+import 'package:uni_stash_mobile/features/listings/pages/report_user_dialog.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
@@ -169,6 +170,10 @@ class _ListingDetailView extends SignalWidget {
                                     TextSpan(text: 'Listed $date'),
                                     const TextSpan(text: ' • '),
                                     TextSpan(text: detail.category.label),
+                                    const TextSpan(text: ' • '),
+                                    TextSpan(
+                                      text: _viewCountLabel(detail.viewCount),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -587,6 +592,10 @@ class _ListingDetailView extends SignalWidget {
   }
 }
 
+/// '1 view' / '3 views' — kept as a helper so the interpolation stays
+/// within the line-length lint.
+String _viewCountLabel(int count) => '$count view${count == 1 ? '' : 's'}';
+
 class _SellerDetails extends StatelessWidget {
   const new({required this.detail});
 
@@ -639,27 +648,52 @@ class _SellerDetails extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${detail.seller.averageRating?.toStringAsFixed(1)} '
-                        '(${detail.seller.reviewCount} review${detail.seller.reviewCount == 1 ? '' : 's'})',
+                        '(${detail.seller.reviewCount} review'
+                        '${detail.seller.reviewCount == 1 ? '' : 's'})',
                         style: theme.textTheme.small,
                       ),
                     ],
                   ),
                 ],
                 const SizedBox(height: 8),
-                GestureDetector(
-                  behavior: .opaque,
-                  onTap: () => unawaited(showShadDialog(
-                    context: context,
-                    builder: (context) =>
-                        ReportUserDialog(userId: detail.seller.id),
-                  )),
-                  child: Text(
-                    'Report this user',
-                    style: theme.textTheme.small.copyWith(
-                      color: theme.colorScheme.destructive,
-                      decoration: TextDecoration.underline,
+                Row(
+                  children: [
+                    GestureDetector(
+                      behavior: .opaque,
+                      onTap: () => unawaited(
+                        showShadDialog(
+                          context: context,
+                          builder: (context) =>
+                              ReportUserDialog(userId: detail.seller.id),
+                        ),
+                      ),
+                      child: Text(
+                        'Report this user',
+                        style: theme.textTheme.small.copyWith(
+                          color: theme.colorScheme.destructive,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      behavior: .opaque,
+                      onTap: () => unawaited(
+                        showBlockUserDialog(
+                          context,
+                          userId: detail.seller.id,
+                          userName: detail.seller.displayName,
+                        ),
+                      ),
+                      child: Text(
+                        'Block this user',
+                        style: theme.textTheme.small.copyWith(
+                          color: theme.colorScheme.destructive,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1124,11 +1158,16 @@ class _ImageCarouselState extends State<_ImageCarousel> {
               itemBuilder: (context, index) {
                 final url = _imageUrl(serverImages[index])!;
                 return GestureDetector(
-                  onTap: () => unawaited(FullscreenImageViewer.show(
-                    context,
-                    imageUrls: serverImages.map(_imageUrl).whereType<String>().toList(),
-                    initialIndex: index,
-                  )),
+                  onTap: () => unawaited(
+                    FullscreenImageViewer.show(
+                      context,
+                      imageUrls: serverImages
+                          .map(_imageUrl)
+                          .whereType<String>()
+                          .toList(),
+                      initialIndex: index,
+                    ),
+                  ),
                   child: CachedNetworkImage(
                     imageUrl: url,
                     fit: BoxFit.contain,

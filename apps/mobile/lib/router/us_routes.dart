@@ -54,6 +54,9 @@ final class UsRoutes {
   /// In-app notifications inbox (header bell).
   static const String notifications = '/notifications';
 
+  /// Blocked users management (settings).
+  static const String blockedUsers = '/profile/blocked';
+
   /// Legal pages (Settings → LEGAL, signup footer).
   static const String terms = '/legal/terms';
   static const String privacy = '/legal/privacy';

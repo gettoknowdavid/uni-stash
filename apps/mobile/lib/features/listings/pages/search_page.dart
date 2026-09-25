@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
+import 'package:uni_stash_mobile/features/listings/data/saved_searches_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/widgets/_widgets.dart';
@@ -348,12 +349,11 @@ class _SearchBody extends SignalWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ShadTheme.of(context);
     final model = di<SearchViewModel>();
 
-    // Idle: no query, no filters — offer saved searches.
+    // Idle: no query, no filters — offer recents + saved searches.
     if (!model.hasCriteria) {
-      return _RecentSearches(model: model, onPick: onApplyRecent);
+      return _IdleState(model: model, onPick: onApplyRecent);
     }
 
     final results = model.results.value;
@@ -369,31 +369,7 @@ class _SearchBody extends SignalWidget {
     }
 
     if (results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: .min,
-          children: [
-            Icon(
-              LucideIcons.searchX,
-              size: 48,
-              color: theme.colorScheme.mutedForeground,
-            ),
-            const SizedBox(height: UsSpacing.md),
-            Text(
-              'No results for "${model.query.value.trim()}"',
-              textAlign: .center,
-              style: theme.textTheme.p.copyWith(
-                color: theme.colorScheme.mutedForeground,
-              ),
-            ),
-            const SizedBox(height: UsSpacing.sm),
-            ShadButton.outline(
-              onPressed: model.clearFilters,
-              child: const Text('CLEAR FILTERS'),
-            ),
-          ],
-        ),
-      );
+      return const _NoResultsView();
     }
 
     return CustomMaterialIndicator(
@@ -402,6 +378,7 @@ class _SearchBody extends SignalWidget {
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
+          SliverToBoxAdapter(child: _SaveSearchBar(model: model)),
           _ResultsGrid(results: results),
           const _LoadMoreIndicator(),
         ],
@@ -410,9 +387,93 @@ class _SearchBody extends SignalWidget {
   }
 }
 
-/// Recent-search chips shown while the page is idle.
-class _RecentSearches extends SignalWidget {
-  const _RecentSearches({required this.model, required this.onPick});
+/// A slim bar above the results offering to save the current criteria as
+/// a named search (frontend-only persistence).
+class _SaveSearchBar extends StatelessWidget {
+  const _SaveSearchBar({required this.model});
+
+  final SearchViewModel model;
+
+  Future<void> _save(BuildContext context) async {
+    final controller = TextEditingController(
+      text: model.query.value.trim(),
+    );
+    final saved = await showShadDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ShadDialog.alert(
+        title: const Text('Save this search'),
+        description: const Text(
+          'Name it so you can re-run it later from the search page.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => dialogContext.pop(false),
+            child: const Text('CANCEL'),
+          ),
+          ShadButton(
+            onPressed: () => dialogContext.pop(true),
+            child: const Text('SAVE'),
+          ),
+        ],
+        child: ShadInput(
+          controller: controller,
+          placeholder: const Text('e.g. Mini fridge under 40k'),
+          autofocus: true,
+        ),
+      ),
+    );
+    controller.dispose();
+    if (saved != true) return;
+
+    final ok = await model.saveCurrentSearch(controller.text);
+    if (!context.mounted) return;
+    ShadToaster.of(context).show(
+      ShadToast(
+        title: Text(ok ? 'Search saved' : 'Could not save search'),
+        description: Text(
+          ok
+              ? 'Find it under SAVED SEARCHES on this page.'
+              : 'Please enter a name and try again.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        UsSpacing.lg,
+        UsSpacing.md,
+        UsSpacing.lg,
+        0,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ShadButton.outline(
+          onPressed: () => unawaited(_save(context)),
+          child: Row(
+            mainAxisSize: .min,
+            children: [
+              Icon(
+                LucideIcons.bookmarkPlus,
+                size: 14,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: UsSpacing.xs),
+              const Text('SAVE THIS SEARCH'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Idle state: recent searches + saved searches + a hint.
+class _IdleState extends SignalWidget {
+  const _IdleState({required this.model, required this.onPick});
 
   final SearchViewModel model;
   final ValueChanged<String> onPick;
@@ -421,12 +482,33 @@ class _RecentSearches extends SignalWidget {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     final recent = model.recentSearches.value;
+    final saved = model.savedSearches.value;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: UsSpacing.lg),
       child: Column(
         crossAxisAlignment: .stretch,
         children: [
+          if (saved.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: .spaceBetween,
+              children: [
+                Text('SAVED SEARCHES', style: theme.textTheme.labelSm),
+                Icon(
+                  LucideIcons.bellRing,
+                  size: 12,
+                  color: theme.colorScheme.mutedForeground,
+                ),
+              ],
+            ),
+            const SizedBox(height: UsSpacing.md),
+            for (final entry in saved)
+              Padding(
+                padding: const EdgeInsets.only(bottom: UsSpacing.sm),
+                child: _SavedSearchTile(entry: entry),
+              ),
+            const SizedBox(height: UsSpacing.xxl),
+          ],
           if (recent.isNotEmpty) ...[
             Row(
               mainAxisAlignment: .spaceBetween,
@@ -494,6 +576,108 @@ class _RecentSearches extends SignalWidget {
               color: theme.colorScheme.mutedForeground,
             ),
           ),
+          const SizedBox(height: UsSpacing.xxxl),
+        ],
+      ),
+    );
+  }
+}
+
+/// One saved search: tap to re-run, long-press to delete.
+class _SavedSearchTile extends SignalWidget {
+  const _SavedSearchTile({required this.entry});
+
+  final SavedSearch entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final model = di<SearchViewModel>();
+    return GestureDetector(
+      behavior: .opaque,
+      onTap: () => model.applySavedSearch(entry),
+      onLongPress: () => model.removeSavedSearch(entry.id),
+      child: ShadCard(
+        padding: const .symmetric(
+          horizontal: UsSpacing.md,
+          vertical: UsSpacing.md,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              LucideIcons.bookmark,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: UsSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: .start,
+                children: [
+                  Text(
+                    entry.name,
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    style: theme.textTheme.small.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    [
+                      if (entry.query.isNotEmpty) '"${entry.query}"',
+                      'saved search',
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    style: theme.textTheme.muted,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: theme.colorScheme.mutedForeground,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty results: offer saving the criteria for later.
+class _NoResultsView extends SignalWidget {
+  const _NoResultsView();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final model = di<SearchViewModel>();
+    return Center(
+      child: Column(
+        mainAxisSize: .min,
+        children: [
+          Icon(
+            LucideIcons.searchX,
+            size: 48,
+            color: theme.colorScheme.mutedForeground,
+          ),
+          const SizedBox(height: UsSpacing.md),
+          Text(
+            'No results for "${model.query.value.trim()}"',
+            textAlign: .center,
+            style: theme.textTheme.p.copyWith(
+              color: theme.colorScheme.mutedForeground,
+            ),
+          ),
+          const SizedBox(height: UsSpacing.sm),
+          ShadButton.outline(
+            onPressed: model.clearFilters,
+            child: const Text('CLEAR FILTERS'),
+          ),
+          const SizedBox(height: UsSpacing.xl),
+          _SaveSearchBar(model: model),
         ],
       ),
     );

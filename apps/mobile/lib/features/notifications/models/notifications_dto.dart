@@ -34,11 +34,12 @@ abstract class AppNotification with _$AppNotification {
     required String title,
     required String body,
 
+    @JsonKey(name: 'created_at') required DateTime createdAt,
+
     /// Deep-link payload (`chat_id`, `listing_id`, ...) or null.
     Map<String, dynamic>? data,
 
     @JsonKey(name: 'read_at') DateTime? readAt,
-    @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _AppNotification;
 
   factory AppNotification.fromJson(Map<String, dynamic> json) =>
@@ -49,8 +50,8 @@ abstract class AppNotification with _$AppNotification {
 abstract class InboxResponse with _$InboxResponse {
   const factory InboxResponse({
     required List<AppNotification> notifications,
-    @JsonKey(name: 'next_cursor') String? nextCursor,
     @JsonKey(name: 'unread_count') required int unreadCount,
+    @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _InboxResponse;
 
   factory InboxResponse.fromJson(Map<String, dynamic> json) =>

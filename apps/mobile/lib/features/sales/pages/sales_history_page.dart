@@ -207,7 +207,7 @@ class _SaleTile extends StatelessWidget {
     return '$symbol$amount • $date';
   }
 
-  /// The other party in this sale — the rate target for [sale.id].
+  /// The other party in this sale — the rate target for the given sale.
   /// Null when the sale had no recorded buyer (walk-up sale by this user).
   String? get _counterpartId {
     final myId = di<UserViewModel>().currentUser.value?.id;

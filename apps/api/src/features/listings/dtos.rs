@@ -187,6 +187,9 @@ pub struct ListingFilters {
     /// an explicit `?status=` filter passes a single status.
     pub statuses: Vec<models::ListingStatus>,
     pub seller: Option<uuid::Uuid>,
+    /// Sellers whose listings are hidden from this request (the caller's
+    /// blocks). Empty for anonymous requests.
+    pub exclude_sellers: Vec<uuid::Uuid>,
     pub cursor: Option<cursor::Cursor>,
     /// ts_rank keyset cursor for ranked-search pages (ignored for browse).
     /// `None` = first page. Unlike OFFSET, deep pages stay O(1).
@@ -211,6 +214,9 @@ pub struct ListingDetailResponse {
     pub reserved_at: Option<time::OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+    /// Times the detail page has been opened by non-owners. Incremented
+    /// best-effort on GET /listings/{id}, so it may briefly lag.
+    pub view_count: i64,
     pub seller: SellerSummary,
     pub category: CategorySummary,
     pub images: Vec<ImageSummary>,

@@ -5,6 +5,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/features/listings/data/categories_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/saved_searches_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
@@ -27,7 +28,8 @@ class SearchViewModel implements Disposable {
   SearchViewModel(
     this._repository,
     this._categoriesRepository,
-    this._history, {
+    this._history,
+    this._savedSearches, {
     Duration debounce = const Duration(milliseconds: 350),
   }) : _debounce = debounce {
     loadCategories = action0(() async {
@@ -43,6 +45,7 @@ class SearchViewModel implements Disposable {
   final ListingsRepository _repository;
   final CategoriesRepository _categoriesRepository;
   final SearchHistoryRepository _history;
+  final SavedSearchesRepository _savedSearches;
   final Duration _debounce;
 
   /// Current text query, bound to the search field.
@@ -58,6 +61,7 @@ class SearchViewModel implements Disposable {
   final Signal<List<ListingSummary>> results = signal(const []);
   final Signal<List<Category>> categories = signal(const []);
   final Signal<List<String>> recentSearches = signal(const []);
+  final Signal<List<SavedSearch>> savedSearches = signal(const []);
   final Signal<bool> isLoading = signal(false);
   final Signal<bool> isLoadingMore = signal(false);
   final Signal<String?> error = signal(null);
@@ -132,6 +136,64 @@ class SearchViewModel implements Disposable {
   Future<void> clearRecentSearches() async {
     recentSearches.value = const [];
     await _history.clear();
+  }
+
+  // -----------------------------------------------------------------------
+  // Saved searches (frontend-only persistence — no backend routes). A
+  // saved search captures the current query + category + price filters;
+  // applying one restores them all and re-runs the search.
+  // -----------------------------------------------------------------------
+
+  Future<void> loadSavedSearches() async {
+    final entries = await _savedSearches.load();
+    if (!_disposed) savedSearches.value = entries;
+  }
+
+  /// Persists the current criteria under a user-supplied [name]. Returns
+  /// true on success (so the caller can show a confirmation toast).
+  Future<bool> saveCurrentSearch(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return false;
+    try {
+      final updated = await _savedSearches.add(
+        SavedSearch(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: trimmed,
+          query: query.value.trim(),
+          categoryId: categoryId.value,
+          minPrice: minPrice.value,
+          maxPrice: maxPrice.value,
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (!_disposed) savedSearches.value = updated;
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  Future<void> removeSavedSearch(String id) async {
+    try {
+      final updated = await _savedSearches.remove(id);
+      if (!_disposed) savedSearches.value = updated;
+    } on Object {
+      // Best-effort.
+    }
+  }
+
+  /// Restores the criteria of [saved] and re-runs the search.
+  void applySavedSearch(SavedSearch saved) {
+    _debounceTimer?.cancel();
+    query.value = saved.query;
+    categoryId.value = saved.categoryId;
+    minPrice.value = saved.minPrice;
+    maxPrice.value = saved.maxPrice;
+    if (!hasCriteria) {
+      _resetToIdle();
+      return;
+    }
+    unawaited(search());
   }
 
   void setCategory(int? id) {
@@ -250,6 +312,7 @@ class SearchViewModel implements Disposable {
     results.dispose();
     categories.dispose();
     recentSearches.dispose();
+    savedSearches.dispose();
     isLoading.dispose();
     isLoadingMore.dispose();
     error.dispose();

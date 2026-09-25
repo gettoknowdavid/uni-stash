@@ -139,6 +139,18 @@ impl ListingsRepo {
             query.push_bind(seller);
         }
 
+        // Hide the caller's blocked users' listings. Only pushed when
+        // non-empty, so anonymous browse stays a simple query.
+        if !filters.exclude_sellers.is_empty() {
+            if is_search {
+                query.push(" AND l.seller_id <> ALL(");
+            } else {
+                query.push(" AND seller_id <> ALL(");
+            }
+            query.push_bind(filters.exclude_sellers.clone());
+            query.push(")");
+        }
+
         // Cursor pagination: only for non-search browse.
         // Search results are rank-ordered, so a (created_at, id) cursor
         // would produce incorrect pages; search pages by a ts_rank keyset
@@ -274,6 +286,18 @@ impl ListingsRepo {
         Ok(())
     }
 
+    /// Bump the view counter. Best-effort by the caller — never fails the
+    /// detail request.
+    pub async fn increment_view_count(&self, listing_id: Uuid) -> Result<(), AppError> {
+        sqlx::query!(
+            "UPDATE listings SET view_count = view_count + 1 WHERE id = $1",
+            listing_id,
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
+    }
+
     /// Fetch a listing with seller, category, and images. Returns None
     /// if the listing doesn't exist.
     pub async fn find_detail_by_id(
@@ -281,7 +305,7 @@ impl ListingsRepo {
         listing_id: Uuid,
     ) -> Result<Option<ListingDetailResponse>, AppError> {
         let row = sqlx::query!(
-            "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.reserved_by, l.reserved_at, l.created_at,
+            "SELECT l.id, l.title, l.description, l.price, l.currency AS \"currency: String\", l.barter_request, l.condition, l.status, l.reserved_by, l.reserved_at, l.created_at, l.view_count,
                     u.id AS seller_id, u.display_name AS seller_display_name, u.email_verified AS seller_email_verified, u.photo_url AS seller_photo_url,
                     sc.domain AS seller_domain,
                     c.id AS category_id, c.slug AS category_slug, c.label AS category_label
@@ -328,6 +352,7 @@ impl ListingsRepo {
             reserved_by: row.reserved_by,
             reserved_at: row.reserved_at,
             created_at: row.created_at,
+            view_count: row.view_count,
             seller: SellerSummary {
                 id: row.seller_id,
                 display_name: row.seller_display_name,
