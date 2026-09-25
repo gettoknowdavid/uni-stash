@@ -7,8 +7,10 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
+import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart'
     show Currency;
+import 'package:uni_stash_mobile/features/reviews/pages/rate_sale_dialog.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
 import 'package:uni_stash_mobile/features/sales/models/models.dart';
 import 'package:uni_stash_mobile/features/sales/view_models/_view_models.dart';
@@ -205,6 +207,23 @@ class _SaleTile extends StatelessWidget {
     return '$symbol$amount • $date';
   }
 
+  /// The other party in this sale — the rate target for [sale.id].
+  /// Null when the sale had no recorded buyer (walk-up sale by this user).
+  String? get _counterpartId {
+    final myId = di<UserViewModel>().currentUser.value?.id;
+    if (myId == null) return null;
+    if (sale.buyerId == myId) return sale.sellerId;
+    if (sale.sellerId == myId) return sale.buyerId;
+    return null;
+  }
+
+  Future<void> _rate(BuildContext context) async {
+    await showShadDialog<bool>(
+      context: context,
+      builder: (context) => RateSaleDialog(saleId: sale.id),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
@@ -223,7 +242,21 @@ class _SaleTile extends StatelessWidget {
           LucideIcons.chevronRight,
           color: theme.colorScheme.mutedForeground,
         ),
-        child: Text(_subtitle, style: theme.textTheme.muted),
+        child: Column(
+          crossAxisAlignment: .start,
+          children: [
+            Text(_subtitle, style: theme.textTheme.muted),
+            if (_counterpartId != null) ...[
+              const SizedBox(height: 8),
+              ShadButton.outline(
+                height: 28,
+                padding: const .symmetric(horizontal: 12),
+                onPressed: () => _rate(context),
+                child: const Text('RATE SALE'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

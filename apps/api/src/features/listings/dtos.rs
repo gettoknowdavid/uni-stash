@@ -223,6 +223,10 @@ pub struct SellerSummary {
     pub email_verified: bool,
     pub domain: String,
     pub photo_url: Option<String>,
+    /// Average stars across the seller's reviews (None when unrated).
+    pub average_rating: Option<f64>,
+    /// Total reviews received.
+    pub review_count: i64,
 }
 
 #[derive(serde::Serialize)]

@@ -59,6 +59,10 @@ pub struct UserProfile {
     pub display_name: String,
     pub email_verified: bool,
     pub role: String,
+    /// Weekly digests / major product updates (Settings > NOTIFICATIONS).
+    pub email_notifications_enabled: bool,
+    /// `public` | `private` (Settings > PRIVACY).
+    pub profile_visibility: String,
 }
 
 #[derive(serde::Deserialize, validator::Validate)]
@@ -174,6 +178,12 @@ pub struct UpdateProfileRequest {
     /// New display name (if changing).
     #[validate(length(min = 1, max = 80, message = "display_name must be 1-80 characters"))]
     pub display_name: Option<String>,
+
+    /// Weekly digests / major updates (if changing).
+    pub email_notifications_enabled: Option<bool>,
+
+    /// `public` | `private` (if changing).
+    pub profile_visibility: Option<String>,
 }
 
 /// Profile statistics returned by GET /auth/me/stats.

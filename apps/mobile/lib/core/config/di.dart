@@ -29,6 +29,8 @@ import 'package:uni_stash_mobile/features/listings/data/saved_items_repository.d
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
+import 'package:uni_stash_mobile/features/reviews/data/reviews_api.dart';
+import 'package:uni_stash_mobile/features/reviews/data/reviews_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/sell_dashboard_view_model.dart';
 import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
@@ -304,6 +306,19 @@ void _registerSales() {
   );
 }
 
+/// Reviews (ratings & reviews) feature registrations.
+void _registerReviews() {
+  di.registerSingletonWithDependencies<ReviewsApiClient>(
+    () => ReviewsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<ReviewsRepository>(
+    () => ReviewsRepositoryImpl(di<ReviewsApiClient>(), di<Logger>()),
+    dependsOn: [ReviewsApiClient],
+  );
+}
+
 /// Configures the authenticated scope.
 ///
 /// Registers all the authenticated scope dependencies.
@@ -316,6 +331,7 @@ void configureAuthenticatedScope() {
   _registerProfile();
   _registerChats();
   _registerSales();
+  _registerReviews();
   _registerNotifications();
 }
 

@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
+import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/profile/pages/change_password_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/pages/logout_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
@@ -46,7 +47,6 @@ class _SettingsBody extends SignalWidget {
   const _SettingsBody({required this.model});
 
   final ProfileViewModel model;
-
   @override
   Widget build(BuildContext context) {
     final profile = model.profile.value;
@@ -99,21 +99,40 @@ class _SettingsBody extends SignalWidget {
                   },
                 ),
               ),
-              const _SettingsRow(
+              _SettingsRow(
                 label: 'Email Notifications',
                 subtitle: 'Weekly digests and major updates',
-                trailing: UsSwitch(value: false),
+                trailing: SignalBuilder(
+                  builder: (context) {
+                    final user = di<UserViewModel>().currentUser.value;
+                    return UsSwitch(
+                      value: user?.emailNotificationsEnabled ?? false,
+                      onChanged: (value) =>
+                          unawaited(_setEmailNotifications(this, context, value)),
+                    );
+                  },
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionCard(
+          _SectionCard(
             headerLabel: 'PRIVACY',
             children: [
               _SettingsRow(
                 label: 'Profile Visibility',
                 subtitle: 'Allow others to see my listings history',
-                trailing: UsSwitch(value: true),
+                trailing: SignalBuilder(
+                  builder: (context) {
+                    final user = di<UserViewModel>().currentUser.value;
+                    final isPublic = user?.profileVisibility != 'private';
+                    return UsSwitch(
+                      value: isPublic,
+                      onChanged: (value) =>
+                          unawaited(_setProfileVisibility(this, context, value)),
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -159,6 +178,45 @@ Future<void> _setPushEnabled(BuildContext context, bool value) async {
         description: Text(
           'Notifications could not be enabled on this device.',
         ),
+      ),
+    );
+  }
+}
+
+/// Persists the email-notifications preference via PATCH /auth/me.
+Future<void> _setEmailNotifications(
+  _SettingsBody body,
+  BuildContext context,
+  bool value,
+) async {
+  await body.model.updateProfile(emailNotificationsEnabled: value);
+  if (!context.mounted) return;
+  final error = body.model.updateError.value;
+  if (error != null) {
+    ShadToaster.of(context).show(
+      ShadToast.destructive(
+        title: const Text('Could not update'),
+        description: Text(error),
+      ),
+    );
+  }
+}
+
+/// Persists profile visibility ('public' / 'private') via PATCH /auth/me.
+Future<void> _setProfileVisibility(
+  _SettingsBody body,
+  BuildContext context,
+  bool isPublic,
+) async {
+  await body.model
+      .updateProfile(profileVisibility: isPublic ? 'public' : 'private');
+  if (!context.mounted) return;
+  final error = body.model.updateError.value;
+  if (error != null) {
+    ShadToaster.of(context).show(
+      ShadToast.destructive(
+        title: const Text('Could not update'),
+        description: Text(error),
       ),
     );
   }

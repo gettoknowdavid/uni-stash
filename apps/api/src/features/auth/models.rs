@@ -14,6 +14,10 @@ pub struct User {
     pub password_hash: String,
     pub display_name: String,
     pub email_verified: bool,
+    /// Weekly digests / major updates (Settings > NOTIFICATIONS).
+    pub email_notifications_enabled: bool,
+    /// `public` | `private` (Settings > PRIVACY).
+    pub profile_visibility: String,
     pub role: String,
     pub photo_url: Option<String>,
     pub created_at: time::OffsetDateTime,

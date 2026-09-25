@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, display_name, email_verified, role\n             FROM users WHERE id = $1 AND deleted_at IS NULL",
+  "query": "SELECT id, email, display_name, email_verified, role,\n                    email_notifications_enabled, profile_visibility\n             FROM users WHERE id = $1 AND deleted_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -62,6 +62,28 @@
             "name": "role"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "email_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "profile_visibility",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "profile_visibility"
+          }
+        }
       }
     ],
     "parameters": {
@@ -74,8 +96,10 @@
       false,
       false,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "f279e94b0c8a0fde9fdd3db3285b2e027e343ac93b03b97b44ad6e4a3bb288c7"
+  "hash": "2638742b563f2292d7c57eb0dc0373ecffc7c7f71689a3ece020301d9db14f48"
 }

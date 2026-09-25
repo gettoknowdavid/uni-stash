@@ -1,5 +1,6 @@
 export 'auth_page_shell.dart';
 export 'back_button.dart';
+export 'fullscreen_image_viewer.dart';
 export 'main_shell.dart';
 export 'not_found_page.dart';
 export 'spinner.dart';

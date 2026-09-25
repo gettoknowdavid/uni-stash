@@ -155,6 +155,12 @@ pub async fn get_listing_detail(
         return Err(AppError::NotFound("listing not found".into()));
     }
 
+    // Stamp the seller's rating summary (average + count) onto the detail.
+    let mut detail = detail;
+    let summary = state.reviews_repo.summary_for_user(detail.seller.id).await?;
+    detail.seller.average_rating = summary.average_rating;
+    detail.seller.review_count = summary.review_count;
+
     Ok(HttpResponse::Ok().json(ApiResponse::success(detail, "ok")))
 }
 
@@ -290,7 +296,23 @@ pub async fn mark_sold(
     .fetch_optional(&state.db)
     .await
         && let Ok(buyer_id) = r.try_get::<uuid::Uuid, _>("buyer_id")
-        && let Err(err) = state
+    {
+        // Best-effort in-app inbox entry (works without a push token).
+        if let Err(err) = state
+            .notifications_repo
+            .insert_notification(
+                buyer_id,
+                "sale.completed",
+                "Item Sold",
+                &format!("{} marked '{}' as sold", user.display_name, listing.title),
+                Some(serde_json::json!({ "listing_id": listing.id })),
+            )
+            .await
+        {
+            tracing::warn!(listing_id = %listing.id, error = %err, "inbox notification failed");
+        }
+
+        if let Err(err) = state
             .push_sender
             .0
             .send_to_user(
@@ -300,8 +322,9 @@ pub async fn mark_sold(
                 Some(&[("listing_id", &listing.id.to_string())]),
             )
             .await
-    {
-        tracing::warn!(listing_id = %listing.id, error = %err, "push notification failed");
+        {
+            tracing::warn!(listing_id = %listing.id, error = %err, "push notification failed");
+        }
     }
 
     Ok(

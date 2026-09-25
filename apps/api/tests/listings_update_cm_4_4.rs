@@ -80,6 +80,8 @@ fn sign_token(
         email: email.into(),
         display_name: "U".into(),
         email_verified: true,
+        email_notifications_enabled: false,
+        profile_visibility: "public".to_string(),
         role: "student".into(),
         photo_url: None,
         created_at: time::OffsetDateTime::now_utc(),

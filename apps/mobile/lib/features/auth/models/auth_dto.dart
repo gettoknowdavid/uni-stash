@@ -185,6 +185,8 @@ abstract class SignUpResponse with _$SignUpResponse {
 abstract class UpdateProfileRequest with _$UpdateProfileRequest {
   const factory UpdateProfileRequest({
     @JsonKey(name: 'display_name') String? displayName,
+    @JsonKey(name: 'email_notifications_enabled') bool? emailNotificationsEnabled,
+    @JsonKey(name: 'profile_visibility') String? profileVisibility,
   }) = _UpdateProfileRequest;
 
   factory UpdateProfileRequest.fromJson(Map<String, dynamic> json) =>

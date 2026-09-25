@@ -14,6 +14,7 @@ import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
+import 'package:uni_stash_mobile/features/listings/pages/report_user_dialog.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
 import 'package:uni_stash_mobile/features/listings/models/models.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/_view_models.dart';
@@ -626,6 +627,40 @@ class _SellerDetails extends StatelessWidget {
                   overflow: .ellipsis,
                   maxLines: 1,
                 ),
+                if (detail.seller.reviewCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        LucideIcons.star,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${detail.seller.averageRating?.toStringAsFixed(1)} '
+                        '(${detail.seller.reviewCount} review${detail.seller.reviewCount == 1 ? '' : 's'})',
+                        style: theme.textTheme.small,
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                GestureDetector(
+                  behavior: .opaque,
+                  onTap: () => unawaited(showShadDialog(
+                    context: context,
+                    builder: (context) =>
+                        ReportUserDialog(userId: detail.seller.id),
+                  )),
+                  child: Text(
+                    'Report this user',
+                    style: theme.textTheme.small.copyWith(
+                      color: theme.colorScheme.destructive,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1088,16 +1123,23 @@ class _ImageCarouselState extends State<_ImageCarousel> {
               onPageChanged: (index) => setState(() => _currentPage = index),
               itemBuilder: (context, index) {
                 final url = _imageUrl(serverImages[index])!;
-                return CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.contain,
-                  placeholder: (_, _) => const Center(
-                    child: Spinner(),
-                  ),
-                  errorWidget: (_, _, _) => Center(
-                    child: Icon(
-                      LucideIcons.imageOff,
-                      color: theme.colorScheme.mutedForeground,
+                return GestureDetector(
+                  onTap: () => unawaited(FullscreenImageViewer.show(
+                    context,
+                    imageUrls: serverImages.map(_imageUrl).whereType<String>().toList(),
+                    initialIndex: index,
+                  )),
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.contain,
+                    placeholder: (_, _) => const Center(
+                      child: Spinner(),
+                    ),
+                    errorWidget: (_, _, _) => Center(
+                      child: Icon(
+                        LucideIcons.imageOff,
+                        color: theme.colorScheme.mutedForeground,
+                      ),
                     ),
                   ),
                 );

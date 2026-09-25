@@ -51,6 +51,9 @@ final class UsRoutes {
   static const String support = '/profile/support';
   static const String myReports = '/profile/reports';
 
+  /// In-app notifications inbox (header bell).
+  static const String notifications = '/notifications';
+
   /// Legal pages (Settings → LEGAL, signup footer).
   static const String terms = '/legal/terms';
   static const String privacy = '/legal/privacy';

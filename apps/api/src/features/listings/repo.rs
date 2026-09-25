@@ -334,6 +334,8 @@ impl ListingsRepo {
                 email_verified: row.seller_email_verified,
                 domain: row.seller_domain,
                 photo_url: row.seller_photo_url,
+                average_rating: None,
+                review_count: 0,
             },
             category: CategorySummary {
                 id: row.category_id,

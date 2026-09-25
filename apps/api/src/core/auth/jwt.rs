@@ -102,6 +102,8 @@ mod tests {
             email: "some@example.com".to_string(),
             display_name: "Some User".to_string(),
             email_verified: true,
+            email_notifications_enabled: false,
+            profile_visibility: "public".to_string(),
             role: "student".to_string(),
             photo_url: None,
             created_at: time::OffsetDateTime::now_utc(),

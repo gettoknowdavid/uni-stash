@@ -13,8 +13,8 @@ use crate::{
         admin_auth::AdminAuthRepo, admin_management::AdminManagementRepo, auth::repo::AuthRepo,
         categories::repo::CategoriesRepo, chats::repo::ChatsRepo, images::repo::ImagesRepo,
         listings::repo::ListingsRepo, notifications::repo::NotificationsRepo,
-        reports::repo::ReportsRepo, sales::repo::SalesRepo, saved_items::repo::SavedItemsRepo,
-        schools::repo::SchoolsRepo,
+        reports::repo::ReportsRepo, reviews::repo::ReviewsRepo, sales::repo::SalesRepo,
+        saved_items::repo::SavedItemsRepo, schools::repo::SchoolsRepo,
     },
 };
 
@@ -58,6 +58,7 @@ pub struct AppState {
     pub sales_repo: SalesRepo,
     pub saved_items_repo: SavedItemsRepo,
     pub reports_repo: ReportsRepo,
+    pub reviews_repo: ReviewsRepo,
     /// Realtime event publisher (Pusher Channels for MVP). Provider is
     /// selected at boot from `REALTIME_PROVIDER`; see `core::realtime`.
     /// Manual Debug impl: `Arc<dyn Trait>` can't derive it.
@@ -96,6 +97,7 @@ impl AppState {
             sales_repo: SalesRepo::new(pool.clone()),
             saved_items_repo: SavedItemsRepo::new(pool.clone()),
             reports_repo: ReportsRepo::new(pool.clone()),
+            reviews_repo: ReviewsRepo::new(pool.clone()),
             realtime: RealtimePublisherHandle(realtime),
             push_sender: PushSenderHandle(crate::core::notifications::from_config(config)),
             email_limiter: PerEmailLimiter::new(),

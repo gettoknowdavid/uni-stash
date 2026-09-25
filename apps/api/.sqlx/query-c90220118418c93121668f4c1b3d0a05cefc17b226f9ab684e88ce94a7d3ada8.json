@@ -150,6 +150,28 @@
             "name": "deletion_warning_level"
           }
         }
+      },
+      {
+        "ordinal": 13,
+        "name": "email_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "profile_visibility",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "profile_visibility"
+          }
+        }
       }
     ],
     "parameters": {
@@ -178,6 +200,8 @@
       true,
       true,
       true,
+      false,
+      false,
       false
     ]
   },

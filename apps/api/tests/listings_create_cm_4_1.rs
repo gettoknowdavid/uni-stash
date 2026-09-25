@@ -122,6 +122,8 @@ fn sign_access_token(
         email: email.to_string(),
         display_name: "Test User".to_string(),
         email_verified,
+        email_notifications_enabled: false,
+        profile_visibility: "public".to_string(),
         role: "student".to_string(),
         photo_url: None,
         created_at: time::OffsetDateTime::now_utc(),

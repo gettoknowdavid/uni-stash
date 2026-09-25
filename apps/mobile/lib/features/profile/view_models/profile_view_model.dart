@@ -64,12 +64,20 @@ class ProfileViewModel implements Disposable {
     }
   }
 
-  Future<void> updateProfile({String? displayName}) async {
+  Future<void> updateProfile({
+    String? displayName,
+    bool? emailNotificationsEnabled,
+    String? profileVisibility,
+  }) async {
     isUpdating.value = true;
     updateError.value = null;
     updateSuccess.value = false;
 
-    final result = await _repository.updateProfile(displayName: displayName);
+    final result = await _repository.updateProfile(
+      displayName: displayName,
+      emailNotificationsEnabled: emailNotificationsEnabled,
+      profileVisibility: profileVisibility,
+    );
     switch (result) {
       case Success(:final value):
         profile.value = value;

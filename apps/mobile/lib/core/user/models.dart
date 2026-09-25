@@ -11,6 +11,10 @@ abstract class User with _$User {
     @JsonKey(name: 'display_name') required String displayName,
     @JsonKey(name: 'email_verified') required bool emailVerified,
     required String role,
+    @JsonKey(name: 'email_notifications_enabled')
+    @Default(false)
+    bool emailNotificationsEnabled,
+    @JsonKey(name: 'profile_visibility') @Default('public') String profileVisibility,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

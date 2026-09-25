@@ -6,6 +6,7 @@ import 'package:uni_stash_mobile/features/auth/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/legal/pages/_pages.dart';
+import 'package:uni_stash_mobile/features/notifications/pages/notifications_page.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/sales/pages/_pages.dart';
@@ -89,6 +90,10 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       path: UsRoutes.myReports,
       builder: (context, state) => const MyReportsPage(),
+    ),
+    GoRoute(
+      path: UsRoutes.notifications,
+      builder: (context, state) => const NotificationsPage(),
     ),
     GoRoute(
       path: UsRoutes.terms,

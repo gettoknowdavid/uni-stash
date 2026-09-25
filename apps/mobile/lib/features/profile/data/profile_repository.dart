@@ -27,8 +27,12 @@ abstract interface class ProfileRepository {
   /// Fetches the user's listing stats (active count, sold count).
   Future<Result<ProfileStats>> getStats(String userId);
 
-  /// Updates the user's profile (display_name).
-  Future<Result<User>> updateProfile({String? displayName});
+  /// Updates the user's profile (display name + preferences).
+  Future<Result<User>> updateProfile({
+    String? displayName,
+    bool? emailNotificationsEnabled,
+    String? profileVisibility,
+  });
 }
 
 class ProfileRepositoryImpl implements ProfileRepository {
@@ -81,10 +85,19 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<Result<User>> updateProfile({String? displayName}) async {
+  @override
+  Future<Result<User>> updateProfile({
+    String? displayName,
+    bool? emailNotificationsEnabled,
+    String? profileVisibility,
+  }) async {
     try {
       final response = await _authClient.updateProfile(
-        UpdateProfileRequest(displayName: displayName),
+        UpdateProfileRequest(
+          displayName: displayName,
+          emailNotificationsEnabled: emailNotificationsEnabled,
+          profileVisibility: profileVisibility,
+        ),
       );
       if (!response.status) return Result.failure(response.message);
       final data = response.data;

@@ -78,6 +78,10 @@ class _ProfilePageState extends State<ProfilePage> {
         title: const Text('PROFILE'),
         actions: [
           ShadIconButton.ghost(
+            icon: const Icon(LucideIcons.bell),
+            onPressed: () => context.push(UsRoutes.notifications),
+          ),
+          ShadIconButton.ghost(
             icon: const Icon(LucideIcons.settings),
             onPressed: () => context.push(UsRoutes.settings),
           ),

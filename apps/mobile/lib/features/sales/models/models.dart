@@ -8,7 +8,8 @@ abstract class Sale with _$Sale {
   const factory Sale({
     required String id,
     @JsonKey(name: 'listing_id') required String listingId,
-    @JsonKey(name: 'buyer_id') required String buyerId,
+    /// Null for walk-up sales (no reservation to capture the buyer).
+    @JsonKey(name: 'buyer_id') String? buyerId,
     @JsonKey(name: 'seller_id') required String sellerId,
     @JsonKey(name: 'listing_title') required String listingTitle,
     @JsonKey(name: 'created_at') required DateTime createdAt,

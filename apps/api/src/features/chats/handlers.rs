@@ -254,6 +254,22 @@ pub async fn send_message(
         } else {
             &body.body
         };
+
+        // Best-effort in-app inbox entry (works without a push token).
+        if let Err(err) = state
+            .notifications_repo
+            .insert_notification(
+                recipient,
+                "chat.message",
+                sender_name,
+                preview,
+                Some(serde_json::json!({ "chat_id": chat_id })),
+            )
+            .await
+        {
+            tracing::warn!(chat_id = %chat_id, error = %err, "inbox notification failed");
+        }
+
         if let Err(err) = state
             .push_sender
             .0

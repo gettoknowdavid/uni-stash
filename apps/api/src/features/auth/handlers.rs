@@ -506,15 +506,33 @@ pub async fn update_profile(
 ) -> Result<HttpResponse, AppError> {
     body.validate()?;
 
-    if body.display_name.is_none() {
+    if body.display_name.is_none()
+        && body.email_notifications_enabled.is_none()
+        && body.profile_visibility.is_none()
+    {
         return Err(AppError::BadRequest(
             "at least one field must be provided".to_string(),
         ));
     }
 
+    if let Some(visibility) = &body.profile_visibility
+        && visibility != "public"
+        && visibility != "private"
+    {
+        return Err(AppError::ValidationError {
+            field: "profile_visibility".into(),
+            reason: "must be 'public' or 'private'".into(),
+        });
+    }
+
     state
         .auth_repo
-        .update_user_profile(&auth_user.id, body.display_name.as_deref())
+        .update_user_profile(
+            &auth_user.id,
+            body.display_name.as_deref(),
+            body.email_notifications_enabled,
+            body.profile_visibility.as_deref(),
+        )
         .await?;
 
     // Re-read the profile to return the fresh state.

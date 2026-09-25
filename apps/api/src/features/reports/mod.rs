@@ -2,6 +2,7 @@ use serde::Serialize;
 
 pub mod handlers;
 pub mod repo;
+pub mod user_handlers;
 
 use actix_web::web;
 
@@ -19,6 +20,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         |scope| {
             scope
                 .route("/{listing_id}", web::post().to(handlers::create_report))
+                .route(
+                    "/users/{user_id}",
+                    web::post().to(user_handlers::create_user_report),
+                )
                 .route("/{report_id}", web::patch().to(handlers::update_report))
                 .route("/{report_id}", web::delete().to(handlers::delete_report))
                 .route("/mine", web::get().to(handlers::my_reports));

@@ -288,6 +288,8 @@ abstract class Seller with _$Seller {
     @JsonKey(name: 'email_verified') required bool emailVerified,
     required String domain,
     @JsonKey(name: 'photo_url') String? photoUrl,
+    @JsonKey(name: 'average_rating') double? averageRating,
+    @JsonKey(name: 'review_count') @Default(0) int reviewCount,
   }) = _Seller;
 
   factory Seller.fromJson(Map<String, dynamic> json) => _$SellerFromJson(json);

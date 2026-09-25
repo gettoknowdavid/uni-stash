@@ -96,14 +96,20 @@ impl AuthRepo {
         &self,
         user_id: &uuid::Uuid,
         display_name: Option<&str>,
+        email_notifications_enabled: Option<bool>,
+        profile_visibility: Option<&str>,
     ) -> Result<(), AppError> {
         sqlx::query!(
             "UPDATE users
              SET display_name = COALESCE($2, display_name),
+                 email_notifications_enabled = COALESCE($3, email_notifications_enabled),
+                 profile_visibility = COALESCE($4, profile_visibility),
                  updated_at = now()
              WHERE id = $1 AND deleted_at IS NULL",
             user_id,
             display_name,
+            email_notifications_enabled,
+            profile_visibility,
         )
         .execute(&self.db)
         .await?;
@@ -405,7 +411,8 @@ impl AuthRepo {
     ) -> Result<Option<UserProfile>, AppError> {
         let profile = sqlx::query_as!(
             UserProfile,
-            "SELECT id, email, display_name, email_verified, role
+            "SELECT id, email, display_name, email_verified, role,
+                    email_notifications_enabled, profile_visibility
              FROM users WHERE id = $1 AND deleted_at IS NULL",
             user_id,
         )
@@ -422,6 +429,8 @@ impl AuthRepo {
             display_name: user.display_name.clone(),
             email_verified: user.email_verified,
             role: user.role.clone(),
+            email_notifications_enabled: false,
+            profile_visibility: "public".to_string(),
         }
     }
 

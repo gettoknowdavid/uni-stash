@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n             SET display_name = COALESCE($2, display_name),\n                 email_notifications_enabled = COALESCE($3, email_notifications_enabled),\n                 profile_visibility = COALESCE($4, profile_visibility),\n                 updated_at = now()\n             WHERE id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ea59d5374070d6fe595ad970a7cc12bfe370aa80acf5c42d6e6058d64bc0d587"
+}
