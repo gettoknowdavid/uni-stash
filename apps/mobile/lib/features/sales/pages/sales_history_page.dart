@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -98,7 +98,7 @@ class _SalesHistoryPageState extends State<_SalesHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return UsPage(
-      gutters: .zero,
+      gutters: const .all(16),
       header: UsPageHeader(title: Text(widget.title)),
       body: _SalesBody(emptyMessage: widget.emptyMessage),
     );
@@ -189,19 +189,22 @@ class _SaleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
-    return ListTile(
-      title: Text(
-        sale.listingTitle,
-        style: theme.textTheme.p.copyWith(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(_subtitle, style: theme.textTheme.muted),
-      trailing: Icon(
-        LucideIcons.chevronRight,
-        color: theme.colorScheme.mutedForeground,
-      ),
+    return GestureDetector(
       onTap: () async {
         await context.push(UsRoutes.listingDetailsRoute(sale.listingId));
       },
+      child: ShadCard(
+        title: Text(
+          sale.listingTitle,
+          style: theme.textTheme.p.copyWith(fontWeight: FontWeight.w600),
+        ),
+        padding: const .symmetric(horizontal: 16, vertical: 12),
+        trailing: Icon(
+          LucideIcons.chevronRight,
+          color: theme.colorScheme.mutedForeground,
+        ),
+        child: Text(_subtitle, style: theme.textTheme.muted),
+      ),
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
@@ -92,7 +92,7 @@ class _SupportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     return ShadCard(
-      child: InkWell(
+      child: GestureDetector(
         onTap: onTap,
         child: Row(
           children: [

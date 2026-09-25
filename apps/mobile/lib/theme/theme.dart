@@ -268,11 +268,12 @@ ShadThemeData get usLightTheme {
       fontWeight: FontWeight.w400,
       color: UsPrimitives.neutral700,
     ),
-    border: Border.all(
-      width: 2,
-      color: UsPrimitives.neutral900,
-    ),
+    border: .all(width: 2, color: UsPrimitives.neutral900),
     radius: effectiveRadius,
+    descriptionTextAlign: .start,
+    actionsAxis: .horizontal,
+    expandActionsWhenTiny: false,
+    padding: const .symmetric(horizontal: 16),
   );
 
   // ── Card theme ──────────────────────────────────────────────────────────
@@ -382,14 +383,16 @@ ShadThemeData get usLightTheme {
     ),
   );
 
+  final primaryToastTheme = ShadToastTheme(
+    alignment: .topCenter,
+    border: .all(width: 2, color: colorScheme.borderStrong, radius: .zero),
+    shadows: UsElevation.brutalist,
+  );
+
   final destructiveToastTheme = ShadToastTheme(
     alignment: .bottomCenter,
     backgroundColor: UsPrimitives.red500,
-    border: ShadBorder.all(
-      width: 2,
-      color: UsPrimitives.neutral900,
-      radius: .zero,
-    ),
+    border: .all(width: 2, color: colorScheme.borderStrong, radius: .zero),
     shadows: UsElevation.brutalist,
   );
 
@@ -431,6 +434,7 @@ ShadThemeData get usLightTheme {
     avatarTheme: avatarTheme,
     progressTheme: progressTheme,
     separatorTheme: separatorTheme,
+    primaryToastTheme: primaryToastTheme,
     destructiveToastTheme: destructiveToastTheme,
   );
 }

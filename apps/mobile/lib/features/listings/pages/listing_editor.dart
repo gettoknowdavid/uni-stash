@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
@@ -118,12 +118,12 @@ class _ListingEditorState extends State<ListingEditor> {
     final draft = await _model.loadDraft();
     if (draft == null || !mounted) return;
 
-    final resume = await showDialog<bool>(
+    final resume = await showShadDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => ShadDialog.alert(
         title: const Text('Resume draft?'),
-        content: Text(
+        description: Text(
           draft.hasListingId
               ? 'You have an unfinished listing. '
                     'Would you like to resume where you left off?'

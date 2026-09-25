@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -296,7 +296,7 @@ class _ListingDetailView extends SignalWidget {
                     if (detail.status != .deleted) ...[
                       const SizedBox(height: 16),
                       Center(
-                        child: TextButton(
+                        child: ShadButton.ghost(
                           onPressed: () => unawaited(
                             _showReportSheet(context, detail),
                           ),
@@ -667,22 +667,26 @@ class _SellerFooter extends SignalWidget {
   Future<void> _confirmAndMarkSold(BuildContext context, String id) async {
     final confirmed = await showShadDialog<bool>(
       context: context,
-      builder: (dialogContext) => ShadDialog.alert(
-        title: const Text('MARK AS SOLD?'),
-        description: const Text(
-          'This will mark the listing as sold and record the sale. '
-          'This action cannot be undone.',
+      builder: (dialogContext) => Padding(
+        padding: const .all(16),
+        child: ShadDialog.alert(
+          title: const Text('MARK AS SOLD?'),
+          padding: const .symmetric(horizontal: 16),
+          description: const Text(
+            'This will mark the listing as sold and record the sale. '
+            'This action cannot be undone.',
+          ),
+          actions: [
+            ShadButton.outline(
+              onPressed: () => dialogContext.pop(false),
+              child: const Text('CANCEL'),
+            ),
+            ShadButton(
+              onPressed: () => dialogContext.pop(true),
+              child: const Text('CONFIRM'),
+            ),
+          ],
         ),
-        actions: [
-          ShadButton.outline(
-            onPressed: () => dialogContext.pop(false),
-            child: const Text('CANCEL'),
-          ),
-          ShadButton(
-            onPressed: () => dialogContext.pop(true),
-            child: const Text('CONFIRM'),
-          ),
-        ],
       ),
     );
 
@@ -895,11 +899,7 @@ class _BookmarkButtonState extends State<_BookmarkButton> {
         ),
         onPressed: _busy ? null : _toggle,
         icon: _busy
-            ? const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+            ? const Spinner()
             : Icon(
                 saved ? LucideIcons.bookmarkCheck : LucideIcons.bookmark,
                 size: widget.size * 0.6,

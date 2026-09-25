@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_hooks/signals_hooks.dart';
@@ -314,19 +314,15 @@ class _SalesHistorySection extends StatelessWidget {
       children: [
         Text('SALES HISTORY', style: theme.textTheme.labelSm),
         const SizedBox(height: 8),
-        GestureDetector(
-          child: const _MenuRow(
-            icon: LucideIcons.shoppingBag,
-            label: 'MY PURCHASES',
-          ),
+        _MenuRow(
+          icon: LucideIcons.shoppingBag,
+          label: 'MY PURCHASES',
           onTap: () => context.push(UsRoutes.myPurchases),
         ),
-        GestureDetector(
-          child: const _MenuRow(
-            icon: LucideIcons.store,
-            label: 'MY SALES',
-            addDivider: false,
-          ),
+        _MenuRow(
+          icon: LucideIcons.store,
+          label: 'MY SALES',
+          addDivider: false,
           onTap: () => context.push(UsRoutes.mySales),
         ),
       ],
@@ -345,26 +341,20 @@ class _ProfileMenu extends StatelessWidget {
       children: [
         Text('PROFILE MENU', style: theme.textTheme.labelSm),
         const SizedBox(height: 8),
-        GestureDetector(
-          child: const _MenuRow(
-            icon: LucideIcons.tag,
-            label: 'MY LISTINGS',
-          ),
+        _MenuRow(
+          icon: LucideIcons.tag,
+          label: 'MY LISTINGS',
           onTap: () => context.push(UsRoutes.myListings),
         ),
-        GestureDetector(
-          child: const _MenuRow(
-            icon: LucideIcons.bookmark,
-            label: 'SAVED ITEMS',
-          ),
+        _MenuRow(
+          icon: LucideIcons.bookmark,
+          label: 'SAVED ITEMS',
           onTap: () => context.push(UsRoutes.savedItems),
         ),
-        GestureDetector(
-          child: const _MenuRow(
-            icon: LucideIcons.headset,
-            label: 'SUPPORT',
-            addDivider: false,
-          ),
+        _MenuRow(
+          icon: LucideIcons.headset,
+          label: 'SUPPORT',
+          addDivider: false,
           onTap: () => context.push(UsRoutes.support),
         ),
       ],
@@ -377,18 +367,20 @@ class _MenuRow extends StatelessWidget {
     required this.icon,
     required this.label,
     this.addDivider = true,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool addDivider;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _showComingSoon(context, label),
+      onTap: onTap ?? () => _showComingSoon(context, label),
       child: Column(
         children: [
           Padding(
