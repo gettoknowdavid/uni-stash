@@ -8,10 +8,10 @@ use crate::core::json::ValidatedJson;
 use crate::core::response::{ApiResponse, ErrorBody};
 use crate::core::state::AppState;
 use crate::features::auth::dtos::{
-    AuthData, DeleteAccountRequest, DeleteAccountResponse, ForgotPasswordRequest, InsertUserInput,
-    LoginRequest, LoginTokens, LogoutRequest, ProfileStatsResponse, RefreshRequest, RefreshTokens,
-    ResetPasswordRequest, SignUpRequest, SignUpTokens, UpdateProfileRequest, UserProfile,
-    VerifyOtpRequest, VerifyOtpTokens,
+    AuthData, ChangePasswordRequest, DeleteAccountRequest, DeleteAccountResponse,
+    ForgotPasswordRequest, InsertUserInput, LoginRequest, LoginTokens, LogoutRequest,
+    ProfileStatsResponse, RefreshRequest, RefreshTokens, ResetPasswordRequest, SignUpRequest,
+    SignUpTokens, UpdateProfileRequest, UserProfile, VerifyOtpRequest, VerifyOtpTokens,
 };
 use crate::features::auth::repo::AuthRepo;
 
@@ -444,6 +444,57 @@ pub async fn delete_account(
     )
 }
 
+/// Change the authenticated user's password.
+///
+/// Requires the current password for re-authentication. On success all
+/// other refresh-token sessions are revoked (the current session stays
+/// signed in), mirroring standard credential-change security practice.
+pub async fn change_password(
+    state: web::Data<AppState>,
+    auth_user: AuthUser,
+    body: ValidatedJson<ChangePasswordRequest>,
+) -> Result<HttpResponse, AppError> {
+    let user = state
+        .auth_repo
+        .find_user_by_id(&auth_user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+    if user.deleted_at.is_some() {
+        return Err(AppError::BadRequest(
+            "account is scheduled for deletion".into(),
+        ));
+    }
+
+    // Re-authenticate with the current password.
+    let password_ok = auth::password::verify_password(&body.current_password, &user.password_hash)?;
+    if !password_ok {
+        return Err(AppError::Unauthorized("invalid password".into()));
+    }
+
+    if body.current_password == body.new_password {
+        return Err(AppError::BadRequest(
+            "new password must be different from the current password".into(),
+        ));
+    }
+
+    let new_hash = auth::password::hash_password(&body.new_password)?;
+    state
+        .auth_repo
+        .update_password_hash(&user.id, &new_hash)
+        .await?;
+
+    // Invalidate every other session; the current one keeps working.
+    state.auth_repo.revoke_all_user_tokens(&user.id).await?;
+
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<(), ErrorBody>::success(
+            (),
+            "password changed successfully",
+        )),
+    )
+}
+
 /// Update the authenticated user's profile.
 ///
 /// Only `display_name` is updatable for now.  Future extensions: avatar,
@@ -480,10 +531,6 @@ pub async fn update_profile(
         )),
     )
 }
-
-// ---------------------------------------------------------------------------
-// GET /api/v1/auth/me/stats — profile statistics
-// ---------------------------------------------------------------------------
 
 /// Get accurate listing counts for the authenticated user's profile.
 ///

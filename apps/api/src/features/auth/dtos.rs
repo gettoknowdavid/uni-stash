@@ -132,6 +132,21 @@ pub struct ResetPasswordRequest {
     pub new_password: String,
 }
 
+/// Request body for changing the authenticated user's password.
+///
+/// Requires the current password as re-authentication, mirroring
+/// Google/Apple guidance for credential changes.
+#[derive(serde::Deserialize, validator::Validate)]
+pub struct ChangePasswordRequest {
+    /// Current password, for re-authentication.
+    #[validate(length(min = 1, message = "current password is required"))]
+    pub current_password: String,
+
+    /// The new password (min 10 characters, same policy as signup).
+    #[validate(length(min = 10, message = "password must be at least 10 characters"))]
+    pub new_password: String,
+}
+
 /// Request body for soft-deleting the authenticated user's account.
 ///
 /// The user must confirm with their password.  After soft-deletion,
