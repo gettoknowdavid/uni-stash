@@ -4,12 +4,17 @@ use sqlx::QueryBuilder;
 use uuid::Uuid;
 
 use crate::{
-    core::{clients::R2Client, cursor::encode_cursor, error::AppError, money::Currency},
+    core::{
+        clients::R2Client,
+        cursor::{encode_cursor, encode_search_cursor},
+        error::AppError,
+        money::Currency,
+    },
     features::listings::{
         dtos::{
             CategorySummary, DEFAULT_CURRENCY, ImageRow, ImageSummary, InsertListingInput,
-            ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary, ListingSummaryRow,
-            SellerSummary,
+            ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary,
+            ListingSummaryRankedRow, SellerSummary,
         },
         models::Listing,
     },
@@ -61,11 +66,19 @@ impl ListingsRepo {
         let is_search = filters.search_query.is_some();
 
         let mut query: QueryBuilder<sqlx::Postgres> = if is_search {
-            QueryBuilder::new(
-                "SELECT l.id, l.title, l.price, l.currency::TEXT AS currency, l.barter_request, l.condition, l.status, l.created_at
+            // The rank expression is computed once in the SELECT and reused
+            // by the WHERE keyset filter and the ORDER BY below.
+            let mut query = QueryBuilder::new(
+                "SELECT l.id, l.title, l.price, l.currency::TEXT AS currency, l.barter_request, l.condition, l.status, l.created_at,
+                        ts_rank(l.search_vector, plainto_tsquery('english', ",
+            );
+            query.push_bind(filters.search_query.clone().unwrap());
+            query.push(
+                ")) AS rank
                  FROM listings l
                  WHERE l.status IN (",
-            )
+            );
+            query
         } else {
             QueryBuilder::new(
                 "SELECT id, title, price, currency::TEXT AS currency, barter_request, condition, status, created_at
@@ -128,8 +141,8 @@ impl ListingsRepo {
 
         // Cursor pagination: only for non-search browse.
         // Search results are rank-ordered, so a (created_at, id) cursor
-        // would produce incorrect pages; search uses OFFSET pagination
-        // instead (see `search_offset` in `ListingFilters`).
+        // would produce incorrect pages; search pages by a ts_rank keyset
+        // cursor instead (O(1) per page, unlike OFFSET).
         if !is_search && let Some(ref cursor) = filters.cursor {
             query
                 .push(" AND (created_at, id) < (")
@@ -140,15 +153,21 @@ impl ListingsRepo {
         }
 
         if is_search {
+            // Keyset filter: continue strictly after the previous page's
+            // last (rank, id). Ties on rank (identical documents) break by
+            // id DESC, matching the ORDER BY.
+            if let Some(ref cursor) = filters.search_cursor {
+                query
+                    .push(" AND (rank, l.id) < (")
+                    .push_bind(cursor.rank)
+                    .push(", ")
+                    .push_bind(cursor.id)
+                    .push(")");
+            }
             // Order by ts_rank DESC for relevance.
             // ts_rank normalizes by document length, so shorter documents
             // don't unfairly rank higher.
-            query.push(" ORDER BY ts_rank(l.search_vector, plainto_tsquery('english', ");
-            // Re-bind the search query for the ORDER BY expression.
-            // Postgres will recognize this as the same parameter, but we need
-            // to re-push it because QueryBuilder generates positional params.
-            query.push_bind(filters.search_query.clone().unwrap());
-            query.push(")) DESC, l.created_at DESC");
+            query.push(" ORDER BY rank DESC, l.id DESC");
         } else {
             query.push(" ORDER BY created_at DESC, id DESC");
         }
@@ -156,32 +175,33 @@ impl ListingsRepo {
         query.push(" LIMIT ");
         query.push_bind(limit + 1);
 
-        // Ranked search pages by offset; browse pages by cursor.
-        if is_search && let Some(offset) = filters.search_offset {
-            query.push(" OFFSET ");
-            query.push_bind(offset);
-        }
-
-        let rows: Vec<ListingSummaryRow> = query.build_query_as().fetch_all(&self.db).await?;
+        let rows: Vec<ListingSummaryRankedRow> = query.build_query_as().fetch_all(&self.db).await?;
 
         let has_more = rows.len() as i64 > limit;
-        let mut listings: Vec<ListingSummary> = if has_more {
-            rows.into_iter()
-                .take(limit as usize)
-                .map(Into::into)
-                .collect()
-        } else {
-            rows.into_iter().map(Into::into).collect()
-        };
+        // Keep the last row around for the search keyset cursor before the
+        // rows are consumed into summaries.
+        let last_ranked = rows.last().cloned();
+        let mut listings: Vec<ListingSummary> = rows
+            .iter()
+            .map(|row| ListingSummary::from(row.row.clone()))
+            .collect();
 
         // Attach each listing's photos (up to 3) in one batched query keyed
         // by listing id — never per-listing queries (N+1).
         self.attach_images(&mut listings).await?;
 
-        // Search results don't use cursor pagination — they report an
-        // offset cursor instead, handled by the caller (handlers.rs).
+        // Search results carry a ts_rank keyset cursor; browse carries a
+        // (created_at, id) recency cursor.
         let next_cursor = if is_search {
-            None
+            if has_more {
+                let last = last_ranked.expect("has_more implies non-empty");
+                Some(encode_search_cursor(&crate::core::cursor::SearchCursor {
+                    rank: last.rank,
+                    id: last.row.id,
+                }))
+            } else {
+                None
+            }
         } else if has_more {
             let last = listings.last().expect("has_more implies non-empty");
             Some(encode_cursor(&crate::core::cursor::Cursor {

@@ -5,7 +5,7 @@ use validator::Validate;
 use crate::{
     core::{
         auth::middleware::AuthUser,
-        cursor::decode_cursor,
+        cursor::{decode_cursor, decode_search_cursor},
         error::AppError,
         json,
         realtime::{RealtimeEvent, listing_channel},
@@ -93,15 +93,20 @@ pub async fn list_listings(
         }
     });
 
-    // Browse pages by (created_at, id) cursor; ranked search pages by
-    // offset — the search `next_cursor` encodes the next offset directly.
+    // Browse pages by a (created_at, id) recency cursor; ranked search
+    // pages by a ts_rank keyset cursor — both ride the same opaque
+    // `?cursor=` parameter, disambiguated by whether `q` is present.
     let cursor = if search_query.is_none() {
         query.cursor.as_deref().map(decode_cursor).transpose()?
     } else {
         None
     };
-    let search_offset = if search_query.is_some() {
-        query.offset.map(|o| o.clamp(0, 10_000))
+    let search_cursor = if search_query.is_some() {
+        query
+            .cursor
+            .as_deref()
+            .map(decode_search_cursor)
+            .transpose()?
     } else {
         None
     };
@@ -114,25 +119,11 @@ pub async fn list_listings(
         statuses,
         seller: query.seller,
         cursor,
-        search_offset,
+        search_cursor,
         limit,
     };
 
     let (listings, next_cursor) = state.listings_repo.list(&filters).await?;
-
-    // Ranked-search pagination: the repo always reports no cursor for
-    // search, so the handler encodes the *next offset* instead — a plain
-    // number, opaque to the client. A full page means there may be more;
-    // a short page is the last one.
-    let next_cursor = if search_query.is_some() {
-        if listings.len() as i64 >= limit {
-            Some(search_offset.unwrap_or(0).saturating_add(limit).to_string())
-        } else {
-            None
-        }
-    } else {
-        next_cursor
-    };
 
     Ok(
         HttpResponse::Ok().json(ApiResponse::<ListListingsResponse, ErrorBody>::success(

@@ -485,35 +485,72 @@ class _ListingDetailView extends SignalWidget {
     );
   }
 
-  /// Report/flag entry point (guide 6.12). Phase 8 will replace the
-  /// placeholder submit with `POST /api/v1/reports`.
+  /// Report/flag entry point (guide 6.12): collects an optional reason
+  /// and submits `POST /api/v1/reports/{listing_id}`. Idempotent
+  /// server-side — re-reporting the same listing just returns "ok".
   Future<void> _showReportSheet(
     BuildContext context,
     ListingDetailResponse detail,
   ) async {
-    await showShadDialog<void>(
+    final reasonController = TextEditingController();
+
+    final submitted = await showShadDialog<bool>(
       context: context,
       builder: (ctx) => ShadDialog(
         title: const Text('REPORT LISTING'),
-        description: const Text('Why are you reporting this listing?'),
+        description: const Text(
+          'Tell us what is wrong with this listing. Reports are reviewed '
+          'by the UniStash team.',
+        ),
         actions: [
+          ShadButton.outline(
+            onPressed: () => ctx.pop(false),
+            child: const Text('CANCEL'),
+          ),
           ShadButton(
-            onPressed: () {
-              ctx.pop();
-              ShadToaster.of(context).show(
-                const ShadToast(
-                  title: Text('Reported'),
-                  description: Text(
-                    'Thank you. We will review this listing.',
-                  ),
-                ),
-              );
-            },
+            onPressed: () => ctx.pop(true),
             child: const Text('SUBMIT'),
           ),
         ],
+        child: ShadInput(
+          controller: reasonController,
+          placeholder: const Text(
+            'e.g. Fake item, wrong price, offensive photos...',
+          ),
+          maxLines: 3,
+          minLines: 2,
+        ),
       ),
     );
+
+    if (submitted != true || !context.mounted) return;
+
+    final result = await di<ReportsRepository>().create(
+      detail.id,
+      reason: reasonController.text.trim().isEmpty
+          ? null
+          : reasonController.text.trim(),
+    );
+    if (!context.mounted) return;
+
+    switch (result) {
+      case Success():
+        ShadToaster.of(context).show(
+          const ShadToast(
+            title: Text('Reported'),
+            description: Text(
+              'Thank you. Our team will review this listing.',
+            ),
+          ),
+        );
+      case Failure(:final message):
+        ShadToaster.of(context).show(
+          ShadToast.destructive(
+            title: const Text('Report Failed'),
+            description: Text(message),
+          ),
+        );
+    }
   }
 }
 

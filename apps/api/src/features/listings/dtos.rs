@@ -104,10 +104,10 @@ pub struct ListListingsQuery {
     pub max_price: Option<i64>,
     pub status: Option<String>,
     pub seller: Option<uuid::Uuid>,
+    /// Recency cursor for browse. For ranked search (`q` present) the same
+    /// parameter carries the opaque ts_rank keyset cursor from the previous
+    /// search response's `next_cursor`.
     pub cursor: Option<String>,
-    /// Page offset for ranked-search pagination (`q` + `cursor` from a
-    /// previous search response's `next_cursor`, which encodes the offset).
-    pub offset: Option<i64>,
     pub limit: Option<i64>,
 }
 
@@ -138,7 +138,7 @@ pub struct ListingSummary {
 /// DB row shape for browse queries (flat price/currency pair).
 /// Also flattened into the hydrated saved-items response, so it derives
 /// Serialize + Debug (the wire `ListingSummary` is built from it).
-#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+#[derive(Clone, Debug, serde::Serialize, sqlx::FromRow)]
 pub struct ListingSummaryRow {
     pub id: uuid::Uuid,
     pub title: String,
@@ -168,6 +168,15 @@ impl From<ListingSummaryRow> for ListingSummary {
     }
 }
 
+/// DB row shape for ranked-search queries: the browse summary plus the
+/// computed ts_rank, which the repo folds into the keyset cursor.
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct ListingSummaryRankedRow {
+    #[sqlx(flatten)]
+    pub row: ListingSummaryRow,
+    pub rank: f32,
+}
+
 pub struct ListingFilters {
     pub search_query: Option<String>,
     pub category: Option<i16>,
@@ -179,9 +188,9 @@ pub struct ListingFilters {
     pub statuses: Vec<models::ListingStatus>,
     pub seller: Option<uuid::Uuid>,
     pub cursor: Option<cursor::Cursor>,
-    /// OFFSET for ranked-search pages (ignored for browse, which pages by
-    /// cursor). `None` = first page.
-    pub search_offset: Option<i64>,
+    /// ts_rank keyset cursor for ranked-search pages (ignored for browse).
+    /// `None` = first page. Unlike OFFSET, deep pages stay O(1).
+    pub search_cursor: Option<cursor::SearchCursor>,
     pub limit: i64,
 }
 

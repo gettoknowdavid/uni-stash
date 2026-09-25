@@ -22,11 +22,14 @@ import 'package:uni_stash_mobile/features/listings/data/categories_repository.da
 import 'package:uni_stash_mobile/features/listings/data/listing_draft_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/listings_repository.dart';
+import 'package:uni_stash_mobile/features/listings/data/reports_api.dart';
+import 'package:uni_stash_mobile/features/listings/data/reports_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_api.dart';
 import 'package:uni_stash_mobile/features/listings/data/saved_items_repository.dart';
 import 'package:uni_stash_mobile/features/listings/data/search_history_repository.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/listings_view_model.dart';
 import 'package:uni_stash_mobile/features/listings/view_models/search_view_model.dart';
+import 'package:uni_stash_mobile/features/listings/view_models/sell_dashboard_view_model.dart';
 import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
@@ -149,6 +152,14 @@ void _registerListings() {
     () => SavedItemsApiClient(di<Dio>()),
     dependsOn: [Dio],
   );
+  di.registerSingletonWithDependencies<ReportsApiClient>(
+    () => ReportsApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+  di.registerSingletonWithDependencies<ReportsRepository>(
+    () => ReportsRepositoryImpl(di<ReportsApiClient>(), di<Logger>()),
+    dependsOn: [ReportsApiClient],
+  );
   di.registerSingletonWithDependencies<SavedItemsRepository>(
     () => SavedItemsRepositoryImpl(di<SavedItemsApiClient>(), di<Logger>()),
     dependsOn: [SavedItemsApiClient],
@@ -162,6 +173,16 @@ void _registerListings() {
       instance.fetch();
       instance.loadCategories();
     },
+  );
+
+  // SELL tab: session-lived seller dashboard (stats, reserved strip,
+  // recent sales). Refreshes each time the tab becomes visible.
+  di.registerLazySingleton<SellDashboardViewModel>(
+    () => SellDashboardViewModel(
+      di<ListingsRepository>(),
+      di<SalesRepository>(),
+      sellerId: SellDashboardViewModel.currentUserId(),
+    ),
   );
 
   // SEARCH tab: session-lived like ListingsViewModel — the shell branch

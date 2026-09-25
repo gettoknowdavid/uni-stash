@@ -15,6 +15,50 @@ pub struct Cursor {
     pub id: uuid::Uuid,
 }
 
+/// Keyset cursor for rank-ordered (ts_rank) search pages.
+///
+/// `rank` is the ts_rank of the last row of the previous page (a float,
+/// encoded losslessly as its bit pattern); `id` breaks ties deterministically.
+/// Unlike OFFSET, deep pages stay O(1) per page — the planner seeks past the
+/// cursor instead of scanning and discarding rows.
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct SearchCursor {
+    pub rank: f32,
+    pub id: uuid::Uuid,
+}
+
+pub fn encode_search_cursor(cursor: &SearchCursor) -> String {
+    let bits = cursor.rank.to_bits();
+    let cursor_str = format!("{}:{}", bits, cursor.id);
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(cursor_str)
+}
+
+pub fn decode_search_cursor(raw: &str) -> Result<SearchCursor, AppError> {
+    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(raw)
+        .map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
+
+    let cursor_str =
+        String::from_utf8(decoded).map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
+
+    let parts: Vec<&str> = cursor_str.split(':').collect();
+    if parts.len() != 2 {
+        return Err(AppError::BadRequest("invalid cursor".into()));
+    }
+
+    let bits = parts[0]
+        .parse::<u32>()
+        .map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
+
+    let id = uuid::Uuid::parse_str(parts[1])
+        .map_err(|_| AppError::BadRequest("invalid cursor".into()))?;
+
+    Ok(SearchCursor {
+        rank: f32::from_bits(bits),
+        id,
+    })
+}
+
 pub fn encode_cursor(cursor: &Cursor) -> String {
     let nanos = cursor.created_at.unix_timestamp_nanos();
     let cursor_str = format!("{}:{}", nanos, cursor.id);
@@ -123,5 +167,27 @@ mod tests {
         let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload);
         let err = decode_cursor(&encoded).unwrap_err();
         assert!(matches!(err, AppError::BadRequest(_)));
+    }
+
+    #[test]
+    fn search_cursor_round_trips_float_bits() {
+        let id = uuid::Uuid::new_v4();
+        for rank in [0.0f32, 0.060241937, 1.5e-5, f32::MAX] {
+            let encoded = encode_search_cursor(&SearchCursor { rank, id });
+            let decoded = decode_search_cursor(&encoded).unwrap();
+            assert_eq!(decoded.rank.to_bits(), rank.to_bits());
+            assert_eq!(decoded.id, id);
+        }
+    }
+
+    #[test]
+    fn search_cursor_rejects_garbage() {
+        let bad = encode_cursor(&Cursor {
+            created_at: time::OffsetDateTime::now_utc(),
+            id: uuid::Uuid::new_v4(),
+        });
+        // A recency cursor is not a rank cursor: its timestamp nanos don't
+        // fit in u32, so the rank cursor decoder must reject it.
+        assert!(decode_search_cursor(&bad).is_err());
     }
 }
