@@ -171,7 +171,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn listing_channel_matches_the_name_mobile_clients_subscribe_to() {
         let id = uuid::Uuid::new_v4();
         assert_eq!(listing_channel(&id), format!("private-listing-{id}"));
