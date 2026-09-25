@@ -121,8 +121,9 @@ impl ReportsRepo {
         .bind(reason)
         .fetch_optional(&self.db)
         .await?;
-        if row.is_some() {
-            return Ok(Some(Some(row.unwrap())));
+
+        if let Some(row_item) = row {
+            return Ok(Some(Some(row_item)));
         }
         // Distinguish "not yours / doesn't exist" from "locked": re-read.
         match self.find_owned(user_id, report_id).await? {
