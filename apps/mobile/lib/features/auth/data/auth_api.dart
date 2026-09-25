@@ -53,6 +53,13 @@ abstract class AuthApiClient {
   @GET('/api/v1/auth/me/stats')
   Future<ApiResponse<ProfileStatsResponse>> getProfileStats();
 
+  /// Changes the signed-in user's password. Requires the current
+  /// password; all other sessions are revoked on success.
+  @POST('/api/v1/auth/change-password')
+  Future<ApiResponse<MessageResponse>> changePassword(
+    @Body() ChangePasswordRequest request,
+  );
+
   /// Soft-deletes the signed-in account (30-day grace period). Requires
   /// the current password for confirmation.
   @POST('/api/v1/auth/delete-account')

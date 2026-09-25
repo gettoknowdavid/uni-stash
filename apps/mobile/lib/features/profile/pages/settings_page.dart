@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/notifications/push_notifications.dart';
+import 'package:uni_stash_mobile/features/profile/pages/change_password_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/pages/logout_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
@@ -73,7 +74,10 @@ class _SettingsBody extends SignalWidget {
               _SettingsRow(
                 label: 'Change Password',
                 trailing: const _Chevron(),
-                onTap: () => _showChangePasswordDialog(context, email),
+                onTap: () => unawaited(showShadDialog(
+                  context: context,
+                  builder: (context) => const ChangePasswordDialog(),
+                )),
               ),
             ],
           ),
@@ -158,15 +162,6 @@ Future<void> _setPushEnabled(BuildContext context, bool value) async {
       ),
     );
   }
-}
-
-Future<void> _showChangePasswordDialog(
-  BuildContext context,
-  String email,
-) async {
-  // Navigate to the forgot password flow — this sends a reset OTP to the user's
-  // email and guides them through the reset password page.
-  await context.push(UsRoutes.forgotPw);
 }
 
 Future<void> _showLogoutDialog(BuildContext context) {

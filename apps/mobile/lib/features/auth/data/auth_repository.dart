@@ -37,6 +37,10 @@ abstract interface class IAuthRepository {
 
   Future<Result<User>> me();
 
+  /// Changes the signed-in user's password. Requires the current
+  /// password; all other sessions are revoked on success.
+  Future<Result<void>> changePassword(ChangePasswordRequest request);
+
   /// Soft-deletes the signed-in account (30-day grace period, then
   /// permanent). Requires the current password for confirmation.
   Future<Result<DeleteAccountResponse>> deleteAccount(
@@ -180,6 +184,24 @@ class AuthRepository implements IAuthRepository {
     } on Object catch (e) {
       _logger.e(
         '[AuthRepository] me unexpected error',
+        error: e,
+      );
+      return const Result.failure('An unexpected error occurred.');
+    }
+  }
+
+  @override
+  Future<Result<void>> changePassword(ChangePasswordRequest request) async {
+    try {
+      final response = await _client.changePassword(request);
+      if (!response.status) return Result.failure(response.message);
+      return const Result.success(null);
+    } on DioException catch (e) {
+      _logger.e('[AuthRepository] changePassword failed', error: e);
+      return dioFailure(e);
+    } on Object catch (e) {
+      _logger.e(
+        '[AuthRepository] changePassword unexpected error',
         error: e,
       );
       return const Result.failure('An unexpected error occurred.');
