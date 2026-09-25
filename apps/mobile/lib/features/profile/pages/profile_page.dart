@@ -367,6 +367,11 @@ class _ProfileMenu extends StatelessWidget {
           onTap: () => context.push(UsRoutes.savedItems),
         ),
         _MenuRow(
+          icon: LucideIcons.flag,
+          label: 'MY REPORTS',
+          onTap: () => context.push(UsRoutes.myReports),
+        ),
+        _MenuRow(
           icon: LucideIcons.headset,
           label: 'SUPPORT',
           addDivider: false,

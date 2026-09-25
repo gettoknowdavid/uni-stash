@@ -84,4 +84,76 @@ impl ReportsRepo {
         .await?;
         Ok(rows)
     }
+
+    /// Fetches one of the user's reports (ownership enforced in the WHERE).
+    pub async fn find_owned(
+        &self,
+        user_id: Uuid,
+        report_id: Uuid,
+    ) -> Result<Option<ReportResponse>, AppError> {
+        let row = sqlx::query_as::<_, ReportResponse>(
+            "SELECT id, reporter_id, listing_id, reason, status, created_at
+             FROM reports WHERE id = $1 AND reporter_id = $2",
+        )
+        .bind(report_id)
+        .bind(user_id)
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(row)
+    }
+
+    /// Updates a report's reason. Returns `None` when the report doesn't
+    /// exist or belongs to someone else; `Some((None, false))` means it
+    /// exists but is no longer editable (moderation already picked it up).
+    pub async fn update_reason(
+        &self,
+        user_id: Uuid,
+        report_id: Uuid,
+        reason: Option<String>,
+    ) -> Result<Option<Option<ReportResponse>>, AppError> {
+        let row = sqlx::query_as::<_, ReportResponse>(
+            "UPDATE reports SET reason = $3
+             WHERE id = $1 AND reporter_id = $2 AND status = 'open'
+             RETURNING id, reporter_id, listing_id, reason, status, created_at",
+        )
+        .bind(report_id)
+        .bind(user_id)
+        .bind(reason)
+        .fetch_optional(&self.db)
+        .await?;
+        if row.is_some() {
+            return Ok(Some(Some(row.unwrap())));
+        }
+        // Distinguish "not yours / doesn't exist" from "locked": re-read.
+        match self.find_owned(user_id, report_id).await? {
+            Some(_) => Ok(Some(None)),
+            None => Ok(None),
+        }
+    }
+
+    /// Deletes (withdraws) one of the user's reports. Reports already in
+    /// moderation (`reviewing`/`resolved`/`dismissed`) are locked — the
+    /// user may only withdraw `open` ones. Returns:
+    /// `None` = not found / not owned, `Some(false)` = locked,
+    /// `Some(true)` = deleted.
+    pub async fn delete_owned(
+        &self,
+        user_id: Uuid,
+        report_id: Uuid,
+    ) -> Result<Option<bool>, AppError> {
+        let result = sqlx::query(
+            "DELETE FROM reports WHERE id = $1 AND reporter_id = $2 AND status = 'open'",
+        )
+        .bind(report_id)
+        .bind(user_id)
+        .execute(&self.db)
+        .await?;
+        if result.rows_affected() > 0 {
+            return Ok(Some(true));
+        }
+        match self.find_owned(user_id, report_id).await? {
+            Some(_) => Ok(Some(false)),
+            None => Ok(None),
+        }
+    }
 }

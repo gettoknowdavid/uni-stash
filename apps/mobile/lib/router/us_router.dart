@@ -85,6 +85,10 @@ final GoRouter routerConfig = GoRouter(
       path: UsRoutes.support,
       builder: (context, state) => const SupportPage(),
     ),
+    GoRoute(
+      path: UsRoutes.myReports,
+      builder: (context, state) => const MyReportsPage(),
+    ),
     // Full-screen chat conversation (guide 7.8). Deep links and push
     // notifications (guide 7.10) may arrive without `extra`, so the
     // display names fall back to neutral labels rather than crashing.

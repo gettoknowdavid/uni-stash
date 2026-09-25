@@ -55,6 +55,53 @@ pub struct ReportsQuery {
     pub limit: Option<i64>,
 }
 
+// PATCH /api/v1/reports/{report_id} — update the reason on one of the
+// caller's own reports. Only `open` reports are editable; moderation
+// already reviewing/resolving one is locked.
+pub async fn update_report(
+    state: web::Data<AppState>,
+    user: AuthUser,
+    path: web::Path<Uuid>,
+    body: ValidatedJson<CreateReportRequest>,
+) -> Result<HttpResponse, AppError> {
+    body.validate()?;
+
+    match state
+        .reports_repo
+        .update_reason(user.id, path.into_inner(), body.reason.clone())
+        .await?
+    {
+        // Not found or not owned — 404 (never leak existence).
+        None => Err(AppError::NotFound("report not found".into())),
+        Some(None) => Err(AppError::Conflict(
+            "this report is already under review and can no longer be edited".into(),
+        )),
+        Some(Some(report)) => Ok(HttpResponse::Ok().json(
+            ApiResponse::<ReportResponse, ErrorBody>::success(report, "report updated"),
+        )),
+    }
+}
+
+// DELETE /api/v1/reports/{report_id} — withdraw one of the caller's own
+// reports. Only `open` reports can be withdrawn.
+pub async fn delete_report(
+    state: web::Data<AppState>,
+    user: AuthUser,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, AppError> {
+    match state
+        .reports_repo
+        .delete_owned(user.id, path.into_inner())
+        .await?
+    {
+        None => Err(AppError::NotFound("report not found".into())),
+        Some(false) => Err(AppError::Conflict(
+            "this report is already under review and can no longer be withdrawn".into(),
+        )),
+        Some(true) => Ok(HttpResponse::NoContent().finish()),
+    }
+}
+
 pub async fn my_reports(
     state: web::Data<AppState>,
     user: AuthUser,

@@ -496,29 +496,33 @@ class _ListingDetailView extends SignalWidget {
 
     final submitted = await showShadDialog<bool>(
       context: context,
-      builder: (ctx) => ShadDialog(
-        title: const Text('REPORT LISTING'),
-        description: const Text(
-          'Tell us what is wrong with this listing. Reports are reviewed '
-          'by the UniStash team.',
-        ),
-        actions: [
-          ShadButton.outline(
-            onPressed: () => ctx.pop(false),
-            child: const Text('CANCEL'),
+      builder: (ctx) => Padding(
+        padding: const .symmetric(horizontal: 16),
+        child: ShadDialog.alert(
+          title: const Text('REPORT LISTING'),
+          description: const Text(
+            'Tell us what is wrong with this listing. Reports are reviewed '
+            'by the UniStash team.',
           ),
-          ShadButton(
-            onPressed: () => ctx.pop(true),
-            child: const Text('SUBMIT'),
+          padding: const .all(16),
+          actions: [
+            ShadButton.outline(
+              onPressed: () => ctx.pop(false),
+              child: const Text('CANCEL'),
+            ),
+            ShadButton(
+              onPressed: () => ctx.pop(true),
+              child: const Text('SUBMIT'),
+            ),
+          ],
+          child: ShadInput(
+            controller: reasonController,
+            placeholder: const Text(
+              'e.g. Fake item, wrong price, offensive photos...',
+            ),
+            maxLines: 3,
+            minLines: 2,
           ),
-        ],
-        child: ShadInput(
-          controller: reasonController,
-          placeholder: const Text(
-            'e.g. Fake item, wrong price, offensive photos...',
-          ),
-          maxLines: 3,
-          minLines: 2,
         ),
       ),
     );

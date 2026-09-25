@@ -14,7 +14,7 @@ use crate::{
         dtos::{
             CategorySummary, DEFAULT_CURRENCY, ImageRow, ImageSummary, InsertListingInput,
             ListingDetailResponse, ListingFilters, ListingPatch, ListingSummary,
-            ListingSummaryRankedRow, SellerSummary,
+            ListingSummaryRankedRow, ListingSummaryRow, SellerSummary,
         },
         models::Listing,
     },
@@ -175,16 +175,39 @@ impl ListingsRepo {
         query.push(" LIMIT ");
         query.push_bind(limit + 1);
 
-        let rows: Vec<ListingSummaryRankedRow> = query.build_query_as().fetch_all(&self.db).await?;
-
-        let has_more = rows.len() as i64 > limit;
-        // Keep the last row around for the search keyset cursor before the
-        // rows are consumed into summaries.
-        let last_ranked = rows.last().cloned();
-        let mut listings: Vec<ListingSummary> = rows
-            .iter()
-            .map(|row| ListingSummary::from(row.row.clone()))
-            .collect();
+        // Two row shapes: the ranked SELECT includes a computed `rank`
+        // column, the browse SELECT does not — decode each with its own
+        // row type (sqlx maps columns by name, so a missing `rank` on the
+        // browse branch would otherwise 500 with "no column found").
+        let (mut listings, last_ranked, has_more): (
+            Vec<ListingSummary>,
+            Option<(f32, Uuid)>,
+            bool,
+        ) = if is_search {
+            let rows: Vec<ListingSummaryRankedRow> =
+                query.build_query_as().fetch_all(&self.db).await?;
+            let has_more = rows.len() as i64 > limit;
+            let last = if has_more {
+                rows.last().map(|r| (r.rank, r.row.id))
+            } else {
+                None
+            };
+            let listings: Vec<ListingSummary> = rows
+                .iter()
+                .take(limit.min(rows.len() as i64) as usize)
+                .map(|row| ListingSummary::from(row.row.clone()))
+                .collect();
+            (listings, last, has_more)
+        } else {
+            let rows: Vec<ListingSummaryRow> = query.build_query_as().fetch_all(&self.db).await?;
+            let has_more = rows.len() as i64 > limit;
+            let listings: Vec<ListingSummary> = rows
+                .iter()
+                .take(limit.min(rows.len() as i64) as usize)
+                .map(|row| ListingSummary::from(row.clone()))
+                .collect();
+            (listings, None, has_more)
+        };
 
         // Attach each listing's photos (up to 3) in one batched query keyed
         // by listing id — never per-listing queries (N+1).
@@ -194,10 +217,10 @@ impl ListingsRepo {
         // (created_at, id) recency cursor.
         let next_cursor = if is_search {
             if has_more {
-                let last = last_ranked.expect("has_more implies non-empty");
+                let (rank, id) = last_ranked.expect("has_more implies non-empty");
                 Some(encode_search_cursor(&crate::core::cursor::SearchCursor {
-                    rank: last.rank,
-                    id: last.row.id,
+                    rank,
+                    id,
                 }))
             } else {
                 None

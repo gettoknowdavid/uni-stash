@@ -4,12 +4,14 @@
 -- re-reporting the same listing by the same user is idempotent
 -- (ON CONFLICT DO NOTHING, like saved_items).
 --
--- WHY THIS TABLE EXISTS:
---   The mobile app has shipped a "Report this listing" dialog since the
---   detail page landed, but it only showed a local toast — nothing was
---   persisted and nobody could review anything. This table gives
---   moderation a durable queue; the admin_management feature can list and
---   act on reports in a later phase.
+-- HISTORY: a `reports` table already exists from 0003_chats.sql with an
+-- earlier, unused shape (no created_at, nullable listing_id,
+-- reported_user_id, status check without 'reviewing', reason NOT NULL).
+-- It has no production rows (feature never shipped), so this migration
+-- replaces it with the shape the reports feature expects. Dropping also
+-- removes 0003's stale index, recreated below with the new columns.
+
+DROP TABLE IF EXISTS reports;
 
 CREATE TABLE reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,8 +29,9 @@ CREATE TABLE reports (
     reason TEXT,
 
     -- open | reviewing | resolved | dismissed. Admin lifecycle; new rows
-    -- always start 'open'. The MVP API only creates rows — status changes
-    -- come with the admin moderation surface.
+    -- always start 'open'. The MVP API only creates + lets the reporter
+    -- edit/withdraw 'open' rows — status changes come with the admin
+    -- moderation surface.
     status TEXT NOT NULL DEFAULT 'open'
         CHECK (status IN ('open', 'reviewing', 'resolved', 'dismissed')),
 

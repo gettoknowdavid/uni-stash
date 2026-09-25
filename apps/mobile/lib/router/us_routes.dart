@@ -49,6 +49,7 @@ final class UsRoutes {
   static const String myListings = '/profile/listings';
   static const String savedItems = '/profile/saved';
   static const String support = '/profile/support';
+  static const String myReports = '/profile/reports';
 
   static String listingDetailsRoute(String id) => '/listings/$id';
   static String listingEditRoute(String id) => '/listings/$id/edit';

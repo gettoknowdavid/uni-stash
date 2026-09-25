@@ -19,6 +19,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         |scope| {
             scope
                 .route("/{listing_id}", web::post().to(handlers::create_report))
+                .route("/{report_id}", web::patch().to(handlers::update_report))
+                .route("/{report_id}", web::delete().to(handlers::delete_report))
                 .route("/mine", web::get().to(handlers::my_reports));
         },
     );
