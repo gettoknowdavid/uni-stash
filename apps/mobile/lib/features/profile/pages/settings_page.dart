@@ -114,16 +114,18 @@ class _SettingsBody extends SignalWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionCard(
+          _SectionCard(
             headerLabel: 'LEGAL',
             children: [
               _SettingsRow(
-                label: 'Terms of Service',
-                trailing: _ExternalLink(),
+                label: 'Terms & Conditions',
+                trailing: const _Chevron(),
+                onTap: () => context.push(UsRoutes.terms),
               ),
               _SettingsRow(
                 label: 'Privacy Policy',
-                trailing: _ExternalLink(),
+                trailing: const _Chevron(),
+                onTap: () => context.push(UsRoutes.privacy),
               ),
             ],
           ),
@@ -282,19 +284,6 @@ class _Chevron extends StatelessWidget {
   Widget build(BuildContext context) {
     return Icon(
       LucideIcons.chevronRight,
-      size: 20,
-      color: ShadTheme.of(context).colorScheme.mutedForeground,
-    );
-  }
-}
-
-class _ExternalLink extends StatelessWidget {
-  const _ExternalLink();
-
-  @override
-  Widget build(BuildContext context) {
-    return Icon(
-      LucideIcons.externalLink,
       size: 20,
       color: ShadTheme.of(context).colorScheme.mutedForeground,
     );

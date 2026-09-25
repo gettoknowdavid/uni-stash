@@ -69,6 +69,27 @@ abstract class MessageResponse with _$MessageResponse {
 }
 
 @freezed
+abstract class DeleteAccountRequest with _$DeleteAccountRequest {
+  const factory DeleteAccountRequest({
+    required String password,
+  }) = _DeleteAccountRequest;
+
+  factory DeleteAccountRequest.fromJson(Map<String, dynamic> json) =>
+      _$DeleteAccountRequestFromJson(json);
+}
+
+@freezed
+abstract class DeleteAccountResponse with _$DeleteAccountResponse {
+  const factory DeleteAccountResponse({
+    required String message,
+    @JsonKey(name: 'deletion_scheduled_at') required String deletionScheduledAt,
+  }) = _DeleteAccountResponse;
+
+  factory DeleteAccountResponse.fromJson(Map<String, dynamic> json) =>
+      _$DeleteAccountResponseFromJson(json);
+}
+
+@freezed
 abstract class ProfileStatsResponse with _$ProfileStatsResponse {
   const factory ProfileStatsResponse({
     @JsonKey(name: 'active_listings') required int activeListings,

@@ -5,6 +5,7 @@ import 'package:uni_stash_mobile/core/signals/signal_listenable.dart';
 import 'package:uni_stash_mobile/features/auth/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/auth/view_models/auth_view_model.dart';
 import 'package:uni_stash_mobile/features/chats/pages/_pages.dart';
+import 'package:uni_stash_mobile/features/legal/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/listings/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/profile/pages/_pages.dart';
 import 'package:uni_stash_mobile/features/sales/pages/_pages.dart';
@@ -88,6 +89,14 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       path: UsRoutes.myReports,
       builder: (context, state) => const MyReportsPage(),
+    ),
+    GoRoute(
+      path: UsRoutes.terms,
+      builder: (context, state) => const TermsPage(),
+    ),
+    GoRoute(
+      path: UsRoutes.privacy,
+      builder: (context, state) => const PrivacyPage(),
     ),
     // Full-screen chat conversation (guide 7.8). Deep links and push
     // notifications (guide 7.10) may arrive without `extra`, so the

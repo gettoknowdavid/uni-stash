@@ -3,7 +3,8 @@ import 'package:retrofit/retrofit.dart';
 import 'package:uni_stash_mobile/core/api/api_response.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/auth/models/auth_dto.dart';
-export 'package:uni_stash_mobile/features/auth/models/auth_dto.dart' show UpdateProfileRequest;
+export 'package:uni_stash_mobile/features/auth/models/auth_dto.dart'
+    show UpdateProfileRequest;
 
 part 'auth_api.g.dart';
 
@@ -51,4 +52,11 @@ abstract class AuthApiClient {
 
   @GET('/api/v1/auth/me/stats')
   Future<ApiResponse<ProfileStatsResponse>> getProfileStats();
+
+  /// Soft-deletes the signed-in account (30-day grace period). Requires
+  /// the current password for confirmation.
+  @POST('/api/v1/auth/delete-account')
+  Future<ApiResponse<DeleteAccountResponse>> deleteAccount(
+    @Body() DeleteAccountRequest request,
+  );
 }

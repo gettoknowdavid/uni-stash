@@ -51,6 +51,10 @@ final class UsRoutes {
   static const String support = '/profile/support';
   static const String myReports = '/profile/reports';
 
+  /// Legal pages (Settings → LEGAL, signup footer).
+  static const String terms = '/legal/terms';
+  static const String privacy = '/legal/privacy';
+
   static String listingDetailsRoute(String id) => '/listings/$id';
   static String listingEditRoute(String id) => '/listings/$id/edit';
   static String chatDetailRoute(String id) => '/chat/$id';

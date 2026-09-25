@@ -8,6 +8,7 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/user/models.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
+import 'package:uni_stash_mobile/features/profile/pages/delete_account_dialog.dart';
 import 'package:uni_stash_mobile/features/profile/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
@@ -180,6 +181,8 @@ class _ProfileContent extends SignalHookWidget {
           const _SalesHistorySection(),
           const SizedBox(height: 24),
           const _ProfileMenu(),
+          const SizedBox(height: 48),
+          const _DangerZone(),
           const SizedBox(height: 32),
         ],
       ),
@@ -376,6 +379,33 @@ class _ProfileMenu extends StatelessWidget {
           label: 'SUPPORT',
           addDivider: false,
           onTap: () => context.push(UsRoutes.support),
+        ),
+      ],
+    );
+  }
+}
+
+class _DangerZone extends StatelessWidget {
+  const _DangerZone();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Column(
+      crossAxisAlignment: .stretch,
+      children: [
+        Text('DANGER ZONE', style: theme.textTheme.labelSm),
+        const SizedBox(height: 8),
+        _MenuRow(
+          icon: LucideIcons.trash2,
+          label: 'DELETE ACCOUNT',
+          addDivider: false,
+          onTap: () => unawaited(
+            showShadDialog(
+              context: context,
+              builder: (context) => const DeleteAccountDialog(),
+            ),
+          ),
         ),
       ],
     );
