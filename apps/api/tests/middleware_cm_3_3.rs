@@ -56,6 +56,8 @@ fn test_state() -> web::Data<AppState> {
         pusher_cluster: "".into(),
         pusher_instance_id: "".into(),
         pusher_secret_key: "".into(),
+        metrics_enabled: false,
+        metrics_token: "".into(),
     };
     let db = Db {
         pool: sqlx::postgres::PgPoolOptions::new()

@@ -44,6 +44,24 @@ impl Db {
     pub fn should_migrate(env: &str) -> bool {
         matches!(env, "dev" | "test")
     }
+
+    /// Spawns the pool-statistics reporter: gauges for pool size, idle
+    /// connections, and in-use connections, sampled every 15s. Cheap (sqlx
+    /// keeps these counters in memory) and bounded (one task per process).
+    pub fn spawn_pool_metrics(pool: sqlx::PgPool) {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(15));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                interval.tick().await;
+                let s = pool.size();
+                let idle = pool.num_idle();
+                metrics::gauge!("db_pool_size").set(s as f64);
+                metrics::gauge!("db_pool_idle").set(idle as f64);
+                metrics::gauge!("db_pool_in_use").set((s - idle as u32) as f64);
+            }
+        });
+    }
 }
 
 #[cfg(test)]

@@ -1,8 +1,9 @@
 use actix_web::{App, HttpServer, web};
 use uni_stash_be::core::config::Config;
-use uni_stash_be::core::db::Db;
+use uni_stash_be::core::db;
 use uni_stash_be::core::jobs;
 use uni_stash_be::core::logging;
+use uni_stash_be::core::metrics;
 use uni_stash_be::core::state::AppState;
 use uni_stash_be::{configure_health, features};
 
@@ -18,7 +19,16 @@ async fn main() -> anyhow::Result<()> {
 
     logging::init(&config.env);
 
-    let db = match Db::connect(&config.database_url).await {
+    // Prometheus recorder — before any request can be observed. Failures
+    // are fatal only if metrics are explicitly enabled; otherwise degrade
+    // to logging-only so a bad METRICS_* var can't take the API down.
+    if config.metrics_enabled
+        && let Err(err) = metrics::init()
+    {
+        tracing::error!("failed to install prometheus recorder: {err:#}");
+    }
+
+    let db = match db::Db::connect(&config.database_url).await {
         Ok(db) => db,
         Err(err) => {
             tracing::error!("fatal: failed to connect to database: {err}");
@@ -30,6 +40,9 @@ async fn main() -> anyhow::Result<()> {
         AppState::new(&config, db)
             .map_err(|e| anyhow::anyhow!("failed to build app state: {e:#}"))?,
     );
+
+    // Pool gauges for /metrics (size/idle/in-use, 15s sample).
+    db::Db::spawn_pool_metrics(state.db.clone());
 
     let port = config.port;
 
@@ -69,8 +82,8 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_migrations(env: &str, db: &Db) -> anyhow::Result<()> {
-    if Db::should_migrate(env)
+async fn run_migrations(env: &str, db: &db::Db) -> anyhow::Result<()> {
+    if db::Db::should_migrate(env)
         && let Err(err) = db.run_migrations().await
     {
         tracing::error!("fatal: failed to run migrations: {err}");

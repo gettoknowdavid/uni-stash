@@ -29,6 +29,14 @@ pub struct Config {
     // Pusher Beams (push notifications) — separate product from Channels.
     pub pusher_instance_id: String,
     pub pusher_secret_key: String,
+
+    // Observability. All optional with safe defaults, so existing
+    // deployments keep booting unchanged:
+    //   METRICS_ENABLED=false   → /metrics returns 404 (no scraping)
+    //   METRICS_TOKEN           → when set, /metrics requires
+    //                             `Authorization: Bearer <token>`
+    pub metrics_enabled: bool,
+    pub metrics_token: String,
 }
 
 impl Config {
@@ -127,6 +135,12 @@ impl Config {
             pusher_cluster: optional(&get, "PUSHER_CLUSTER")?,
             pusher_instance_id: optional(&get, "PUSHER_INSTANCE_ID")?,
             pusher_secret_key: optional(&get, "PUSHER_SECRET_KEY")?,
+
+            metrics_enabled: match get("METRICS_ENABLED") {
+                Ok(v) => v.trim().eq_ignore_ascii_case("true"),
+                Err(_) => true,
+            },
+            metrics_token: optional(&get, "METRICS_TOKEN")?,
         })
     }
 

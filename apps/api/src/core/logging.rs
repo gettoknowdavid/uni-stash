@@ -90,6 +90,21 @@ fn starts() -> &'static Mutex<HashMap<tracing::Id, Instant>> {
     STARTS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+// Per-request route/method/status scratchpads, keyed by span id like STARTS.
+// Extracted on request end for the metrics labels — the span itself exposes
+// these as fields but reading fields back out of a Span is not possible, so
+// the request start captures them alongside the timer.
+static ROUTES: OnceLock<Mutex<HashMap<tracing::Id, String>>> = OnceLock::new();
+static METHODS: OnceLock<Mutex<HashMap<tracing::Id, String>>> = OnceLock::new();
+
+fn starts_route() -> &'static Mutex<HashMap<tracing::Id, String>> {
+    ROUTES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn starts_method() -> &'static Mutex<HashMap<tracing::Id, String>> {
+    METHODS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
 /// Root span builder that layers `latency_ms` and a canonical per-request log
 /// line on top of the stock HTTP fields.
 ///
@@ -110,6 +125,20 @@ impl RootSpanBuilder for RequestRootSpanBuilder {
         if let Some(id) = span.id() {
             starts().lock().unwrap().insert(id, Instant::now());
         }
+        // Capture the metric labels now: the matched route pattern (e.g.
+        // /api/v1/listings/{id}) keeps Prometheus cardinality bounded; the
+        // raw path with UUIDs would explode it.
+        let route = request
+            .match_pattern()
+            .unwrap_or_else(|| "unmatched".to_string());
+        let method = request.method().to_string();
+        if let Some(id) = span.id() {
+            let mut routes = starts_route().lock().unwrap();
+            routes.insert(id.clone(), route);
+            let mut methods = starts_method().lock().unwrap();
+            methods.insert(id.clone(), method);
+        }
+        crate::core::metrics::adjust_in_flight(1);
         span
     }
 
@@ -124,6 +153,31 @@ impl RootSpanBuilder for RequestRootSpanBuilder {
             .map(|t0| t0.elapsed().as_millis() as i64)
             .unwrap_or(-1);
         span.record("latency_ms", latency_ms);
+
+        // Prometheus counters: cardinally safe — `route` comes from the
+        // matched resource pattern (actix exposes it on the request
+        // extensions via the root span builder), falling back to the span's
+        // http.target when unmatched. UUID paths collapse to their template.
+        let route = span
+            .id()
+            .and_then(|id| starts_route().lock().unwrap().remove(&id))
+            .unwrap_or_else(|| "unmatched".to_string());
+        let method = span
+            .id()
+            .and_then(|id| starts_method().lock().unwrap().remove(&id))
+            .unwrap_or_else(|| "UNKNOWN".to_string());
+        let status = outcome
+            .as_ref()
+            .ok()
+            .map(|res| res.response().status().as_u16())
+            .unwrap_or(500);
+        crate::core::metrics::record_http_request(
+            &method,
+            &route,
+            status,
+            latency_ms.max(0) as f64 / 1000.0,
+        );
+        crate::core::metrics::adjust_in_flight(-1);
 
         // The canonical line: emitted inside the root span, so the formatter
         // attaches http.method/http.target/http.status_code/request_id/latency_ms.

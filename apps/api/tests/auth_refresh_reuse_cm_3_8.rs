@@ -62,6 +62,8 @@ fn test_config() -> Config {
         pusher_cluster: "".into(),
         pusher_instance_id: "".into(),
         pusher_secret_key: "".into(),
+        metrics_enabled: false,
+        metrics_token: "".into(),
     }
 }
 

@@ -8,6 +8,7 @@ pub mod governor;
 pub mod jobs;
 pub mod json;
 pub mod logging;
+pub mod metrics;
 pub mod money;
 pub mod notifications;
 pub mod rate_limit;
