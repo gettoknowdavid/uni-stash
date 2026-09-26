@@ -35,6 +35,8 @@ import 'package:uni_stash_mobile/features/listings/view_models/search_view_model
 import 'package:uni_stash_mobile/features/listings/view_models/sell_dashboard_view_model.dart';
 import 'package:uni_stash_mobile/features/notifications/data/_data.dart';
 import 'package:uni_stash_mobile/features/profile/data/profile_repository.dart';
+import 'package:uni_stash_mobile/features/profile/data/users_api.dart';
+import 'package:uni_stash_mobile/features/profile/data/users_repository.dart';
 import 'package:uni_stash_mobile/features/reviews/data/reviews_api.dart';
 import 'package:uni_stash_mobile/features/reviews/data/reviews_repository.dart';
 import 'package:uni_stash_mobile/features/sales/data/_data.dart';
@@ -340,6 +342,19 @@ void _registerReviews() {
   );
 }
 
+/// Public user profiles feature registrations.
+void _registerUsers() {
+  di.registerSingletonWithDependencies<UsersApiClient>(
+    () => UsersApiClient(di<Dio>()),
+    dependsOn: [Dio],
+  );
+
+  di.registerSingletonWithDependencies<UsersRepository>(
+    () => UsersRepositoryImpl(di<UsersApiClient>(), di<Logger>()),
+    dependsOn: [UsersApiClient],
+  );
+}
+
 /// Configures the authenticated scope.
 ///
 /// Registers all the authenticated scope dependencies.
@@ -355,6 +370,7 @@ void configureAuthenticatedScope() {
   _registerReviews();
   _registerBlocks();
   _registerNotifications();
+  _registerUsers();
 }
 
 Future<void> tearDownAuthenticatedScope() async {

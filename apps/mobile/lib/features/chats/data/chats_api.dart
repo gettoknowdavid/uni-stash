@@ -43,4 +43,9 @@ abstract class ChatsApiClient {
   // Mark all counterpart messages as read.
   @POST('/api/v1/chats/{id}/read')
   Future<ApiResponse<void>> markRead(@Path() String id);
+
+  // Fetch a single thread's metadata (listing + counterpart identity).
+  // Used after deep-links (notifications) when the thread isn't loaded.
+  @GET('/api/v1/chats/{id}')
+  Future<ApiResponse<ChatThread>> getChat(@Path() String id);
 }

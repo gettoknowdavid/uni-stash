@@ -152,4 +152,38 @@ impl ReviewsRepo {
         .await?;
         Ok(row)
     }
+
+    // -----------------------------------------------------------------------
+    // Admin moderation surface
+    // -----------------------------------------------------------------------
+
+    /// Delete an abusive review (admin action). Returns true when a row
+    /// was removed.
+    pub async fn admin_delete(&self, review_id: Uuid) -> Result<bool, AppError> {
+        let result = sqlx::query("DELETE FROM reviews WHERE id = $1")
+            .bind(review_id)
+            .execute(&self.db)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// All reviews, newest first (admin moderation queue). Capped at 200.
+    pub async fn list_for_admin(&self, limit: i64) -> Result<Vec<ReviewResponse>, AppError> {
+        let rows = sqlx::query_as::<_, ReviewResponse>(
+            "SELECT r.id, r.sale_id, r.author_id, r.reviewee_id, r.rating, r.comment,
+                    a.display_name AS author_name, b.display_name AS reviewee_name,
+                    l.title AS listing_title, r.created_at
+             FROM reviews r
+             JOIN users a ON a.id = r.author_id
+             JOIN users b ON b.id = r.reviewee_id
+             JOIN sale_history s ON s.id = r.sale_id
+             JOIN listings l ON l.id = s.listing_id
+             ORDER BY r.created_at DESC
+             LIMIT $1",
+        )
+        .bind(limit.min(200))
+        .fetch_all(&self.db)
+        .await?;
+        Ok(rows)
+    }
 }

@@ -57,6 +57,10 @@ final class UsRoutes {
   /// Blocked users management (settings).
   static const String blockedUsers = '/profile/blocked';
 
+  /// Another user's public profile (from listing detail, chat, reviews).
+  static const String userProfile = '/users/:id';
+  static String userProfileRoute(String id) => '/users/$id';
+
   /// Legal pages (Settings → LEGAL, signup footer).
   static const String terms = '/legal/terms';
   static const String privacy = '/legal/privacy';

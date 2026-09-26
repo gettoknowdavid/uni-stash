@@ -101,6 +101,12 @@ final GoRouter routerConfig = GoRouter(
       builder: (context, state) => const BlockedUsersPage(),
     ),
     GoRoute(
+      path: UsRoutes.userProfile,
+      builder: (context, state) => UserProfilePage(
+        userId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
       path: UsRoutes.terms,
       builder: (context, state) => const TermsPage(),
     ),
@@ -120,6 +126,7 @@ final GoRouter routerConfig = GoRouter(
           chatId: state.pathParameters['id']!,
           counterpartName: (map['counterpartName'] as String?) ?? 'Chat',
           listingTitle: (map['listingTitle'] as String?) ?? '',
+          counterpartId: map['counterpartId'] as String?,
         );
       },
     ),

@@ -1,16 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
+import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
+import 'package:uni_stash_mobile/features/blocks/pages/block_user_dialog.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/chats/models/models.dart';
 import 'package:uni_stash_mobile/features/chats/open_chat.dart';
 import 'package:uni_stash_mobile/features/chats/view_models/_view_models.dart';
 import 'package:uni_stash_mobile/features/chats/widgets/chat_scroll_coordinator.dart';
+import 'package:uni_stash_mobile/router/us_routes.dart';
 import 'package:uni_stash_mobile/shared/widgets/_widgets.dart';
 import 'package:uni_stash_mobile/theme/_theme.dart';
 
@@ -25,12 +29,19 @@ class ChatDetailPage extends StatefulWidget {
     required this.chatId,
     required this.counterpartName,
     required this.listingTitle,
+    this.counterpartId,
     super.key,
   });
 
   final String chatId;
   final String counterpartName;
   final String listingTitle;
+
+  /// The other participant's user id. Provided by thread-list navigations;
+  /// deep links (notifications) may omit it, in which case the page
+  /// fetches it via GET /chats/{id} before showing the profile/block menu
+  /// actions.
+  final String? counterpartId;
 
   @override
   State<ChatDetailPage> createState() => _ChatDetailPageState();
@@ -42,6 +53,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _scrollCoordinator = ChatScrollCoordinator();
+
+  /// Resolved lazily: from the constructor extra, or fetched via
+  /// GET /chats/{id} on first menu open (deep links may omit it).
+  String? _counterpartId;
 
   @override
   void initState() {
@@ -67,6 +82,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         );
       },
     );
+
+    _counterpartId = widget.counterpartId;
 
     // Reaching the top of the list loads older messages (infinite scroll);
     // the coordinator also tracks "at bottom" for the new-messages pill.
@@ -101,6 +118,76 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     super.dispose();
   }
 
+  /// Resolves the counterpart id if not already known (deep-link case):
+  /// fetches the thread metadata once, caches the result.
+  Future<String?> _resolveCounterpartId() async {
+    if (_counterpartId != null) return _counterpartId;
+    final result = await di<ChatsRepository>().getChat(widget.chatId);
+    switch (result) {
+      case Success(:final value):
+        _counterpartId = value.counterpartId;
+        return _counterpartId;
+      case Failure():
+        return null;
+    }
+  }
+
+  /// Chat app-bar menu: view the counterpart's profile, block them.
+  Future<void> _openMenu(BuildContext context) async {
+    final counterpartId = await _resolveCounterpartId();
+    if (!context.mounted) return;
+
+    await showShadSheet<void>(
+      context: context,
+      side: .bottom,
+      builder: (sheetContext) => ShadSheet(
+        title: Text(widget.counterpartName),
+        description: Text(widget.listingTitle),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => sheetContext.pop(),
+            child: const Text('CLOSE'),
+          ),
+        ],
+        child: Column(
+          mainAxisSize: .min,
+          crossAxisAlignment: .stretch,
+          children: [
+            _MenuAction(
+              icon: LucideIcons.user,
+              label: 'View profile',
+              onTap: () {
+                sheetContext.pop();
+                if (counterpartId != null) {
+                  unawaited(
+                    context.push(UsRoutes.userProfileRoute(counterpartId)),
+                  );
+                }
+              },
+            ),
+            _MenuAction(
+              icon: LucideIcons.userX,
+              label: 'Block this user',
+              destructive: true,
+              onTap: () {
+                sheetContext.pop();
+                if (counterpartId != null) {
+                  unawaited(
+                    showBlockUserDialog(
+                      context,
+                      userId: counterpartId,
+                      userName: widget.counterpartName,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
@@ -129,6 +216,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             ),
           ],
         ),
+        actions: [
+          ShadIconButton.ghost(
+            icon: const Icon(LucideIcons.ellipsisVertical),
+            onPressed: () => unawaited(_openMenu(context)),
+          ),
+        ],
       ),
       body: FutureBuilder<void>(
         future: di.isReady<ChatViewModel>(),
@@ -139,6 +232,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           return Column(
             children: [
               const _ConnectionBanner(),
+              const _SendErrorBanner(),
               Expanded(
                 child: _ChatBody(
                   currentUserId: currentUserId,
@@ -162,6 +256,56 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           );
           _inputController.clear();
         },
+      ),
+    );
+  }
+}
+
+/// Surfaces send failures. A 403 between a blocked pair shows the clear
+/// "can no longer message" copy instead of a generic error.
+class _SendErrorBanner extends SignalWidget {
+  const _SendErrorBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final error = di<ChatViewModel>().error.value;
+    if (error == null) return const SizedBox.shrink();
+
+    // The blocked-pair 403 surfaces as a permission failure; show the
+    // actionable copy rather than the generic permission text.
+    final isBlockedPair =
+        error == "You don't have permission to do that.";
+    final message =
+        isBlockedPair ? 'You can no longer message this user.' : error;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.destructive.withValues(alpha: 0.08),
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.destructive),
+        ),
+      ),
+      child: Padding(
+        padding: const .symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              LucideIcons.circleAlert,
+              size: 16,
+              color: theme.colorScheme.destructive,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.labelSm.copyWith(
+                  color: theme.colorScheme.destructive,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -348,6 +492,45 @@ class _MessageBubble extends StatelessWidget {
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:'
         '${time.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// One row in the chat app-bar menu (no Material — plain shadcn-style
+/// layout, matching the rest of the chat UI).
+class _MenuAction extends StatelessWidget {
+  const _MenuAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    final color = destructive ? theme.colorScheme.destructive : null;
+    return GestureDetector(
+      behavior: .opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const .symmetric(vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: theme.textTheme.p.copyWith(color: color),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

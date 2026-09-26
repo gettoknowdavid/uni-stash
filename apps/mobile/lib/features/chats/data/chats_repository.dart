@@ -24,6 +24,10 @@ abstract class ChatsRepository {
   /// Send a message in a chat.
   Future<Result<ChatMessage>> sendMessage(String chatId, String body);
 
+  /// A single thread's metadata (listing + counterpart identity), for
+  /// deep-linked chat views.
+  Future<Result<ChatThread>> getChat(String chatId);
+
   /// Mark all counterpart messages as read.
   Future<Result<void>> markRead(String chatId);
 }
@@ -123,6 +127,23 @@ class ChatsRepositoryImpl implements ChatsRepository {
       return dioFailure(e);
     } on Object catch (e) {
       _logger.e('[ChatsRepository] sendMessage unexpected error', error: e);
+      return const Result.failure('An unexpected error occurred.');
+    }
+  }
+
+  @override
+  Future<Result<ChatThread>> getChat(String chatId) async {
+    try {
+      final response = await _client.getChat(chatId);
+      if (!response.status) return Result.failure(response.message);
+      final data = response.data;
+      if (data == null) return const Result.failure('No data');
+      return Result.success(data);
+    } on DioException catch (e) {
+      _logger.e('[ChatsRepository] getChat failed', error: e);
+      return dioFailure(e);
+    } on Object catch (e) {
+      _logger.e('[ChatsRepository] getChat unexpected error', error: e);
       return const Result.failure('An unexpected error occurred.');
     }
   }

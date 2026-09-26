@@ -157,4 +157,116 @@ impl ReportsRepo {
             None => Ok(None),
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Admin moderation surface
+    // -----------------------------------------------------------------------
+
+    /// All listing reports, optionally filtered by status, oldest first
+    /// (moderation works the backlog).
+    pub async fn list_for_admin(
+        &self,
+        status: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<AdminReportRow>, AppError> {
+        let rows = sqlx::query_as::<_, AdminReportRow>(
+            "SELECT r.id, r.reporter_id, r.listing_id, l.title AS listing_title,
+                    u.display_name AS reporter_name, r.reason, r.status, r.created_at
+             FROM reports r
+             JOIN listings l ON l.id = r.listing_id
+             JOIN users u ON u.id = r.reporter_id
+             WHERE ($1::text IS NULL OR r.status = $1)
+             ORDER BY r.created_at ASC
+             LIMIT $2",
+        )
+        .bind(status)
+        .bind(limit)
+        .fetch_all(&self.db)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Set a listing report's moderation status.
+    pub async fn set_status(
+        &self,
+        report_id: Uuid,
+        status: &str,
+    ) -> Result<Option<String>, AppError> {
+        let row = sqlx::query_scalar::<_, String>(
+            "UPDATE reports SET status = $2 WHERE id = $1 RETURNING status",
+        )
+        .bind(report_id)
+        .bind(status)
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(row)
+    }
+
+    /// All user reports, optionally filtered by status, oldest first.
+    pub async fn list_user_reports_for_admin(
+        &self,
+        status: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<AdminUserReportRow>, AppError> {
+        let rows = sqlx::query_as::<_, AdminUserReportRow>(
+            "SELECT ur.id, ur.reporter_id, ru.display_name AS reporter_name,
+                    ur.reported_user_id, rdu.display_name AS reported_user_name,
+                    ur.reason, ur.status, ur.created_at
+             FROM user_reports ur
+             JOIN users ru ON ru.id = ur.reporter_id
+             JOIN users rdu ON rdu.id = ur.reported_user_id
+             WHERE ($1::text IS NULL OR ur.status = $1)
+             ORDER BY ur.created_at ASC
+             LIMIT $2",
+        )
+        .bind(status)
+        .bind(limit)
+        .fetch_all(&self.db)
+        .await?;
+        Ok(rows)
+    }
+
+    /// Set a user report's moderation status.
+    pub async fn set_user_report_status(
+        &self,
+        report_id: Uuid,
+        status: &str,
+    ) -> Result<Option<String>, AppError> {
+        let row = sqlx::query_scalar::<_, String>(
+            "UPDATE user_reports SET status = $2 WHERE id = $1 RETURNING status",
+        )
+        .bind(report_id)
+        .bind(status)
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(row)
+    }
+}
+
+/// Admin wire shape for a listing report (denormalized names/titles).
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AdminReportRow {
+    pub id: Uuid,
+    pub reporter_id: Uuid,
+    pub reporter_name: String,
+    pub listing_id: Uuid,
+    pub listing_title: String,
+    pub reason: Option<String>,
+    pub status: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+}
+
+/// Admin wire shape for a user report.
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AdminUserReportRow {
+    pub id: Uuid,
+    pub reporter_id: Uuid,
+    pub reporter_name: String,
+    pub reported_user_id: Uuid,
+    pub reported_user_name: String,
+    pub reason: Option<String>,
+    pub status: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
 }

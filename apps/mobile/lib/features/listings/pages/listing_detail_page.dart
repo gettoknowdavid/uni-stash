@@ -12,7 +12,6 @@ import 'package:uni_stash_mobile/core/config/di.dart';
 import 'package:uni_stash_mobile/core/config/page_scope.dart';
 import 'package:uni_stash_mobile/core/result/result.dart';
 import 'package:uni_stash_mobile/core/user/user_view_model.dart';
-import 'package:uni_stash_mobile/features/blocks/pages/block_user_dialog.dart';
 import 'package:uni_stash_mobile/features/chats/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/data/_data.dart';
 import 'package:uni_stash_mobile/features/listings/models/listing_dto.dart';
@@ -679,16 +678,14 @@ class _SellerDetails extends StatelessWidget {
                     GestureDetector(
                       behavior: .opaque,
                       onTap: () => unawaited(
-                        showBlockUserDialog(
-                          context,
-                          userId: detail.seller.id,
-                          userName: detail.seller.displayName,
+                        context.push(
+                          UsRoutes.userProfileRoute(detail.seller.id),
                         ),
                       ),
                       child: Text(
-                        'Block this user',
+                        'View profile',
                         style: theme.textTheme.small.copyWith(
-                          color: theme.colorScheme.destructive,
+                          color: theme.colorScheme.primary,
                           decoration: TextDecoration.underline,
                         ),
                       ),

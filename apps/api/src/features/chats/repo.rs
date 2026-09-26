@@ -48,6 +48,38 @@ impl ChatsRepo {
         Ok(row.map(|r| (r.buyer_id, r.seller_id)))
     }
 
+    /// A single thread as the requester sees it (same shape as
+    /// [threads_for_user]'s rows) — used by GET /chats/{id} for
+    /// deep-linked clients.
+    pub async fn thread_for_user(
+        &self,
+        chat_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<ChatThreadResponse>, AppError> {
+        let row = sqlx::query_as!(
+            ChatThreadResponse,
+            r#"SELECT c.id,
+                      c.listing_id,
+                      l.title AS listing_title,
+                      u.id AS counterpart_id,
+                      u.display_name AS counterpart_name,
+                      u.photo_url AS counterpart_photo_url,
+                      (SELECT m.body FROM messages m WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_preview,
+                      c.last_message_at,
+                      (SELECT COUNT(*)::BIGINT FROM messages m WHERE m.chat_id = c.id AND m.sender_id <> $2 AND m.read_at IS NULL) AS "unread_count!",
+                      c.created_at
+               FROM chats c
+               JOIN listings l ON l.id = c.listing_id
+               JOIN users u ON u.id = CASE WHEN c.buyer_id = $2 THEN c.seller_id ELSE c.buyer_id END
+               WHERE c.id = $1 AND (c.buyer_id = $2 OR c.seller_id = $2)"#,
+            chat_id,
+            user_id,
+        )
+        .fetch_optional(&self.db)
+        .await?;
+        Ok(row)
+    }
+
     /// List the user's threads with listing title, counterpart info, last
     /// message preview, and unread count (messages sent by the counterpart
     /// with read_at IS NULL).

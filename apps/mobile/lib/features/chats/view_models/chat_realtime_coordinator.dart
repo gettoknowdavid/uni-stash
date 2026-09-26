@@ -167,6 +167,7 @@ class ChatRealtimeCoordinator {
         UsRoutes.chatDetailRoute(chatId),
         extra: <String, Object>{
           'chatId': chatId,
+          'counterpartId': thread?.counterpartId ?? '',
           'counterpartName': thread?.counterpartName ?? 'Chat',
           'listingTitle': thread?.listingTitle ?? '',
         },

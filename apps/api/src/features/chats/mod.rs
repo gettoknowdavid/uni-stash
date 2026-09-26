@@ -16,7 +16,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 .route("", web::get().to(handlers::list_chats))
                 .route("/{id}/messages", web::get().to(handlers::list_messages))
                 .route("/{id}/messages", web::post().to(handlers::send_message))
-                .route("/{id}/read", web::post().to(handlers::mark_read));
+                .route("/{id}/read", web::post().to(handlers::mark_read))
+                .route("/{id}", web::get().to(handlers::get_chat));
         },
     );
 

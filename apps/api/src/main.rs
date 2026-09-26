@@ -63,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::auth::configure)
             .configure(features::admin_auth::configure)
             .configure(features::admin_management::configure)
+            .configure(features::admin_moderation::configure)
             .configure(features::listings::configure)
             .configure(features::blocks::configure)
             .configure(features::chats::configure)
@@ -74,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
             .configure(features::images::configure)
             .configure(features::categories::configure)
             .configure(features::schools::configure)
+            .configure(features::users::configure)
     })
     .bind(("0.0.0.0", port))?
     .run()

@@ -112,6 +112,7 @@ class _ChatThreadTile extends StatelessWidget {
             UsRoutes.chatDetailRoute(thread.id),
             extra: {
               'chatId': thread.id,
+              'counterpartId': thread.counterpartId,
               'counterpartName': thread.counterpartName,
               'listingTitle': thread.listingTitle,
             },

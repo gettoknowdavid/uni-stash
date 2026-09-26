@@ -18,6 +18,17 @@ String _humanize(DioException e) {
         : data['message'] as String?;
     if (message != null && message.isNotEmpty) return message;
   }
+
+  // 403 has several meanings; the backend's error code disambiguates
+  // ("email_not_verified" vs plain "forbidden" — e.g. a blocked pair).
+  if (e.response?.statusCode == 403) {
+    final code = _errorCode(e);
+    if (code == 'forbidden') {
+      return "You don't have permission to do that.";
+    }
+    return _humanizeStatus(403);
+  }
+
   return switch (e.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.sendTimeout ||

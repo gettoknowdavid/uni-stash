@@ -185,14 +185,25 @@ class _NotificationTile extends StatelessWidget {
         _ => LucideIcons.bell,
       };
 
-  /// Deep-link target for tappable notifications. Chat messages open the
-  /// conversation; other types are inert for now.
+  /// Deep-link target for tappable notifications:
+  /// - chat.message + chat_id → the conversation
+  /// - sale.completed / review.received + listing_id → the listing
+  ///   (the sale's full context lives on the listing's sold state and
+  ///   the sales-history pages reachable from the profile tab)
   String? get _route {
     final data = notification.data;
     if (data == null) return null;
+
     final chatId = data['chat_id'];
     if (notification.type == 'chat.message' && chatId is String) {
       return UsRoutes.chatDetailRoute(chatId);
+    }
+
+    final listingId = data['listing_id'];
+    if (listingId is String &&
+        (notification.type == 'sale.completed' ||
+            notification.type == 'review.received')) {
+      return UsRoutes.listingDetailsRoute(listingId);
     }
     return null;
   }

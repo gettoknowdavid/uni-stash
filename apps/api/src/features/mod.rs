@@ -1,5 +1,6 @@
 pub mod admin_auth;
 pub mod admin_management;
+pub mod admin_moderation;
 pub mod auth;
 pub mod blocks;
 pub mod categories;
@@ -12,3 +13,4 @@ pub mod reviews;
 pub mod sales;
 pub mod saved_items;
 pub mod schools;
+pub mod users;

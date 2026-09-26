@@ -104,6 +104,31 @@ pub async fn create_chat(
     )
 }
 
+/// GET /api/v1/chats/{id} — a single thread's metadata (listing + the
+/// counterpart's public identity). Used by clients that deep-linked into a
+/// chat (notifications, pushes) and need the counterpart id for profile
+/// links / block actions.
+pub async fn get_chat(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    user: AuthUser,
+) -> Result<HttpResponse, AppError> {
+    let chat_id = path.into_inner();
+    ensure_participant(&state, chat_id, user.id).await?;
+
+    let thread = state
+        .chats_repo
+        .thread_for_user(chat_id, user.id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("chat not found".into()))?;
+
+    Ok(
+        HttpResponse::Ok().json(ApiResponse::<ChatThreadResponse, ErrorBody>::success(
+            thread, "ok",
+        )),
+    )
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/v1/chats — the requester's thread list
 // ---------------------------------------------------------------------------
