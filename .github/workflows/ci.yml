@@ -129,22 +129,22 @@ jobs:
       # (Pusher publishable key/cluster), never secrets.
       - name: Create env files for codegen
         run: |
-          cat > .env <<'EOF'
-          BASE_URL=https://ci-placeholder.invalid
-          WS_URL=ws://ci-placeholder.invalid
-          ENV=prod
-          PUSHER_KEY=ci-placeholder-key
-          PUSHER_CLUSTER=eu
-          BEAMS_INSTANCE_ID=00000000-0000-0000-0000-000000000000
-          EOF
-          cat > .env.dev <<'EOF'
-          BASE_URL=http://localhost:8080
-          WS_URL=ws://localhost:8080
-          ENV=dev
-          PUSHER_KEY=ci-placeholder-key
-          PUSHER_CLUSTER=eu
-          BEAMS_INSTANCE_ID=00000000-0000-0000-0000-000000000000
-          EOF
+          printf '%s\n' \
+            'BASE_URL=https://ci-placeholder.invalid' \
+            'WS_URL=ws://ci-placeholder.invalid' \
+            'ENV=prod' \
+            'PUSHER_KEY=ci-placeholder-key' \
+            'PUSHER_CLUSTER=eu' \
+            'BEAMS_INSTANCE_ID=00000000-0000-0000-0000-000000000000' \
+            > .env
+          printf '%s\n' \
+            'BASE_URL=http://localhost:8080' \
+            'WS_URL=ws://localhost:8080' \
+            'ENV=dev' \
+            'PUSHER_KEY=ci-placeholder-key' \
+            'PUSHER_CLUSTER=eu' \
+            'BEAMS_INSTANCE_ID=00000000-0000-0000-0000-000000000000' \
+            > .env.dev
 
       - name: Run code generation
         run: dart run build_runner build --delete-conflicting-outputs
