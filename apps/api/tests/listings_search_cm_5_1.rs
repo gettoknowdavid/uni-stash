@@ -365,7 +365,7 @@ async fn search_respects_price_filter(pool: PgPool) {
 }
 
 // ===========================================================================
-// AC 5 — Search uses limit, no cursor pagination
+// AC 5 — Search uses limit; rank keyset cursor only when a page remains
 // ===========================================================================
 
 #[sqlx::test]
@@ -393,9 +393,21 @@ async fn search_uses_limit_without_cursor(pool: PgPool) {
     let json: serde_json::Value = test::read_body_json(resp).await;
     let listings = json["data"]["listings"].as_array().unwrap();
     assert_eq!(listings.len(), 5, "must respect limit parameter");
+
+    // Ranked search pages by a ts_rank keyset cursor (not the browse
+    // (created_at, id) cursor), so a full page emits `next_cursor`.
+    assert!(
+        json["data"]["next_cursor"].is_string(),
+        "a full search page must return the rank keyset cursor for pagination"
+    );
+
+    // The final page (no more rows after it) must have no cursor.
+    let resp = call_search(&state, "?q=science&limit=10").await;
+    assert_eq!(resp.status(), 200);
+    let json: serde_json::Value = test::read_body_json(resp).await;
     assert!(
         json["data"]["next_cursor"].is_null(),
-        "search results must not return a cursor (no cursor-based pagination for rank ordering)"
+        "the last search page must not return a cursor"
     );
 }
 

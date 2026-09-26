@@ -130,22 +130,30 @@ async fn seed_refresh_token(pool: &PgPool, user_id: Uuid, token_hash: &str) -> U
     .expect("seed refresh token")
 }
 
-async fn seed_report(
-    pool: &PgPool,
-    reporter_id: Uuid,
-    listing_id: Option<Uuid>,
-    reported_user_id: Option<Uuid>,
-) -> Uuid {
+async fn seed_report(pool: &PgPool, reporter_id: Uuid, listing_id: Uuid) -> Uuid {
     sqlx::query_scalar(
-        "INSERT INTO reports (reporter_id, listing_id, reported_user_id, reason)
-         VALUES ($1, $2, $3, 'spam') RETURNING id",
+        "INSERT INTO reports (reporter_id, listing_id, reason)
+         VALUES ($1, $2, 'spam') RETURNING id",
     )
     .bind(reporter_id)
     .bind(listing_id)
-    .bind(reported_user_id)
     .fetch_one(pool)
     .await
     .expect("seed report")
+}
+
+/// Seeds a user report (0014's `user_reports` — flags against a USER,
+/// distinct from the listing-scoped `reports` table).
+async fn seed_user_report(pool: &PgPool, reporter_id: Uuid, reported_user_id: Uuid) -> Uuid {
+    sqlx::query_scalar(
+        "INSERT INTO user_reports (reporter_id, reported_user_id, reason)
+         VALUES ($1, $2, 'spam') RETURNING id",
+    )
+    .bind(reporter_id)
+    .bind(reported_user_id)
+    .fetch_one(pool)
+    .await
+    .expect("seed user report")
 }
 
 /// Whether a row with the given UUID `id` still exists in `table`.
@@ -322,23 +330,42 @@ async fn deleting_listing_cascades_to_chats_messages_images_and_reports(pool: Pg
     let reporter = seed_user(&pool, school, "reporter@test.edu", "Reporter").await;
     let category = seed_category(&pool).await;
     let listing = seed_listing(&pool, seller, category).await;
-    let image = seed_image(&pool, listing, 0).await;
-    let chat = seed_chat(&pool, listing, buyer, seller).await;
-    let message = seed_message(&pool, chat, buyer, "interested").await;
-    let report = seed_report(&pool, reporter, Some(listing), None).await;
+    // These children exist only so the RESTRICT failure isn't caused by
+    // an empty listing; their cascade behavior is asserted on `plain`.
+    let _image = seed_image(&pool, listing, 0).await;
+    let _chat = seed_chat(&pool, listing, buyer, seller).await;
+    let report = seed_report(&pool, reporter, listing).await;
 
-    sqlx::query("DELETE FROM listings WHERE id = $1")
+    // reports.listing_id is RESTRICT (moderation evidence must survive the
+    // listing going away), so deleting the listing itself is rejected while
+    // reports exist; every other listing child would cascade (covered by
+    // the images/chats assertions via a report-free listing below).
+    let err = sqlx::query("DELETE FROM listings WHERE id = $1")
         .bind(listing)
         .execute(&pool)
         .await
-        .expect("delete listing");
+        .expect_err("listing delete must be restricted by existing reports");
+    assert_eq!(db_error(&err).constraint(), Some("reports_listing_id_fkey"));
 
+    // Without the report, the other listing children cascade-delete.
+    let plain = seed_listing(&pool, seller, category).await;
+    let plain_image = seed_image(&pool, plain, 0).await;
+    let plain_chat = seed_chat(&pool, plain, buyer, seller).await;
+    let plain_message = seed_message(&pool, plain_chat, buyer, "hi").await;
+    sqlx::query("DELETE FROM listings WHERE id = $1")
+        .bind(plain)
+        .execute(&pool)
+        .await
+        .expect("delete report-free listing");
     assert!(
-        !uuid_row_exists(&pool, "images", image).await
-            && !uuid_row_exists(&pool, "chats", chat).await
-            && !uuid_row_exists(&pool, "messages", message).await
-            && !uuid_row_exists(&pool, "reports", report).await,
-        "listing children (images, chats, messages, reports) must cascade-delete"
+        !uuid_row_exists(&pool, "images", plain_image).await
+            && !uuid_row_exists(&pool, "chats", plain_chat).await
+            && !uuid_row_exists(&pool, "messages", plain_message).await,
+        "listing children (images, chats, messages) must cascade-delete"
+    );
+    assert!(
+        uuid_row_exists(&pool, "reports", report).await,
+        "reports must survive a listing delete (RESTRICT)"
     );
 }
 
@@ -396,9 +423,10 @@ async fn deleting_user_cascades_to_reports(pool: PgPool) {
     let listing = seed_listing(&pool, seller, category).await;
 
     // Report A: reporter → listing (covers reports.reporter_id → users).
-    // Report B: other_reporter → reported (covers reports.reported_user_id → users).
-    let report_a = seed_report(&pool, reporter, Some(listing), None).await;
-    let report_b = seed_report(&pool, other_reporter, None, Some(reported)).await;
+    // Report B: other_reporter → reported (covers user_reports cascade to
+    // both reporter and reported user).
+    let report_a = seed_report(&pool, reporter, listing).await;
+    let report_b = seed_user_report(&pool, other_reporter, reported).await;
 
     sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(reporter)
@@ -411,19 +439,31 @@ async fn deleting_user_cascades_to_reports(pool: PgPool) {
         "reports must cascade-delete with their reporter"
     );
     assert!(
-        uuid_row_exists(&pool, "reports", report_b).await,
-        "unrelated report must survive"
+        uuid_row_exists(&pool, "user_reports", report_b).await,
+        "unrelated user report must survive"
     );
 
-    sqlx::query("DELETE FROM users WHERE id = $1")
+    // user_reports.reported_user_id is RESTRICT: hard-deleting a reported
+    // user is blocked while moderation evidence exists.
+    let err = sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(reported)
         .execute(&pool)
         .await
-        .expect("delete reported user");
+        .expect_err("reported user delete must be restricted by user_reports");
+    assert_eq!(
+        db_error(&err).constraint(),
+        Some("user_reports_reported_user_id_fkey")
+    );
 
+    // The reporter side is CASCADE (the reporter's own actions go away).
+    sqlx::query("DELETE FROM users WHERE id = $1")
+        .bind(other_reporter)
+        .execute(&pool)
+        .await
+        .expect("delete other reporter");
     assert!(
-        !uuid_row_exists(&pool, "reports", report_b).await,
-        "reports must cascade-delete with their reported user"
+        !uuid_row_exists(&pool, "user_reports", report_b).await,
+        "user reports must cascade-delete with their reporter"
     );
 }
 
@@ -534,27 +574,22 @@ async fn unique_thread_rejects_duplicate_buyer_per_listing(pool: PgPool) {
 async fn report_target_rejects_report_without_target(pool: PgPool) {
     let school = seed_school(&pool).await;
     let reporter = seed_user(&pool, school, "reporter@test.edu", "Reporter").await;
-    let reported = seed_user(&pool, school, "reported@test.edu", "Reported").await;
-    let seller = seed_user(&pool, school, "seller@test.edu", "Seller").await;
     let category = seed_category(&pool).await;
-    let listing = seed_listing(&pool, seller, category).await;
+    let listing = seed_listing(&pool, reporter, category).await;
 
-    // Valid: report targeting a listing only.
-    let r1 = seed_report(&pool, reporter, Some(listing), None).await;
+    // Valid: a listing report requires listing_id (0013 shape).
+    let r1 = seed_report(&pool, reporter, listing).await;
     assert!(uuid_row_exists(&pool, "reports", r1).await);
 
-    // Valid: report targeting a user only.
-    let r2 = seed_report(&pool, reporter, None, Some(reported)).await;
-    assert!(uuid_row_exists(&pool, "reports", r2).await);
-
-    // Invalid: neither target present.
+    // Invalid: reports.listing_id is NOT NULL in the 0013 shape —
+    // user flags live in the separate user_reports table (0014).
     let err = sqlx::query(
-        "INSERT INTO reports (reporter_id, listing_id, reported_user_id, reason)
-         VALUES ($1, NULL, NULL, 'spam')",
+        "INSERT INTO reports (reporter_id, listing_id, reason)
+         VALUES ($1, NULL, 'spam')",
     )
     .bind(reporter)
     .execute(&pool)
     .await
-    .expect_err("report with no target must be rejected");
-    assert_eq!(db_error(&err).constraint(), Some("report_target"));
+    .expect_err("report without a listing must be rejected");
+    assert_eq!(db_error(&err).code(), Some("23502".into()));
 }
