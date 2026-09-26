@@ -55,10 +55,14 @@ async fn main() -> anyhow::Result<()> {
         state.smtp.clone(),
     );
 
+    // Config as app data: /metrics reads METRICS_ENABLED/METRICS_TOKEN from it.
+    let config_data = web::Data::new(config.clone());
+
     HttpServer::new(move || {
         App::new()
             .wrap(logging::http_middleware())
             .app_data(state.clone())
+            .app_data(config_data.clone())
             .configure(configure_health)
             .configure(features::auth::configure)
             .configure(features::admin_auth::configure)
