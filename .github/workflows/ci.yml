@@ -79,8 +79,10 @@ jobs:
         with:
           workspaces: apps/api
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
+      - name: Install sqlx-cli (cached)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sqlx-cli@0.9
 
       - name: Run migrations
         run: sqlx migrate run --source migrations
@@ -90,6 +92,11 @@ jobs:
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+
+      # Fails when a query changed but .sqlx wasn't refreshed — catches the
+      # "works locally with SQLX_OFFLINE=false, breaks CI" class of bugs.
+      - name: Verify sqlx offline data is up to date
+        run: cargo sqlx prepare --check
 
       - name: Run tests
         run: cargo test
@@ -125,5 +132,6 @@ jobs:
 
       - name: Analyze code
         run: flutter analyze
-      # - name: Run tests
-      #   run: flutter test
+
+      - name: Run tests
+        run: flutter test
